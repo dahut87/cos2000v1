@@ -9,7 +9,7 @@ include ..\include\mem.h
 include ..\include\divers.h
 
 start:
-maxfunc equ 8
+maxfunc equ 9
 
 	jmp	tsr			;Saute à la routine résidente
 nameed db 'MB'			;Nom drivers
@@ -62,8 +62,65 @@ tables dw MBinit		;Table qui contient les adresses de toutes les fonctions de VI
          dw MBFind
          dw MBChown
          dw MBAlloc
+         dw MBclean
          
 FirstMB dw 0
+
+;Mise a nivo de la mémoire (jonction de blocs libre)
+MBclean:
+        push    ax bx dx es gs
+        mov	bx,cs:firstmb
+	dec	bx
+	dec	bx
+	xor     ax,ax
+	xor     dx,dx
+searchfree3:
+	mov     gs,bx
+	cmp	gs:[MB.Check],'NH'
+	jne	erroronsearch
+        inc     bx
+        inc     bx
+	add	bx,gs:[MB.Sizes]
+	cmp     word ptr gs:[MB.Sizes],0
+	je      erroronsearch
+	cmp	gs:[MB.Reference],Free
+	jne     notfreeatall
+	cmp     ax,0
+	je      notmeetafree
+	add     dx,gs:[MB.Sizes]
+	mov     word ptr gs:[MB.Check],0
+	mov	dword ptr gs:[MB.Names],0	
+	mov	dword ptr gs:[MB.Names+4],0
+	inc     dx
+	inc     dx
+	jmp     nottrigered
+notmeetafree:	
+        xor     dx,dx
+	mov     ax,gs	
+	jmp     nottrigered
+notfreeatall:
+        cmp     ax,0
+        je      nottrigered
+        mov     es,ax
+        add     es:[MB.Sizes],dx
+        xor     ax,ax
+nottrigered:
+	cmp	gs:[MB.IsNotLast],true
+	je	searchfree3
+	cmp     ax,0
+	je      reallyfinish
+	mov     es,ax
+        add     es:[MB.Sizes],dx
+        mov     es:[MB.IsNotLast],False
+reallyfinish:
+	clc
+	pop     gs es dx bx ax
+	ret
+erroronsearch:
+        stc
+        pop     gs es dx bx ax
+        ret
+
 
 ;Initialise les blocs de mémoire en prenant memorystart pour segment de base
 MBinit:
@@ -95,7 +152,7 @@ notforfree:
 
 ;Libère le bloc de mémoire GS
 MBFree:
-	push	bx es
+	push	ax bx es
 	mov	bx,gs
 	mov     ax,bx
 	dec     bx
@@ -129,12 +186,19 @@ searchtofree:
 	mov	dword ptr gs:[MB.Names+4],0
 nottofree:
         cmp	gs:[MB.IsNotLast],true
-	je	searchtofree	
-	pop	es bx
+	je	searchtofree
+        call    MBclean	
+	pop	es bx ax
 	ret
 wasfree:
+pushad
+ mov ah,0Dh
+ mov cx,16
+ mov dx,1999h
+ int 47h
+popad
 	stc
-	pop	es bx
+	pop	es bx ax
 	ret
 	
 ;Change le proprietaire de GS a dx
