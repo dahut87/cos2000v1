@@ -478,11 +478,17 @@ oknoagaintry:
 	shl   	edx,16
 	add   	edx,eax
         mov     ecx,edx
+       	mov     dx,cs
+        mov     si,offset datafat
+        mov     ah,9
+        int     49h
+        jnc     hadafatbloc
         mov     si,offset datafat
         mov     ah,2
         int     49h
         mov     ah,3
         int     49h
+hadafatbloc:
         xor     di,di
 	mov	dx,myboot.SectorsPerFat
 	mov	cx,AdressFat
