@@ -72,8 +72,12 @@ waitchar:
         add     di,cx
         jmp     waitchar
 norr:
-        cmp     al,0Dh
+        cmp     al,0Dh  ;entrée
         je      entere
+        cmp     al,08h ;backspace
+        je      backspace
+        cmp     al,27 ;echap
+        je      escape
         cmp     al,' '
         jb      waitchar
         cmp     di,offset buffer+256
@@ -84,6 +88,36 @@ norr:
         mov     ah,7
         int     47h
         jmp     waitchar
+escape:
+        cmp     di,offset buffer
+        je      waitchar
+        mov     ah,18h
+        int     47h
+        mov     dx,offset buffer
+        mov     cx,di
+        sub     cx,dx
+        js      waitchar
+        je      waitchar
+        sub     bh,cl
+        mov     ah,19h
+        int     47h
+        mov     di,offset buffer
+        mov     byte ptr [di],0
+backspace:
+        cmp     di,offset buffer
+        je      waitchar
+        mov     ah,18h
+        int     47h
+        dec     bh
+        mov     dl,' '
+        mov     ah,0Eh
+        int     47h
+        mov     ah,19h
+        int     47h
+        dec     di
+        mov     byte ptr [di],0
+        jmp     waitchar
+
 entere:
         mov     byte ptr [di],0
         mov     si,offset buffer
@@ -370,8 +404,12 @@ mov ah,13
 int 47h
 mov ah,6
 int 47h
+mov ah,6
+int 47h
 mov si,offset menu
 mov ah,13
+int 47h
+mov ah,6
 int 47h
 mov ah,18h
 int 47h
@@ -381,7 +419,8 @@ mov ah,4
 int 49h
 jc fino
 inc cx
-inc bl
+mov ah,18h
+int 47h
 push gs
 pop ds
 mov bh,0
@@ -430,13 +469,15 @@ push cx
 mov cx,16
 mov ah,11h
 int 47h
+mov ah,6h
+int 47h
 pop cx
 jmp listmcb
 fino:
 ret
 resident db 'oui',0
 nonresident db 'non',0
-msgs db 'Plan de la mémoire',0
+msgs db 'Plan de la memoire',0
 menu db 'Nom            Taille   Res   Parent          Mem',0
 
 
@@ -475,13 +516,13 @@ commands      dw Str_Exit   ,Code_Exit   ,Syn_Exit   ,Help_Exit
       
 Str_Exit      db 'QUIT',0
 Str_Version   db 'VERS',0
-Str_Cls       db 'EFFAC',0
-Str_Reboot    db 'REDEM',0
+Str_Cls       db 'CLEAR',0
+Str_Reboot    db 'REBOOT',0
 Str_Command   db 'CMDS',0
 Str_Mode      db 'MODE',0
-Str_Dir		db 'VOIR',0
-Str_refresh 	db 'LIRE',0
-Str_cd 		db 'CH',0
+Str_Dir		db 'DIR',0
+Str_refresh 	db 'DISK',0
+Str_cd 		db 'CD',0
 Str_Mem 	db 'MEM',0
 Syn_Exit      db 0
 Syn_Version   db 0
