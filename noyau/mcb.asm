@@ -436,6 +436,7 @@ MBresident:
 	push	bx es
 	mov	bx,gs
 	dec	bx
+	dec     bx
 	mov	es,bx
 	mov	es:[MB.IsResident],True
 	pop	es bx
