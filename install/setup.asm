@@ -14,13 +14,12 @@ Message db 0Dh,0Ah,'COS 2000 V3.02Fr programme d''installation',0Dh,0AH,'Inserez
 Message2 db 0Dh,0AH,'Creation du secteur de demarrage...',0Dh,0Ah,'$'
 Message3 db  0Dh,0AH,'Copie des fichiers systeme...',0Dh,0Ah,'$'
 Errormsg db 0Dh,0AH,'Erreur d''installation, contactez moi a COS2000@MULTIMANIA.COM !',0Dh,0AH,'$'
-Ok db 0Dh,0AH,'COS2000 a été correctement installé, veuillez redemarrer votre PC',0Dh,0AH,'$'
+Ok db 0Dh,0AH,'COS2000 a ete correctement installe, veuillez redemarrer votre PC',0Dh,0AH,'$'
 files db '*.*',0
 boot db 'boot.bin',0
 dat db 'data',0
 retu db 0Dh,0AH,'$'
 dta db 43 dup (0)
-nom db 25 dup (0)
 
 copycos:
         mov        ah,9
@@ -97,11 +96,7 @@ allfile:
         mov        ah,3ch
         push       cs
         pop        es
-        mov        si,offset dta+30-3
-        mov        di,offset nom
-        mov        cx,25
-        rep        movsb
-        mov        di,offset nom
+        mov        di,offset dta+30-3
         mov        word ptr [di],":a"
         mov        byte ptr [di+2],"\"
         xor        cx,cx
@@ -134,7 +129,7 @@ allfile:
         push       fs
         pop        ds
         mov        ah,3fh
-        mov        cx,000FFh
+        mov        cx,0FFFFh
         xor        dx,dx
         int        21h
         push       cs
