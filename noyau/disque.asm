@@ -164,11 +164,24 @@ errorload:
 ;<- Flag Carry si erreur
 ;=====================================================
 execfile:
-	pushad
 	pushf
+        push    bp dx
+        mov     bp,sp
+        mov     dx,ss:[bp+10]
+        mov ah,0Ah
+        mov cx,16
+        int 47h
+	pushad
         push    ds es fs gs
         call    projfile
         jc      reallyerror
+               mov ah,0Ah
+        mov cx,16
+        int 47h
+        push    es
+        pop     gs
+        mov     ah,6
+        int     49h
         push    es
         push    cs
         mov     ax,offset arrive
@@ -191,13 +204,15 @@ execfile:
         mov     ah,01
         int     49h
         pop     gs fs es ds
-        popf
 	popad
+        pop     dx bp
+        popf
 	ret
 reallyerror:
         pop     gs fs es ds
-        popf
 	popad
+	pop     dx bp
+        popf
 	stc
 	ret
 
@@ -298,7 +313,6 @@ errorsearch:
 ;Transforme la chaine ds:si en maj
 uppercase: 
 	push 	si ax
-	mov 	di,si
 uppercaser:
 	mov 	al,ds:[si]
 	cmp 	al,0
