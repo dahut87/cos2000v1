@@ -1,0 +1,67 @@
+lnk_boot = tlink /x
+asm= tasm /t/m5/zi
+lnk= tlink /x/t
+
+all: boot.bin clavier.sys 8259a.sys disque.sys heure.sys horloge.sys manette.sys port.sys souris.sys systeme.sys video.sys
+
+boot.bin: boot.asm
+	$(asm) boot
+	$(lnk_boot) boot
+	exe2boot boot.exe boot.bin
+
+clavier.sys: clavier.asm
+	$(asm) clavier
+	$(lnk) clavier
+	ren clavier.com clavier.sys
+
+8259a.sys: 8259a.asm
+	$(asm) 8259a
+	$(lnk) 8259a
+	ren 8259a.com 8259a.sys
+
+disque.sys: disque.asm
+	$(asm) disque
+	$(lnk) disque
+	ren disque.com disque.sys
+
+heure.sys: heure.asm
+	$(asm) heure
+	$(lnk) heure
+	ren heure.com heure.sys
+
+horloge.sys: horloge.asm
+	$(asm) horloge
+	$(lnk) horloge
+	ren horloge.com horloge.sys
+
+manette.sys: manette.asm
+	$(asm) manette
+	$(lnk) manette
+	ren manette.com manette.sys
+
+port.sys: port.asm
+	$(asm) port
+	$(lnk) port
+	ren port.com port.sys
+
+souris.sys: souris.asm
+	$(asm) souris
+	$(lnk) souris
+	ren souris.com souris.sys
+
+systeme.sys: systeme.asm
+	$(asm) systeme
+	$(lnk) systeme
+	ren systeme.com systeme.sys
+
+video.sys: video.asm
+	$(asm) video
+	$(lnk) video
+	ren video.com video.sys
+
+clean:
+  del *.obj
+  del *.exe
+  del *.com
+  del *.sys
+  del *.err

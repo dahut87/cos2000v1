@@ -1,7 +1,18 @@
 ;Librairie qui prend en charge le format de STR ASCIIZ
-;# nombre   9
-;@ str      8
-;& file     7
+;# nombre   8
+;@ str      7
+;& nom      6
+
+;High          Low
+;0 variable    4 hex
+;1 byte        3 dec
+;2 word        2 oct
+;3 3 octets    1 bin
+;4 dword       5 adresse
+;5 5 octets    6 nom
+;6 ...         7 str
+	;       8 nombre
+
 
 ;Renvoie carry si la syntaxe de ds:si n'est pas respect‚ par rapport a es:di
 CheckSyntax0:
@@ -214,35 +225,36 @@ testadress:
         mov     ax,0005h
         jmp     endofwhat
 testname:
-        call    str0isname
-        jc      testvarstr
-        mov     al,07h
-        call    getlength0
+        ;call    str0isname
+        ;jc      testvarstr
+        ;jnc	isok
+	;mov     al,06h
         cmp     byte ptr [si],'&'
-        jne     real
-        mov     cl,0
-real:
+        jne     testvarstr
+	mov     al,06h
+        call    getlength0
+	dec	cl
         mov     ah,cl
-        jmp     endofwhat
+	jmp     endofwhat
 testvarstr:       
         cmp     byte ptr [si],'@'
         jne     testnumber
-        mov     al,08h
+        mov     al,07h
         call    getlength0
+	dec	cl
         mov     ah,cl
         jmp     endofwhat 
 testnumber:
         cmp     byte ptr [si],'#'
         jne     isstr
+	mov	al,8
         call    getlength0
-        cmp     cl,1
-        ja      isstr
-        mov     ax,0009h
+        dec	cl
+	mov	ah,cl
         jmp     endofwhat
 isstr:
-        mov     al,06h
+        mov     al,07h
         call    getlength0
-        dec     cl
         mov     ah,cl
 endofwhat:
         pop     edx cx bx 
@@ -288,7 +300,7 @@ itsdead:
         pop    di si ax
         ret
 
-non db '/<>|@#',01,0FFh
+non db '/<>|"?*:\',01,0FFh
 
 ;Renvoie non carry si le texte point‚ par si est de la base cl
 str0isbase:

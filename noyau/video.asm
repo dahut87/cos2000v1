@@ -5,6 +5,8 @@ smart
 
 org 0100h
 
+include ..\include\bmp.h
+
 start:
 	jmp	tsr			;Saute à la routine résidente
 names db 'VIDEO'			;Nom drivers
@@ -93,6 +95,11 @@ tables dw setvideomode		;Table qui contient les adresses de toutes les fonctions
          dw restorestate
          dw enablescroll
          dw disablescroll
+	 dw showdate
+	 dw showtime
+	 dw showname
+	 dw showattr
+	 dw showsize
 
 ;================================Table des modes videos (64 BYTES) ============================================
 ;40*25 16 couleurs
@@ -216,10 +223,10 @@ Sequencer 	equ 03C4h
 misc 		equ 03C2h
 CCRT 		equ 03D4h
 Attribs 	equ 03C0h
-graphics    equ 03CEh
-statut 	equ 03DAh
+graphics    	equ 03CEh
+statut 		equ 03DAh
 
-maxfunc equ 43
+maxfunc equ 48
 maxmode	equ 9
 planesize	equ 64000
 ;============================================Fonctions de l'int VIDEO===========================================
@@ -237,10 +244,195 @@ planesize	equ 64000
 ;D‚sactive le d‚filement
 ;-> AH=43
 ;<- 
-;==============================================x=======
+;=====================================================
 DisableScroll:
         mov     cs:scrolling,0
         ret
+
+;================SHOWDATE (Fonction 2Ch)==============
+;Affiche la date contenu en DX
+;-> AH=44
+;<- 
+;=====================================================
+ShowDate:
+	push	ax cx edx
+	mov	ax,dx
+	mov	cx,2
+	xor	edx,edx
+	mov	dx,ax
+	and	dx,11111b
+	call	showfixint
+	mov	dl,'/'
+	call	showchar
+	mov	dx,ax
+	shr	dx,5
+	and	dx,111b
+	call	showfixint
+	mov	dl,'/'
+	call	showchar
+	mov	dx,ax
+	shr	dx,8
+	and	dx,11111111b
+	add	dx,1956
+	mov	cx,4
+	call	showfixint
+	pop	edx cx ax
+	ret
+
+;================SHOWTIME (Fonction 2Dh)==============
+;Affiche l'heure contenu en DX
+;-> AH=45
+;<- 
+;=====================================================
+ShowTime:
+	push 	ax cx edx
+	mov	ax,dx
+	mov	cx,2
+	xor 	edx,edx
+	mov	dx,ax
+	shr	dx,11
+	and	dx,11111b
+	call	showfixint
+	mov	dl,':'
+	call	showchar
+	mov	dx,ax
+	shr	dx,5
+	and	dx,111111b
+	call	showfixint
+	mov	dl,':'
+	call	showchar
+	mov	dx,ax
+	and	dx,11111b
+	shl	dx,1
+	call	showfixint
+	pop	edx cx ax
+	ret
+
+;================SHOWNAME (Fonction 2Eh)==============
+;Affiche le nom pointé par SI
+;-> AH=46
+;<- 
+;=====================================================
+ShowName:
+	push	cx dx si
+	xor	cx,cx
+showthename:
+	mov	dl,ds:[si]
+	call	showchar
+	inc	si
+	inc	cx
+	cmp	cx,8
+	jne	suiteaname
+	mov	dl,' '
+	call	showchar
+suiteaname:
+	cmp	cx,8+3
+	jb	showthename
+	pop	si dx cx
+	ret
+
+;================SHOWATTR (Fonction 2Fh)==============
+;Affiche les attributs spécifié par DL
+;-> AH=47
+;<- 
+;=====================================================
+ShowAttr:
+	push	dx
+	mov	al,dl	
+
+	test 	al,00000001b
+	je	noreadonly
+	mov	dl,'L'	
+	jmp	readonly
+noreadonly:
+	mov	dl,'-'
+readonly:
+	call	showchar
+
+	test 	al,00000010b
+	je	nohidden
+	mov	dl,'C'	
+	jmp	hidden
+nohidden:
+	mov	dl,'-'
+hidden:
+	call	showchar
+
+	test 	al,00000100b
+	je	nosystem
+	mov	dl,'S'	
+	jmp	system
+nosystem:
+	mov	dl,'-'
+system:
+	call	showchar
+
+	test 	al,00100000b
+	je	noarchive
+	mov	dl,'A'	
+	jmp	archive
+noarchive:
+	mov	dl,'-'
+archive:
+	call	showchar
+
+	test 	al,00010000b
+	je	nodirectory
+	mov	dl,'R'	
+	jmp	directory
+nodirectory:
+	mov	dl,'-'
+directory:
+	call	showchar
+
+	pop	dx
+	ret
+
+;================SHOWSIZE (Fonction 30h)==============
+;Affiche le nom pointé par DI
+;-> AH=48
+;<- 
+;=====================================================
+ShowSize:
+	push 	cx edx si ds
+	push	cs
+	pop	ds
+	mov	cx,4
+	cmp	edx,1073741824
+	ja	giga
+	cmp	edx,1048576*9
+	ja	mega
+	cmp	edx,1024*9
+	ja	kilo
+	call	showintR
+	mov	si,offset unit
+	call	showstring0
+	jmp	finsize
+kilo:
+	shr	edx,10
+	call	showintR
+	mov	si,offset unitkilo
+	call	showstring0
+	jmp	finsize
+mega:
+	shr	edx,20
+	call	showintR
+	mov	si,offset unitmega
+	call	showstring0
+	jmp	finsize
+giga:
+	shr	edx,30
+	call	showintR
+	mov	si,offset unitgiga
+	call	showstring0
+finsize:
+	pop	ds si edx cx
+	ret
+
+unit db ' o ',0
+unitkilo db ' ko',0
+unitmega db ' mo',0
+unitgiga db ' go',0
 
 ;=============SetVideoMode (Fonction 00h)=========
 ;Fixe le mode vidéo courant a AL
@@ -251,6 +443,12 @@ setvideomode:
 	push 	ax cx dx di
       cmp   al,maxmode
 	ja	errorsetvideomode
+	cmp    cs:mode,5h
+	jb	nographic
+	cmp	al,5h
+	jae	nographic
+	call	initvideo
+nographic:
         cmp    cs:mode,0FFh
         jne    noinit
 	call	initvideo
@@ -357,7 +555,11 @@ initvideo:
 	pop 	ds
 	mov 	si,offset font8x8
 	mov 	cl,8	
-      mov 	bl,1
+      	mov 	bl,1
+	call 	loadfont
+	mov 	si,offset font8x16
+	mov 	cl,16	
+      	mov 	bl,0
 	call 	loadfont
 	mov 	cs:pagesize,64000
 	call 	clearscreen
@@ -432,14 +634,14 @@ enderase:
 setfont:
 	push 	ax cx dx
 	cmp	cl,7
-      ja    errorsetfont
+      	ja    	errorsetfont
 	mov	cs:font,cl
 	mov 	ah,cl
 	and 	cl,11b
 	and 	ah,0100b
 	shl 	ah,2
 	add 	ah,cl
-      mov   dx,sequencer
+      	mov   	dx,sequencer
 	mov 	al,3
 	out 	dx,ax
 	pop	dx cx ax
@@ -456,14 +658,14 @@ errorsetfont:
 Getfont:
 	push 	ax cx dx
 	cmp	cl,7
-      ja    errorgetfont
+      	ja    	errorgetfont
 	mov	cs:font,cl
 	mov 	ah,cl
 	and 	cl,11b
 	and 	ah,0100b
 	shl 	ah,2
 	add 	ah,cl
-      mov   dx,sequencer
+      	mov   	dx,sequencer
 	mov 	al,3
 	out 	dx,ax
 	pop	dx cx ax
@@ -481,10 +683,10 @@ errorgetfont:
 loadfont:
 	push 	ax bx cx dx si di es
 	cmp	bl,7
-      ja    errorloadfont
+      	ja    	errorloadfont
 	xor	di,di
-      cli  
-      mov   dx,sequencer
+      	cli  
+      	mov   	dx,sequencer
 doseq:   
 	mov 	ax,cs:[di+offset reg1]
 	out 	dx,ax
@@ -492,7 +694,7 @@ doseq:
 	inc 	di
 	cmp 	di,6
 	jbe 	doseq
-      mov   dx,graphics 
+      	mov   	dx,graphics 
 doseq2:   
 	mov 	ax,cs:[di+offset reg1]
 	out 	dx,ax
@@ -531,7 +733,7 @@ popz:
 	dec 	dx
 	jnz 	popz 
 	xor 	di,di
-      mov   dx,sequencer
+      	mov   	dx,sequencer
 doseqs:   
 	mov 	ax,cs:[di+offset reg2]
 	out 	dx,ax
@@ -552,11 +754,12 @@ doseqs2:
 errorloadfont:
 	stc
 	pop 	es di si dx cx bx ax
-	ret   
-reg2 dw 0100h, 0302h, 0304h, 0300h 
-     dw 0004h, 1005h, 0E06h 
-reg1 dw 0100h, 0402h, 0704h, 0300h
-     dw 0204h, 0005h, 0406h                
+	ret
+  
+reg2 	dw 0100h, 0302h, 0304h, 0300h 
+     	dw 0004h, 1005h, 0E06h 
+reg1 	dw 0100h, 0402h, 0704h, 0300h
+     	dw 0204h, 0005h, 0406h                
 
 ;==========SHOWSPACE (Fonction 05h)===========
 ;met un espace aprés le curseur
@@ -565,11 +768,11 @@ reg1 dw 0100h, 0402h, 0704h, 0300h
 ;=============================================
 showspace:
 	push 	cx
-	mov   cl,' '
-        mov   ch,cs:colors
-        call  charout
+	mov   	cl,' '
+        mov   	ch,cs:colors
+        call  	charout
         clc
-        pop   cx
+        pop   	cx
 	ret
 
 ;==========SHOWLINE (Fonction 06h)===============
@@ -582,9 +785,9 @@ showline:
 	mov 	bl,cs:y
 	xor 	bh,bh
 	mov 	cl,cs:lines
-      sub     cl,2
+      	sub     cl,2
 	cmp 	bl,cl
-      jne     scro
+      	jne     scro
 	dec 	bl
 	mov	cx,1
 	cmp	byte ptr cs:graphics,0
@@ -618,19 +821,19 @@ showchar:
 ;===========================================
 ShowInt:
 	push	eax bx cx edx esi
-      xor	cx,cx
-	mov   eax,edx
-      mov   esi,10
-      mov   bx,offset showbuffer+27
+      	xor	cx,cx
+	mov   	eax,edx
+      	mov   	esi,10
+      	mov   	bx,offset showbuffer+27
 decint:
-      xor   edx,edx
-      div   esi
-      add   dl,'0'
-      inc   cx
-      mov   cs:[bx],dl
-	dec   bx
-      cmp   ax,0
-      jne   decint
+      	xor   	edx,edx
+      	div   	esi
+      	add   	dl,'0'
+      	inc   	cx
+      	mov   	cs:[bx],dl
+	dec   	bx
+      	cmp   	ax,0
+      	jne   	decint
 	mov	ax,cx
 	mov	ch,cs:colors
 showinteger:
@@ -639,10 +842,100 @@ showinteger:
 	call	charout
 	dec	ax
 	jnz	showinteger
-      pop   esi edx cx bx eax 
+      	pop   	esi edx cx bx eax 
 	ret   
     
-showbuffer db 35 dup (0FFh)
+showbuffer 	db 35 dup (0FFh)
+
+;==========SHOWFIXINT (Fonction h)===========
+;Affiche un entier EDX aprés le curseur de taille cx
+;-> AH=8, EDX un entier et al="cara"
+;<- 
+;===========================================
+ShowfixInt:
+	push	eax bx cx edx esi di
+	mov	di,cx
+      	xor	cx,cx
+	mov   	eax,edx
+      	mov   	esi,10
+      	mov   	bx,offset showbuffer+27
+decint2:
+      	xor   	edx,edx
+      	div   	esi
+      	add   	dl,'0'
+      	inc   	cx
+      	mov   	cs:[bx],dl
+	dec   	bx
+	cmp 	cx,di
+	jae 	nomuch
+      	cmp   	ax,0
+      	jne   	decint2
+	mov 	ax,di
+  	xchg 	cx,di
+	sub 	cx,di
+rego:
+	mov 	byte ptr cs:[bx],'0'
+	dec    	bx
+	dec    	cx
+	jnz	rego
+	jmp 	finishim
+nomuch:
+	mov	ax,di
+finishim:
+	mov	ch,cs:colors
+showinteger2:
+	inc	bx
+	mov	cl,cs:[bx]
+	call	charout
+	dec	ax
+	jnz	showinteger2
+      	pop  	di esi edx cx bx eax 
+	ret   
+
+;==========SHOWINTR (Fonction h)===========
+;Affiche un entier EDX aprés le curseur de taille cx
+;-> AH=8, EDX un entier
+;<- 
+;===========================================
+ShowIntR:
+	push	eax bx cx edx esi di
+	mov	di,cx
+      	xor	cx,cx
+	mov   	eax,edx
+      	mov   	esi,10
+      	mov   	bx,offset showbuffer+27
+decint3:
+      	xor   	edx,edx
+      	div   	esi
+      	add   	dl,'0'
+      	inc   	cx
+      	mov   	cs:[bx],dl
+	dec   	bx
+	cmp 	cx,di
+	jae 	nomuch
+      	cmp   	ax,0
+      	jne   	decint3
+	mov 	ax,di
+  	xchg 	cx,di
+	sub 	cx,di
+rego2:
+	mov 	byte ptr cs:[bx],' '
+	dec    	bx
+	dec    	cx
+	jnz	rego2
+	jmp 	finishim2
+nomuch2:
+	mov	ax,di
+finishim2:
+	mov	ch,cs:colors
+showinteger3:
+	inc	bx
+	mov	cl,cs:[bx]
+	call	charout
+	dec	ax
+	jnz	showinteger3
+      	pop  	di esi edx cx bx eax 
+	ret   
 
 ;==========SHOWSIGNED (Fonction 09h)===========
 ;Affiche un entier EDX de taille CX aprés le curseur
@@ -653,7 +946,7 @@ Showsigned:
 	push 	ebx edx
 	mov	ebx,edx
 	xor	edx,edx
-	cmp         cx,8
+	cmp     cx,8
 	ja 	signed16
 	mov	dl,bl
 	cmp	dl,7Fh
@@ -661,7 +954,7 @@ Showsigned:
 	neg 	dl
 	jmp	showminus
 signed16:
-	cmp         cx,16
+	cmp     cx,16
 	ja 	signed32
 	mov 	dx,bx
 	cmp	dx,7FFFh
@@ -674,10 +967,10 @@ signed32:
 	jbe	notsigned
 	neg 	edx
 showminus:
-	push  dx
+	push  	dx
 	mov 	dl,'-'
 	call 	showchar
-      pop   dx
+      	pop   	dx
 notsigned:
 	call 	showint 
 	pop 	edx ebx
@@ -689,24 +982,25 @@ notsigned:
 ;<- 
 ;===========================================
 ShowHex:
-       push  ax bx cx edx
-       mov   ax,cx
-	 shr   ax,2
-       sub   cx,32
-       neg   cx
-       shl   edx,cl
-       mov   ch,cs:colors
+       	push  	ax bx cx edx
+       	mov   	ax,cx
+	shr   	ax,2
+       	sub   	cx,32
+       	neg   	cx
+       	shl   	edx,cl
+       	mov   	ch,cs:colors
 Hexaize:
-       rol   edx,4
-       mov   bx,dx
-       and   bx,0fh
-       mov   cl,cs:[bx+offset Tab]
-       call	 charout
-       dec   al
-       jnz   Hexaize
-       pop   edx cx bx ax
-       ret
-Tab db '0123456789ABCDEF'
+       	rol   	edx,4
+       	mov   	bx,dx
+       	and   	bx,0fh
+       	mov   	cl,cs:[bx+offset Tab]
+       	call	charout
+       	dec   	al
+       	jnz   	Hexaize
+       	pop   	edx cx bx ax
+       	ret
+
+Tab 	db '0123456789ABCDEF'
 
 ;==========SHOWBIN (Fonction 0Bh)===========
 ;Affiche un nombre binaire EDX de taille CX aprés le curseur
@@ -714,12 +1008,12 @@ Tab db '0123456789ABCDEF'
 ;<- 
 ;===========================================
 Showbin:
-       push   ax cx edx
-       mov    ax,cx
-       sub    cx,32
-       neg    cx
-       shl    edx,cl
-       mov    ch,cs:colors
+       	push   	ax cx edx
+       	mov    	ax,cx
+       	sub    cx,32
+       	neg    cx
+       	shl    edx,cl
+       	mov    ch,cs:colors
 binaize:
        rol    edx,1
        mov    cl,'0'
@@ -1146,6 +1440,8 @@ viewbmp:
 ;=========================================
 showbmp:
 	push 	ax bx cx dx
+	cmp	word ptr ds:[si+BMP_file.BMP_FileType],"MB"
+	jne     errorshowing
 	mov 	cs:xc,bx
 	mov 	cs:yc,cx
 	xor 	cx,cx
@@ -1162,14 +1458,21 @@ bouclette:
 	pop 	cx bx
 	inc 	bx
 	inc 	dx
-	cmp 	dx,[si+offset BMP_width]
+	cmp 	dx,[si+offset BMP_File.BMP_width]
 	jb 	bouclette
 	xor 	dx,dx
 	inc 	cx
-	cmp 	cx,[si+offset BMP_height]
+	cmp 	cx,[si+offset BMP_File.BMP_height]
 	jb 	bouclette
+	clc
 	pop 	dx cx bx ax
 	ret
+	
+errorshowing:
+        stc
+        pop  dx cx bx ax
+        ret
+        
 xc dw 0
 yc dw 0
 
@@ -1435,16 +1738,25 @@ ret
 savedac:
 push ax cx dx di
 mov dx,3C7h
-xor ax,ax
-out dx,al
-mov cx,256*3
-inc dx
-inc dx
+mov cx,256
 mov di,offset dac
 save:
+mov al,cl
+dec al
+out dx,al
+inc dx
+inc dx
 in al,dx
 mov cs:[di],al
 inc di
+in al,dx
+mov cs:[di],al
+inc di
+in al,dx
+mov cs:[di],al
+inc di
+dec dx
+dec dx
 dec cx
 jne save 
 pop di dx cx ax
@@ -1454,29 +1766,30 @@ ret
 restoredac:
 push ax cx dx si
 xor ax,ax
-cli
-mov dx,3DAh
-in al,dx
-mov dx,0
-out dx,al
 mov dx,3C8h
-out dx,al
-mov cx,256*3
+mov cx,256
 mov si,offset dac
 save2:
-mov al,cs:[si]
-inc si   
+mov al,cl
+dec al
 out dx,al
+inc dx 
+mov al,cs:[si]
+inc si
+out dx,al
+mov al,cs:[si]
+inc si 
+out dx,al
+mov al,cs:[si]
+inc si  
+out dx,al
+dec dx
 dec cx
 jne save2
-mov dx,3DAh
-in al,dx
-mov dx,32
-out dx,al
 pop si dx cx ax
 ret
 
-;couleur al pour ligne di
+;couleur al pour ligne di  A SUPPRIMER
 changelineattr:
 push ax bx di es
 mov bx,ax
@@ -1496,65 +1809,13 @@ jnz popep
 pop es di bx ax
 ret   
 
+font8x8:
+include ..\include\pol8x8.inc
+font8x16:
+include ..\include\pol8x16.inc
 
+copy 		equ $
+copy2           equ $+8192
+dac             equ $+8192+8192
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-BMP_File         		struc
-BMP_FileType            db      'BM'
-BMP_FileSize            dd      ?       ; taille du fichier
-BMP_Reserved            dd      0       ; toujours 0
-BMP_BitMapOffset        dd      ?       ; offset de l'image
-BMP_HeaderSize          dd      ? ; taille de l'entete en octects
-BMP_Width               dd      ? ; largeur en pixels de l'image
-BMP_Height              dd      ? ; hauteur en pixels de l'image
-BMP_Planes              dw      1 ; nombre de plan utilisés
-BMP_BitsPerPixel        dw      ? ; nombre de bits par pixels
-BMP_Compression         dd      ? ; méthode de compression 
-BMP_SizeOfBitMap        dd      ? ; taille de l'image en octects
-BMP_HorzResolution      dd      ? ; resolution horizontale en pixels par mètre
-BMP_VertResolution      dd      ? ; resolution verticale en pixels  par mètre
-BMP_ColorsUsed          dd      ? ; nombre de couleur dans la palette  si 0: palette entière si BitPerPixel<=8
-BMP_ColorsImportant     dd      ? ; nombre de couleurs importantes masques pour les modes de plus de 8 bits par pixels
-BMP_RedMask             dd      ?
-BMP_GreenMask           dd      ?
-BMP_BlueMask            dd      ?
-BMP_AlphaMask           dd      ?
-BMP_ColorSpaceType      dd      ?
-BMP_RedX                dd      ?
-BMP_RedY                dd      ?
-BMP_RedZ                dd      ?
-BMP_GreenX              dd      ?
-BMP_GreenY              dd      ?
-BMP_GreenZ              dd      ?
-BMP_BlueX               dd      ?
-BMP_BlueY               dd      ?
-BMP_BlueZ               dd      ?
-BMP_GammaRed            dd      ?
-BMP_GammaGreen          dd      ?
-BMP_GammeBlue           dd      ?
-BMP_file       		ends
-
-;BMP_Compression peut prendre les valeurs suivantes: 
-BMP_COMP_UNCOMP         equ     0       ; pas de compression
-BMP_COMP_RLE8           equ     1       ; 8-bit run length encoding
-BMP_COMP_RLE4           equ     2       ; 4-bit tun length encoding
-BMP_COMP_BFE            equ     3       ; bitfields encoding
-
-
-font8x8 	equ $
-copy 		equ $+3000
-copy2   equ $+8000
-dac             equ $+16000
 end start

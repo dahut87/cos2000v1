@@ -137,6 +137,45 @@ int 47h
 mov si,offset texttt
 mov ah,13
 int 47h 
+mov ah,6
+int 47h
+
+mov ah,21
+mov cl,9
+int 47h
+mov ah,13
+mov si,offset text71
+int 47h
+mov ah,6
+int 47h     
+mov dx,0BF30h
+mov ah,44
+int 47h
+mov ah,6
+int 47h
+mov dx,0B0B6h
+mov ah,44
+int 47h
+mov ah,6
+int 47h
+
+mov ah,13
+mov si,offset text72
+int 47h
+mov ah,6
+int 47h
+mov edx,8601h
+mov ah,45
+int 47h
+mov ah,6
+int 47h
+mov dx,0B0B6h
+mov ah,45
+int 47h
+mov ah,6
+int 47h
+
+
 
 mov ax,0
 int 16h
@@ -302,6 +341,8 @@ text4 db 'Nombre h‚xad‚cimal :',0
 text5 db 'Nombre binaire :',0
 text6 db 'CaractŠres :',0
 text7 db 'Texte :',0
+text71 db 'Date :',0
+text72 db 'Heure :',0
 text8 db 'Scrolling Scrolling Scrolling Scrolling Scrolling Scrolling Scrolling Scrolling',0
 text9 db 'Vertical Vertical Vertical Vertical Vertical Vertical Vertical Vertical',0
 text10 db 'Rapide Rapide Rapide Rapide Rapide Rapide Rapide Rapide',0
