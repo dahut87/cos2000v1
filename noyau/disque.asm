@@ -68,6 +68,7 @@ tables  dw readsector
 	dw readcluster
 	dw writecluster
 	dw getdir
+	dw projfile
 
 maxfunc equ 24
 
@@ -155,6 +156,44 @@ errorload:
 	mov	ecx,0
 	pop   	di bx eax
 	ret
+
+;============projfile (Fonction 17)===============
+;Charge le fichier ds:si sur un bloc mémoire -> ecx taille -> es bloc
+;-> AH=17
+;<- Flag Carry si erreur
+;=====================================================
+projfile:
+	push	eax bx di gs
+	push	cs
+	pop	es
+	mov	di,offset tempfit
+	call	searchfile
+	jne   	errorload
+	jc	errorload
+	mov	eax,cs:tempfit.FileSize
+	mov     ecx,eax
+	add     ecx,19000
+	push    ax
+	mov     ah,2
+	int     49h
+	pop     ax
+	jc      errorload2
+	push    gs
+	pop     es
+	mov	cx,cs:tempfit.FileGroup
+	mov     di,100h
+	call	loadway
+	jc    	errorload2
+	clc
+	mov	ecx,eax
+	pop   	gs di bx eax
+	ret
+errorload2:
+	stc
+	mov	ecx,0
+	pop   	gs di bx eax
+	ret
+	
 
 tempfit db 32 dup (0)
 
