@@ -672,7 +672,7 @@ notsogood:
 
 ;remplace le handler pointer par ds:si en bloc:100h interruption ax
 replacehandler:
-push ax bx cx si di es ds
+push ax bx cx si di ds
 call projfile
 jc reph
 mov bx,ax
@@ -681,7 +681,7 @@ mov es:[102h],si
 mov es:[104h],ds
 call setint
 reph:
-pop ds es di si cx bx ax
+pop ds di si cx bx ax
 ret
       
 ;install le handler pointer par ds:si en bloc:100h interruption ax -> es
@@ -788,13 +788,14 @@ projfile:
 	push	eax bx di gs
 	push	cs
 	pop	es
+	call    uppercase
 	mov	di,offset tempfit
 	call	searchfile
 	jne   	errorload
 	jc	errorload
 	mov	eax,cs:tempfit.FileSize
 	mov     ecx,eax
-	add ecx,19000
+	add ecx,100h
 	call    MBCreate
 	jc      errorload
 	push    gs
