@@ -7,16 +7,19 @@ org 0100h
 start:
      mov ax,0305h
      mov bx,0008h
-     int 16h      
-;mov ax,1100h
-;mov bx,1000h    ;2000H
-;mov cx,0100h     ;80h
-;xor dx,dx
-;mov bp,offset copy2
-;int 10h
-     call savescreen
+     int 16h
+     mov ax,0002
+     int 47H   
+     mov ah,26
+     int 47H
+     mov ah,2
+     int 47h
      xor bp,bp 
 Adres:
+     mov di,offset infos
+     mov ah,34
+     int 47h
+     dec infos
      push cs
      pop es
      mov cx,sect
@@ -24,67 +27,92 @@ Adres:
      call readsector
      jnc noerror
      errtr:
-     mov ax,24
-     call setxy
-     mov colors,116
+     mov ah,25
+     mov bl,infos
+     xor bh,bh
+     int 47h
+     mov ah,21
+     mov cl,116
+     int 47h
+     mov ah,13
      mov si,offset errordisk
-     call showstring0
+     int 47h
      mov ax,0
      int 16h
      noerror:
  adres2:
-     mov bx,offset buffer     
-     call clear
-     mov ax,0
-     call setxy
-     mov ah,24
+     mov di,offset infos
+     mov ah,34
+     int 47h
+     dec infos
+     mov bx,0
+     mov ah,25
+     int 47h
+     mov bh,infos
      mov di,bp
-     mov colors,7
+     mov ah,21
+     mov cl,7
+     int 47h
 lines:
      mov dx,sect
      mov cx,16
-     call showhexrow
+     mov ah,10
+     int 47h
      mov si,offset dep
-     call showstring0
+     mov ah,13
+     int 47h
      mov dx,di
-     call showhexrow
+     mov ah,10
+     int 47h
+     mov ah,13
      mov si,offset spaces
-     call showstring0
+     int 47h
      mov al,16
-     mov cx,8
-     mov colors,7
+     mov cl,7
+     mov ah,21
+     int 47h
      mov si,di
 doaline:
-     mov dl,[di+bx]
-     call showhexrow
-     call space
+     mov dl,[di+offset buffer]
+     mov ah,10
+     mov cl,8
+     int 47h
+     mov ah,5
+     int 47h
      inc di
      dec al
      jnz doaline
      mov di,si
      mov si,offset spaces
-     call showstring0
+     mov ah,13
+     int 47h
      mov al,16
-     mov colors,7
+     mov ah,21
+     mov cl,7
+     int 47h
 doaline2:
-     mov dl,[di+bx]
-     call showchar
+     mov dl,[di+offset buffer]
+     mov ah,7
+     int 47h
      inc di
      dec al
      jnz doaline2
-     call line
-     dec ah
+     mov ah,6
+     int 47h
+     dec bh
      jnz lines
-     mov colors,112
+     mov ah,21
+     mov cl,112
+     int 47h
      mov si,offset menu
-     call showstring0
-     mov bx,bp
+     mov ah,13
+     int 47h
      waitkey:
      mov ax,0
      int 16h
      cmp ax,3B00h
      jne suit
-     cmp bx,8*16
+     cmp bp,8*16
      jae waitkey
      add bp,16  
      jmp adres2
@@ -125,12 +153,19 @@ doaline2:
      cmp ax,4100h
      jne suit7
      mov dword ptr [pope],'TIDE'
-     mov ax,24
-     call setxy
-     mov colors,116
+     mov bl,infos
+     xor bh,bh
+     mov ah,25
+     int 47h
+     mov ah,21
+     mov cl,116
+     int 47h
      mov si,offset menu
-     call showstring0
-     mov colors,7
+     mov ah,13
+     int 47h
+     mov ah,21
+     mov cl,7
+     int 47h
      mov ax,0B800h
      mov es,ax   
      mov xxyy2,3
@@ -162,7 +197,10 @@ tre:
 tre1:
      cmp ah,50h
      jne tre2
-     cmp yy,23
+     mov al,infos
+     dec al
+     xor ah,ah
+     cmp yy,ax
      je waitst
      inc yy
      jmp cursor
@@ -219,7 +257,9 @@ cursor:
      suit7:
      cmp ax,4200h
      jne waitkey
-     call restorescreen
+     mov ah,27
+     int 47h
+     db 0CBH
      ret
 
 calc1:
@@ -294,8 +334,8 @@ calc3:
      nomaj:
      mov cl,al
      sub cl,'0'
-     endt:   
-     ret
+     endt:
+     ret   
 
 dep db ':',0
 sect dw 0
@@ -307,264 +347,6 @@ errordisk db 'Une erreur est survenu sur le lecteur A:, appuyer sur une touche  
 menu db 'Haut F1, Bas F2, Secteurs F3&F4, Load/Save F4&F5, Edit F7, Quitter F8  MODE '
 pope  db 'VUE  ',0         
 spaces db  ' ³ ',0
-xy dw 0
-colors db 7
-x db 1
-y Db 1
-
-;==========SHOWCHAR===========
-;met un caractŠre apr‚s le curseur
-;-> dl
-;<- 
-;=============================
-showchar:
-push dx bx es
-mov bx,0B800h
-mov es,bx
-mov bx,cs:xy
-mov dh,cs:colors
-mov es:[bx],dx
-add cs:xy,2
-pop es bx dx
-ret
-
-
-
-;==========SPACE===========
-;met un espace apr‚s le curseur
-;-> 
-;<- 
-;=============================
-space:
-push bx es
-add cs:xy,2
-mov bx,0B800h
-mov es,bx
-mov bx,cs:xy
-mov byte ptr es:[bx],' '
-pop es bx
-ret
-
-;==============================Affiche le nombre nb binaire en EDX==============
-ShowbinRow:
-        push    es ax bx cx di      
-        mov     di,cs:xy
-        mov     bx,0B800h
-        mov     es,bx
-        mov     ax,cx
-        sub     cx,32
-        neg     cx
-        shl     edx,cl
-        mov     ch,cs:colors
-binaize:
-        rol     edx,1
-        mov     cl,'0'
-        adc     cl,0  
-        mov     es:[di],cx
-        add     di,2
-        dec     al
-        jnz     binaize
-        mov     cs:xy,di
-        pop     di cx bx ax es
-        ret    
-
-;==========SETCOLOR=========
-;Change les attributs du texte a CL
-;-> CL
-;<- 
-;=============================
-setcolor:
-mov cs:colors,CL
-ret  
-
-;=============CLEAR=========
-;Efface l'ecran texte
-;-> 
-;<- 
-;=============================
-clear:
-push es eax cx di
-xor di,di
-mov ax,0b800h
-mov es,ax
-mov eax,07200720h
-mov cx,1000
-cld
-rep stosd
-pop di cx eax es
-ret       
-
-;==========SCROLLDOWN=========
-;defile de cx lines vers le bas
-;-> CX
-;<- 
-;=============================
-scrolldown:
-push cx si di ds es
-mov si,0B800h
-mov es,si
-mov ds,si
-mov si,cx
-shl si,5
-shl cx,7
-add si,cx
-mov cx,4000
-sub cx,si
-xor di,di
-cld
-rep movsb
-pop es ds di si cx
-ret
-
-;==========LINE=========
-;remet le curseur a la ligne
-;-> 
-;<- 
-;=============================
-line:
-push ax cx di es
-mov ah,cs:x
-mov al,cs:y
-xor ah,ah
-cmp al,24
-jne scro
-dec al
-mov cl,1
-call scrolldown
-scro:
-inc al
-call setxy
-pop es di cx ax
-ret
-
-;==========SETXY=========
-;Change les coordonnées du curseur a X:AL,Y:AH
-;-> AX
-;<- es di
-;=============================
-setxy:
-push ax bx di 
-mov cs:x,ah
-mov cs:y,al
-mov bl,ah
-xor bh,bh
-xor ah,ah
-mov di,ax
-shl di,5
-shl ax,7
-shl bx,1
-add di,ax
-add di,bx
-mov cs:xy,di
-pop di bx ax
-ret
-
-;================Affiche la chaine 0 de caractŠre contenue dans ds:si
-showstring0:
-        push    es cx si di
-        mov     di,cs:xy
-        mov     cx,0B800h
-        mov     es,cx
-        mov     ch,cs:colors
-strinaize0:
-        mov     cl,[si]
-        cmp     cl,0
-        je      no0
-        mov     es:[di],cx
-        add     di,2
-        inc     si
-        jmp     strinaize0
-        no0:
-        mov     cs:xy,di
-        pop     di si cx es
-        ret
-
-;==============================Affiche le nombre nb hexa en EDX==============
-ShowHexRow:
-        push    es ax bx cx di
-        mov     di,cs:xy
-        mov     bx,0B800h
-        mov     es,bx
-        mov     ax,cx
-        sub     cx,32
-        neg     cx
-        shl     edx,cl
-        mov     ch,cs:colors
-        shr     ax,2
-Hexaize:
-        rol     edx,4
-        mov     bx,dx
-        and     bx,0fh
-        mov     cl,cs:[bx+offset Tab]
-        mov     es:[di],cx
-        add     di,2
-        dec     al
-        jnz     Hexaize
-        mov     cs:xy,di
-        pop     di cx bx ax es
-        ret
-Tab db '0123456789ABCDEF'
-ret                      
-
-;===================================sauve l'ecran rapidement================
-SaveScreen:
-        push    cx si di ds es
-        mov     cx,0B800H
-        mov     ds,cx
-        push    cs
-        pop     es
-        mov     cx,(80*25*2)/4
-        xor     si,si
-        mov     di,offset Copy2
-        cld
-        rep     movsd
-        pop     es ds di si cx 
-        ret
-
-
-;===================================sauve l'ecran rapidement================
-RestoreScreen:
-        push    cx si di ds es
-        mov     cx,0B800H
-        mov     es,cx
-        push    cs
-        pop     ds
-        mov     cx,(80*25*2)/4
-        mov     si,offset Copy2
-        xor     di,di
-        cld
-        rep     movsd
-        pop     es ds di si cx 
-        ret
-
-;===================================Afficher un int EDX a l'‚cran en ah,al================
-ShowInt:
-        push    eax bx cx edx esi di es ds
-        mov     di,cs:xy
-        mov     cx,0B800h
-        mov     es,cx
-        xor     cx,cx
-        mov     eax,edx
-        mov     esi,10
-        mov     bx,offset showbuffer+27
-decint3:
-        xor     edx,edx
-        div     esi
-        add     dl,'0'
-        mov     dh,cs:colors
-        sub     bx,2
-        add     cx,2
-        mov     cs:[bx],dx
-        cmp     ax,0
-        jne     decint3
-        mov     si,bx
-        push    cs
-        pop     ds
-        cld
-        rep     movsb
-        mov     cs:xy,di
-        pop     ds es di esi edx cx bx eax 
-ret      
 
 showbuffer db 35 dup (0FFh)
 Lastread dw 0FFFFh
@@ -644,8 +426,9 @@ ret
 DiskSectorsPerTrack dw 18   
 DiskTracksPerHead dw 80
 DiskHeads dw 2
+
+infos db 10 dup (0)
                  
-copy2 equ $
 buffer equ $+4000
 
 

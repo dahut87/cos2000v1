@@ -5,87 +5,9 @@ org 0100h
              
                 
 start:
-     push ss
-     push gs
-     push fs
-     push es
-     push ds
-     push cs  
-     pushad
-     pushfd
-     ;cli
-     ;mov dx,21h
-     ;mov al,0FFh
-     ;out dx,al
-     ;mov dx,0A1h
-     ;mov al,0FFh
-     ;out dx,al
-     push cs
-     pop es
-     mov ax,3
-     int 10h
-;mov ax,1100h
-;mov bx,2000h    ;1000H
-;mov cx,0080h     ;100h
-;xor dx,dx
-;mov bp,offset buffer
-;int 10h
-     call savescreen
-     call clear
-     mov colors,4
-     mov si,offset reg
-     call showstring0
-     call line
-     mov colors,7
-     mov si,offset fla
-     call showstring0
-     pop edx
-     mov cx,32
-     call showbinrow
-     call space
-     call showhexrow
-     mov si,offset regs
-     mov ax,8+6
-     mov colors,6
-showall:
-     call line   
-     cmp ax,7
-     jb nodr
-     pop edx
-     jmp popo
-     nodr:    
-     mov colors,8
-     xor edx,edx
-     pop dx
-     popo:
-     call showstring0
-     call showhexrow
-     call space
-     push si
-     mov si,offset gr
-     call showstring0
-     call showint
-     mov si,offset dr
-     call showstring0
-     pop si
-     add si,5
-     dec ax
-     jnz showall
-     ;mov dx,21h
-     ;mov al,0
-     ;out dx,al
-     ;mov dx,0A1h
-     ;mov al,0
-     ;out dx,al
-     ;sti
-     mov ax,0
-     int 16h
      mov ax,0305h
      mov bx,0008h
      int 16h
-     xor ax,ax
-     mov fs,ax
-     xor edx,edx
      mov ax,0B800h
      mov es,ax
      xor ebp,ebp
@@ -672,15 +594,6 @@ decint3:
         mov     cs:xy,di
         pop     ds es di esi edx cx bx eax 
 ret       
-
-
-
-showbuffer db 35 dup (0FFh)
-
-copy2 db 4000 dup (0)
-
-buffer db 0
-
 
 end start
 

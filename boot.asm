@@ -34,7 +34,7 @@ okloading db 'COS search system',0Dh,0ah,0
 syst db 'Ok',0dh,0ah,0
 dot db '.',0
 carry db 0dh,0ah,0
-Sys db 'System file',0
+Sys db 'system      ',0
 sys2 db 'sys',0
 
 errorboot:

@@ -5,32 +5,56 @@ smart
 
 org 0100h
 
-start:  
+
+
+start:
+mov cx,23
+mov bx,8400h
+mov es,bx
+mov bx,100h
+call loadfatway
+mov di,bx
+mov bx,47h
+call setint
+ret
+mov bx,9
+call getint
+mov cs:int9seg,ds
+mov cs:int9off,si
+push cs
+pop es
+mov di,offset int9
+call setint
+start2:
 push cs
 push cs
 pop ds
 pop es
-call clear
-mov ax,0
-call setxy
-mov si,offset msg
-call showstring0
-mov di,0
-mov al,112
-call changeattrib
-call line
-call line
-mov si,offset mssg
-call showstring0
-call line
-mov si,offset msg2
-call showstring0
-call line
+mov ah,21
+mov cl,7
+int 47h
+mov ax,0002
+int 47h   
+mov ah,2
+int 47h
+mov ah,25
+mov bx,0
+int 47h
+mov ah,13
+mov si,offset msg1
+int 47h
+mov ah,6
+int 47h
+int 47h
+mov ah,13
+mov si,offset prompt
+int 47h
+mov ah,6
+int 47h
 xor di,di
 mov bx,offset buffer
 mov cx,13
 call readsector
-jc fin2
 xor bp,bp
 showall:
 cmp byte ptr [bx+di],0
@@ -39,117 +63,118 @@ mov al,[bx+di+12]
 mov byte ptr [bx+di+12],0
 mov si,bx
 add si,di
-call showstring0
+mov ah,13
+int 47h
 mov si,offset spaces
-call showstring0
+int 47h
 mov [bx+di+12],al
 mov byte ptr [bx+di+12+5],0
 mov si,bx
 add si,di
 add si,12
-call showstring0
-call line
+int 47h
+mov ah,6
+int 47h
 add di,32
 inc bp
 jmp showall
 endof2:
+mov xx,1
+mov xxold,2
 call Select
 endof:
 mov ax,0
 int 16h
      cmp ah,50h
      jne tre1
-     cmp xxx,bp
+     cmp xx,bp
      je endof
-     inc xxx
+     inc xx
      call select
      jmp endof
 tre1:
      cmp ah,48h
      jne tre2
-     cmp xxx,1
+     cmp xx,1
      je endof
-     dec xxx
+     dec xx
      call select
      jmp endof
 tre2:
      cmp al,0Dh
-     je fin2
      jne tre3 
-     mov di,xxx
+     mov di,xx
      dec di
      shl di,5
      mov cx,[di+bx+26]
-     call line
-     call line
-     mov si,offset msgg
-     call showstring0
-     call executefat
+     mov ah,6
+     int 47h
+     int 47h
+     mov ah,13
+     mov si,offset msg2
+     int 47h
+     call executefatway
 tre3:
-     cmp ah,3bh
+     cmp ah,59
      jne endof
-mov di,0
-mov cx,1
-mov al,7
-call changeattribword
-     mov si,offset popup
-     mov ax,0200h
-     call popupmenu
-mov di,0
-mov cx,1
-mov al,112
-call changeattribword  
-     jmp endof    
-fin2:
-ret
+     mov lastread,0FFFFh
+     jmp start2
 
-
-popup db 4,'&New'
-      db 5,'&Open'
-      db 1,'-'
-      db 7,'&Delete'
-      db 7,'R&ename'
-      db 5,'&Copy'
-      db 5,'&Link'
-      db 1,'-'
-      db 8,'&Restart'
-      db 10,'&Shut down'
-      db 1,'-'
-      db 12,'&About me...'
-      db 0
-      db 070h    ;couleur normale
-      db 07Fh    ;couleur speciale
-      db 07h     ;couleur select 
-
-executefat:
-push cs
-mov bx,offset start
-push bx
-mov bx,6000h
-mov es,bx
-push bx
-mov bx,0100h
-push bx
-mov si,offset dot
+executefatway:
+     push cs
+     mov bx,offset start2
+     push bx     
+     mov bx,03000h
+     mov es,bx
+     push bx
+     mov bx,0100h
+     push bx
+     call loadfatway
+     push es
+     push es
+     push es
+     pop ds
+     pop fs
+     pop gs
+     push 7202h
+     popf
+     db 0CBh
+               
+;cx entr‚e -> fatway chemin
+getfatway:
+push bx cx es
+mov bx,offset fatway
 fatagain:
+mov cs:[bx],cx
+add bx,2 
 cmp cx,0FFF0h
 jae finishload
-call readsector
-jc fin2
-call showstring0
-add bx,sizec
 call getfat
 jnc fatagain
-finishload:
-push es
-push es
-push es
-pop ds
-pop fs
-pop gs
-push 7202h
-popf
-db 0CBh
+finishload:  
+pop es cx bx
+ret
+
+loadfatway:
+push bx cx di
+call getfatway
+jc endload
+mov di,offset fatway
+mov si,offset dot
+mov ah,13
+loadagain:
+mov cx,cs:[di]
+cmp cx,0FFF0h
+jae endload
+add di,2
+call readsector
+jc endload
+int 47h
+add bx,cs:sizec
+jmp loadagain
+endload:
+pop di cx bx
+ret        
 
 sizec dw 512
 reserv dw 1
@@ -159,9 +184,9 @@ getfat:
 push es ax bx dx
 mov ax,cx
 xor dx,dx
-div sizec
+div cs:sizec
 mov cx,ax
-add cx,reserv
+add cx,cs:reserv
 mov bx,offset buffer
 push cs
 pop es
@@ -169,7 +194,7 @@ call readsector
 jc errorgetfat
 shl dx,1
 add bx,dx
-mov cx,[bx]
+mov cx,cs:[bx]
 errorgetfat:
 pop dx bx ax es
 ret
@@ -179,342 +204,27 @@ Select:
 push ax di
 mov di,xxold
 mov al,7
-add di,3
-call changeattrib
-mov ax,xxx
+add di,2
+mov ah,32
+int 47h
+mov ax,xx
 mov xxold,ax
-mov di,xxx
+mov di,xx
+mov ah,32
 mov al,112
-add di,3
-call changeattrib
+add di,2
+int 47h
 pop di ax
-ret
-
-;couleur al pour ligne di mot cx
-Changeattribword:
-push bp bx dx di es
-mov dx,0B800h
-mov es,dx
-mov dx,di
-shl dx,5
-shl di,7
-add di,dx
-mov dx,80
-xor bp,bp
-xor bx,bx
-popp:
-cmp byte ptr es:[di],' '
-je noway
-cmp bx,1
-je noway2
-mov bx,1
-inc bp
-cmp cx,bp
-ja fint
-jmp noway2
-noway:
-xor bx,bx
-noway2:
-cmp bp,cx
-jne noway3
-mov es:[di-1],al
-noway3:
-add di,2
-dec dx
-jnz popp
-fint:
-pop es di dx bx bp
-ret     
-
-
-;couleur al pour ligne di
-changeattrib:
-push dx di es
-mov dx,0B800h
-mov es,dx
-mov dx,di
-shl dx,5
-shl di,7
-add di,dx
-mov cx,80
-inc di
-popep:
-mov es:[di],al
-add di,2
-dec cx
-jnz popep
-pop es di dx
-ret       
-
-colors db 7
-xy dw 0
-x db 0
-y db 0
-xxx dw 1
-xxold dw 0
-msg db '   File  Edition',0
-mssg db 'Cos 2000 menu loader release 1.0',0
-msg2 db '>',0
-spaces db '   ',0
-dot db '.',0
-msgg db 'Chargement du programme',0
-
-;==========SHOWCHAR===========
-;met un caractŠre apr‚s le curseur
-;-> dl
-;<- 
-;=============================
-showchar:
-push dx bx es
-mov bx,0B800h
-mov es,bx
-mov bx,cs:xy
-mov dh,cs:colors
-mov es:[bx],dx
-add cs:xy,2
-pop es bx dx
-ret
-
-
-
-;==========SPACE===========
-;met un espace apr‚s le curseur
-;-> 
-;<- 
-;=============================
-space:
-push bx es
-add cs:xy,2
-mov bx,0B800h
-mov es,bx
-mov bx,cs:xy
-mov byte ptr es:[bx],' '
-pop es bx
-ret
-
-;==============================Affiche le nombre nb binaire en EDX==============
-ShowbinRow:
-        push  es ax bx cx di      
-        mov     di,cs:xy
-        mov     bx,0B800h
-        mov     es,bx
-        mov     ax,cx
-        sub     cx,32
-        neg     cx
-        shl     edx,cl
-        mov     ch,cs:colors
-binaize:
-        rol     edx,1
-        mov     cl,'0'
-        adc     cl,0  
-        mov     es:[di],cx
-        add     di,2
-        dec     al
-        jnz     binaize
-        mov     cs:xy,di
-        pop     di cx bx ax es
-        ret    
-
-;==========SETCOLOR=========
-;Change les attributs du texte a CL
-;-> CL
-;<- 
-;=============================
-setcolor:
-mov cs:colors,CL
-ret  
-
-;=============CLEAR=========
-;Efface l'ecran texte
-;-> 
-;<- 
-;=============================
-clear:
-push es eax cx di
-xor di,di
-mov ax,0b800h
-mov es,ax
-mov eax,07200720h
-mov cx,1000
-cld
-rep stosd
-pop di cx eax es
-ret       
-
-;==========SCROLLDOWN=========
-;defile de cx lines vers le bas
-;-> CX
-;<- 
-;=============================
-scrolldown:
-push cx si di ds es
-mov si,0B800h
-mov es,si
-mov ds,si
-mov si,cx
-shl si,5
-shl cx,7
-add si,cx
-mov cx,4000
-sub cx,si
-xor di,di
-cld
-rep movsb
-pop es ds di si cx
-ret
-
-;==========LINE=========
-;remet le curseur a la ligne
-;-> 
-;<- 
-;=============================
-line:
-push ax cx di es
-mov ah,cs:x
-mov al,cs:y
-xor ah,ah
-cmp al,24
-jne scro
-dec al
-mov cl,1
-call scrolldown
-scro:
-inc al
-call setxy
-pop es di cx ax
-ret
-
-;==========SETXY=========
-;Change les coordonnées du curseur a X:AL,Y:AH
-;-> AX
-;<- es di
-;=============================
-setxy:
-push ax bx di 
-mov cs:x,ah
-mov cs:y,al
-mov bl,ah
-xor bh,bh
-xor ah,ah
-mov di,ax
-shl di,5
-shl ax,7
-shl bx,1
-add di,ax
-add di,bx
-mov cs:xy,di
-pop di bx ax
-ret
-
-;================Affiche la chaine 0 de caractŠre contenue dans ds:si
-showstring0:
-        push    es cx si di
-        mov     di,cs:xy
-        mov     cx,0B800h
-        mov     es,cx
-        mov     ch,cs:colors
-strinaize0:
-        mov     cl,[si]
-        cmp     cl,0
-        je      no0
-        mov     es:[di],cx
-        add     di,2
-        inc     si
-        jmp     strinaize0
-        no0:
-        mov     cs:xy,di
-        pop     di si cx es
-        ret
-
-;==============================Affiche le nombre nb hexa en EDX==============
-ShowHexRow:
-        push    es ax bx cx di
-        mov     di,cs:xy
-        mov     bx,0B800h
-        mov     es,bx
-        mov     ax,cx
-        sub     cx,32
-        neg     cx
-        shl     edx,cl
-        mov     ch,cs:colors
-        shr     ax,2
-Hexaize:
-        rol     edx,4
-        mov     bx,dx
-        and     bx,0fh
-        mov     cl,cs:[bx+offset Tab]
-        mov     es:[di],cx
-        add     di,2
-        dec     al
-        jnz     Hexaize
-        mov     cs:xy,di
-        pop     di cx bx ax es
-        ret
-Tab db '0123456789ABCDEF'
-ret                      
-
-;===================================sauve l'ecran rapidement================
-SaveScreen:
-        push    cx si di ds es
-        mov     cx,0B800H
-        mov     ds,cx
-        push    cs
-        pop     es
-        mov     cx,(80*25*2)/4
-        xor     si,si
-        mov     di,offset Copy2
-        cld
-        rep     movsd
-        pop     es ds di si cx 
-        ret
-
-
-;===================================sauve l'ecran rapidement================
-RestoreScreen:
-        push    cx si di ds es
-        mov     cx,0B800H
-        mov     es,cx
-        push    cs
-        pop     ds
-        mov     cx,(80*25*2)/4
-        mov     si,offset Copy2
-        xor     di,di
-        cld
-        rep     movsd
-        pop     es ds di si cx 
-        ret
-
-;===================================Afficher un int EDX a l'‚cran en ah,al================
-ShowInt:
-        push    eax bx cx edx esi di es ds
-        mov     di,cs:xy
-        mov     cx,0B800h
-        mov     es,cx
-        xor     cx,cx
-        mov     eax,edx
-        mov     esi,10
-        mov     bx,offset showbuffer+27
-decint3:
-        xor     edx,edx
-        div     esi
-        add     dl,'0'
-        mov     dh,cs:colors
-        sub     bx,2
-        add     cx,2
-        mov     cs:[bx],dx
-        cmp     ax,0
-        jne     decint3
-        mov     si,bx
-        push    cs
-        pop     ds
-        cld
-        rep     movsb
-        mov     cs:xy,di
-        pop     ds es di esi edx cx bx eax 
 ret      
 
-showbuffer db 35 dup (0FFh)
-Lastread dw 0FFFFh
+xx dw 1
+xxold dw 0
+msg1 db 'Cos 2000 menu loader release 1.0',0
+msg2 db 'Program loading',0
+prompt db '>',0
+spaces db '   ',0
+dot db '.',0
+
 
 ReadSector:
 push ax cx dx si
@@ -550,9 +260,8 @@ TryAgain:
 mov word ptr cs:lastread,0ffffh
 Done:
   pop si dx cx ax
-ret  
+ret
 
-WriteSector:
 push ax cx dx si
   cmp cs:Lastread,cx
   jne nodestruct
@@ -588,13 +297,213 @@ Done2:
   pop si dx cx ax
 ret
 
-include menu.Asm
+Lastread dw 0FFFFh  
+WriteSector:
+
+
+;met es:di le handle de l'int bx
+setint:
+push ax bx ds
+cli
+shl bx,2
+xor ax,ax
+mov ds,ax
+mov ds:[bx],di
+mov ds:[bx+2],es
+pop ds bx ax
+sti
+ret
+
+;met ds:si le handle de l'int bx
+getint:
+push ax bx es
+cli
+shl bx,2
+xor ax,ax
+mov es,ax
+mov si,es:[bx]
+mov ds,es:[bx+2]
+pop es bx ax
+sti
+ret
+
+int9off dw 0 
+int9seg dw 0
+
+int9:
+        pushf
+        db  2eh,0ffh,1eh
+        dw  int9off
+        cli
+        pusha
+        in al,60h
+        cmp cs:isstate,1
+        jne nostate
+        cmp al,57
+        jne nof12
+        mov cs:isstate,0
+        jmp noF12
+        nostate:
+        cmp al,87
+        jne NoF11
+        push es
+        push cs
+        pop es
+        mov di,offset infos
+        mov ah,34
+        int 47h
+        mov al,cs:infos+7
+        inc al
+        and ax,11b
+        int 47h
+        pop es
+
+        nof11:
+        cmp al,88
+        jne NoF12 
+        mov ah,26
+        int 47h
+        call showstate
+        mov cs:isstate,1
+        sti
+        waitt:
+        cmp cs:isstate,0
+        jne waitt
+        mov ah,27
+        int 47h 
+        noF12:
+        popa
+        sti
+        iret
+        isstate db 0
+        infos db 10 dup (0)
+
+ showstate:
+     push ds es       
+     push ss
+     push gs
+     push fs
+     push es
+     push ds
+     push cs  
+     pushad
+     pushfd
+
+     push cs
+     push cs
+     pop es
+     pop ds
+     mov ah,2
+     int 47h
+     mov ah,21
+     mov cl,4
+     int 47h
+     mov ah,13
+     mov si,offset reg
+     int 47h
+     mov ah,6
+     int 47h
+     mov ah,21
+     mov cl,7
+     int 47h
+     mov ah,13
+     mov si,offset fla
+     int 47h
+     pop edx
+     mov cx,32
+     mov ah,11
+     int 47h
+     mov ah,5
+     int 47h
+     mov ah,10
+     int 47h
+     mov si,offset regs
+     mov bx,8+6
+     mov ah,21
+     mov cl,6
+     int 47h
+showallREG:
+     mov ah,6
+     int 47h
+     cmp bx,7
+     jb nodr
+     pop edx
+     jmp popo
+     nodr:
+     mov ah,21
+     mov cl,1
+     int 47h
+     xor edx,edx
+     pop dx
+     popo:
+     mov ah,13
+     int 47h
+     mov ah,10
+     mov cx,32
+     int 47h
+     mov ah,5
+     int 47h
+     push si
+     mov si,offset gr
+     mov ah,13
+     int 47h
+     mov ah,8
+     int 47h
+     mov si,offset dr
+     mov ah,13
+     int 47h
+     pop si
+     add si,5
+     dec bx
+     jnz showallreg
+     mov ah,34
+     mov di,offset infos
+     int 47h
+     mov ah,25
+     mov bl,cs:infos
+     xor bh,bh
+     dec bl
+     int 47h
+     mov si,offset app
+     mov ah,13
+     int 47h
+     mov ah,32
+     mov bl,cs:infos
+     xor bh,bh
+     mov di,ax
+     dec di
+     mov cl,116
+     int 47h
+     pop es ds
+     ret
+
+reg db 'State of registers',0
+fla db 'Flags:',0 
+regs db 'EDI:',0
+     db 'ESI:',0
+     db 'EBP:',0
+     db 'ESP:',0
+     db 'EBX:',0
+     db 'EDX:',0
+     db 'ECX:',0
+     db 'EAX:',0
+     db ' CS:',0
+     db ' DS:',0
+     db ' ES:',0
+     db ' FS:',0
+     db ' GS:',0
+     db ' SS:',0
+gr db '(',0
+dr db ')',0
+app db 'Press enter to quit...',0
+
+
 
 DiskSectorsPerTrack dw 18   
 DiskTracksPerHead dw 80
 DiskHeads dw 2
 
-copy2 equ $
-buffer equ $
+fatway equ $
 
+buffer equ $+3000
 end start
