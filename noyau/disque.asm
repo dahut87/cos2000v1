@@ -97,24 +97,30 @@ AdressDirectory		dw	0 ;En cluster
 firstsearch		dw	1 ;Premiere requete ?
 
 getfat:
-	push  	ax bx dx si
+	push  	ax bx dx si ds gs
+	mov     dx,cs
+        push    cs
+        pop     ds
+        mov     si,offset datafat
+        mov     ah,9
+        int     49h
 	mov	ax,cx
 	mov	bx,ax
 	and   	bx,0000000000000001b
 	shr   	ax,1
 	mov   	cx,3
 	mul   	cx
-	mov   	si,offset bufferfat
+	xor     si,si
 	add   	si,ax
 	cmp   	bx,0h
 	jnz   	evenfat
 oddfat:	
-	mov	dx,cs:[si]
+	mov	dx,gs:[si]
       	and   	dx,0FFFh
     	mov   	cx,dx
       	jmp   	endfat
 evenfat:
-      	mov   	dx,cs:[si+1]
+      	mov   	dx,gs:[si+1]
       	and   	dx,0FFF0h
       	shr   	dx,4
       	mov   	cx,dx
@@ -122,11 +128,11 @@ endfat:
 	cmp	dx,0FF0h
 	jbe	nocarry
 	stc
-	pop 	si dx bx ax
+	pop 	gs ds si dx bx ax
 	ret
 nocarry:
 	clc
-	pop 	si dx bx ax
+	pop 	gs ds si dx bx ax
 	ret
 
 ;============loadfile (Fonction 4)===============
@@ -229,11 +235,11 @@ projfile:
 	jc	errorload2
 	mov	eax,cs:tempfit.FileSize
 	mov     ecx,eax
-	add     ecx,19000
-	push    ax
+	add     ecx,100h
+	push    eax
 	mov     ah,2
 	int     49h
-	pop     ax
+	pop     eax
 	jc      errorload2
 	push    gs
 	pop     es
@@ -387,6 +393,7 @@ AdjustLast:
 	mov	cx,dx
 	push	cs
 	pop	ds
+	cld
 	rep	movsb
 zeroload:
 	clc
@@ -403,7 +410,7 @@ noway:
 ;<- Flag Carry si erreur
 ;=====================================================
 InitDrive:
-	push 	eax bx cx edx di ds es
+	push 	eax bx cx edx di ds es gs
 	push 	cs
 	pop 	ds
 	push	cs
@@ -422,9 +429,9 @@ againtry:
 	dec	di
 	jnz	againtry
 oknoagaintry:
-	mov	cs:lastseg,0
-	mov	cs:lastoff,0
-	mov 	cs:LastRead,0
+	mov	lastseg,0
+	mov	lastoff,0
+	mov 	LastRead,0
 	mov	ax,myboot.sectorsize
 	mov	bl,myboot.SectorsPerCluster
 	xor	bh,bh
@@ -465,9 +472,22 @@ oknoagaintry:
 	mov	adressdirectory,0
 	mov	firstsearch,1
 	mov	currentdirstr,0
-	mov	di,offset bufferfat
+        xor     eax,eax
+        mov     ax,myboot.SectorsPerFat
+       	mul	myboot.SectorSize
+	shl   	edx,16
+	add   	edx,eax
+        mov     ecx,edx
+        mov     si,offset datafat
+        mov     ah,2
+        int     49h
+        mov     ah,3
+        int     49h
+        xor     di,di
 	mov	dx,myboot.SectorsPerFat
 	mov	cx,AdressFat
+	push    gs
+	pop     es
 SeeFat:
 	call	readsector
 	jc	ErrorInit
@@ -476,12 +496,14 @@ SeeFat:
 	dec	dx
 	jnz	seefat
 	clc
-	pop 	es ds di edx cx bx eax
+	pop 	gs es ds di edx cx bx eax
 	ret
 ErrorInit:
 	stc
-	pop 	es ds di edx cx bx eax
+	pop 	gs es ds di edx cx bx eax
 	ret
+	
+datafat db '/fat',0	
 
 ;=============FindFirstFile (Fonction 7)==============
 ;Renvois dans ES:DI un bloc d'info
@@ -1055,11 +1077,9 @@ getdir:
 	pop	es ds di si cx ax
 	clc
 	ret
-
-
-bufferread  	equ $
-bufferwrite 	equ $+2048
-bufferentry	equ $+2048+2048
-bufferFat 	equ $+2048+2048+2048
+	
+bufferread  	db 512 dup (0)
+bufferwrite 	db 512 dup (0)
+bufferentry	db 512 dup (0)
 
 end start
