@@ -3,7 +3,7 @@
 smart
 .code
 
-org 0100h
+org 0h
 
 include ..\include\fat.h
 
@@ -187,7 +187,7 @@ execfile:
         mov     ax,offset arrive
         push    ax
         push    es
-        push    0100h
+        push    0000h
         push    es
         push    es
         push    es
@@ -235,7 +235,6 @@ projfile:
 	jc	errorload2
 	mov	eax,cs:tempfit.FileSize
 	mov     ecx,eax
-	add     ecx,100h
 	push    eax
 	mov     ah,2
 	int     49h
@@ -244,7 +243,7 @@ projfile:
 	push    gs
 	pop     es
 	mov	cx,cs:tempfit.FileGroup
-	mov     di,100h
+	mov     di,0h
 	call	loadway
 	jc    	errorload2
 	clc
