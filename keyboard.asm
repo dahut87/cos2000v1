@@ -15,63 +15,71 @@ tsr:
  db  2eh,0ffh,1eh
  dw  offsets
         cli
-        pusha
+        mov cs:feax,eax
         in al,60h
         cmp cs:isstate,1
         jne nostate
         cmp al,57
-        jne nof12
+        jne endof
         mov cs:isstate,0
-        jmp noF12
+        jmp endof
         nostate:
         cmp al,87
-        jne NoF11
-        push es
-        push cs
-        pop es
-        mov di,offset infos
-        mov ah,34
-        int 47h
-        mov al,cs:infos+7
-        inc al
-        and ax,111b
-        int 47h
-        pop es
-        nof11:
+        je F11
         cmp al,88
-        jne NoF12 
-        mov ah,26
-        int 47h
-        call showstate
-        mov cs:isstate,1
-        sti
-        waitt:
-        cmp cs:isstate,0
-        jne waitt
-        mov ah,27
-        int 47h 
-        noF12:
-        popa
+        je F12
+        endof:
+        mov eax,cs:feax
         sti
         iret
         isstate db 0
         infos db 10 dup (0)
 
- showstate:
-     push ds es       
-     push ss
+F11:
+     push ax di es
+     push cs
+     pop es
+     mov di,offset infos
+     mov ah,34
+     int 47h
+     mov al,cs:infos+7
+     inc al
+     and ax,111b
+     int 47h
+     pop es di ax
+     jmp endof
+
+
+f12:
+     mov cs:isstate,1
+     pop word ptr cs:fip
+     pop word ptr cs:fcs
+     pop dword ptr cs:ffl
+     mov cs:fesp,esp
+     push ds es
+     pusha
+     push word ptr cs:fip
      push gs
      push fs
+     push ss
      push es
      push ds
-     push cs  
-     pushad
-     pushfd
-
+     push word ptr cs:fcs
+     push dword ptr cs:fesp
+     push ebp
+     push edi
+     push esi
+     push edx
+     push ecx
+     push ebx
+     push eax
+     push dword ptr cs:ffl
      push cs
      push cs
      pop es
      pop ds
+     mov ah,26
+     int 47h  
      mov ah,2
      int 47h
      mov ah,21
@@ -97,16 +105,17 @@ tsr:
      mov ah,10
      int 47h
      mov si,offset regs
-     mov bx,8+6
+     mov bx,8+7
      mov ah,21
      mov cl,6
      int 47h
 showallREG:
      mov ah,6
      int 47h
-     cmp bx,7
+     cmp bx,8
      jb nodr
      pop edx
+     mov cx,32
      jmp popo
      nodr:
      mov ah,21
@@ -114,11 +123,11 @@ showallREG:
      int 47h
      xor edx,edx
      pop dx
+     mov cx,16
      popo:
      mov ah,13
      int 47h
      mov ah,10
-     mov cx,32
      int 47h
      mov ah,5
      int 47h
@@ -153,27 +162,43 @@ showallREG:
      dec di
      mov cl,116
      int 47h
+     pop es ds     
+     sti
+     waitt:
+     cmp cs:isstate,0
+     jne waitt
+     mov ah,27
+     int 47h
+     popa
      pop es ds
-     ret
+     push dword ptr cs:ffl
+     push word ptr cs:fcs
+     push word ptr cs:fip  
+     jmp endof
 
-reg db 'State of registers',0
-fla db 'Flags:',0 
-regs db 'EDI:',0
+reg db ' State of registers',0
+fla db 'Eflags:',0 
+regs db 'EAX:',0
+     db 'EBX:',0
+     db 'ECX:',0
+     db 'EDX:',0
      db 'ESI:',0
+     db 'EDI:',0
      db 'EBP:',0
      db 'ESP:',0
-     db 'EBX:',0
-     db 'EDX:',0
-     db 'ECX:',0
-     db 'EAX:',0
      db ' CS:',0
      db ' DS:',0
      db ' ES:',0
      db ' FS:',0
      db ' GS:',0
      db ' SS:',0
+     db ' IP:',0
 gr db '(',0
 dr db ')',0
 app db 'Press space to quit...',0
-
+ffl dd 0
+fcs dw 0
+fip dw 0
+fesp dd 0
+feax dd 0
 end start

@@ -8,17 +8,17 @@ start:
 jmp boot
 
 
-bootdb  db     'COS2000A'               ;ID Formatage
+bootdb  db     'COS2000A'               ;Fabricant + n°série Formatage
 sizec   dw      512                      ;octet/secteur
         db      1                        ;secteur/cluster
 reserv  dw      1                        ;secteur reserv‚
-nbfat   db      1                        ;nb de FAT
-nbfit   dw      25                       ;nb secteur rep racine
-allclu  dw      2880                     ;nb secteur du volume
-        db      0F0h                     ;ID support
-fatsize dw      12                        ;secteur/FAT
+nbfat   db      1                        ;nb de copie de la FAT
+nbfit   dw      25                       ;taille rep racine
+allclu  dw      2880                     ;nb secteur du volume si < 32 még
+        db      0F0h                     ;Descripteur de média
+fatsize dw      12                       ;secteur/FAT
 nbtrack dw      18                       ;secteur/piste       
-head    dw      2                        ;nb de tˆte
+head    dw      2                        ;nb de tˆteb de lecture/écriture
 hidden  dd      0                        ;nombre de secteur cach‚s
         dd      0                        ;si nbsecteur = 0 nbsect                                       ; the number of sectors
 bootdrv db      0                        ;Lecteur de d‚marrage
@@ -119,7 +119,7 @@ oksystem:
 mov si,offset syst
 call showstr
 mov cx,[di+BX+26]
-mov bx,1000h
+mov bx,200h
 mov es,bx
 push bx
 mov bx,0100h

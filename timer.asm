@@ -24,6 +24,65 @@ tsr:
         mov ax,0B800h
         mov es,ax
         mov es:[0],bl
+push ds es
+pusha
+mov ax,40h
+mov es,ax
+mov ax,0B800h
+mov ds,ax
+mov word ptr dx,es:[8]
+
+in al,dx
+mov di,158
+decompose:
+mov cl,al
+and cl,1
+cmp cl,1
+je un
+mov byte ptr ds:[di],'0'
+jmp errr
+un:
+mov byte ptr ds:[di],'1'
+errr:
+shr al,1
+dec di
+dec di    
+cmp di,142
+jne decompose
+
+inc dx
+in al,dx
+mov di,318
+decompose2:
+mov cl,al
+and cl,1
+cmp cl,1
+je un2
+mov byte ptr ds:[di],'0'
+jmp errr2
+un2:
+mov byte ptr ds:[di],'1'
+errr2:
+cmp di,314
+jb errrr
+mov byte ptr ds:[di],'X'
+errrr:
+shr al,1
+dec di
+dec di    
+cmp di,302
+jne decompose2
+popa
+pop es ds
+
+
+
+
+
+
+
+
+
         pop es bx ax
         sti
         iret

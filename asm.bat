@@ -11,6 +11,8 @@ echo Copying file %1...
 if "%1"=="video" goto video
 if "%1"=="lpt" goto system
 if "%1"=="keyboard" goto system
+if "%1"=="mouse" goto system 
+if "%1"=="pic8259a" goto system 
 if "%1"=="timer" goto system
 if "%1"=="drive" goto system 
 if "%1"=="system" goto system

@@ -77,6 +77,58 @@ tables   dw setvideomode
          dw changelineattr
          dw waitretrace
          dw getinfos
+         dw loadbmp
+         dw showbmp
+         dw clearscr
+         dw savedac
+         dw restoredac
+         dw savestate
+         dw restorestate
+
+;sauve le DAC
+savedac:
+push ax cx dx di
+mov dx,3C7h
+xor ax,ax
+out dx,al
+mov cx,256*3
+inc dx
+inc dx
+mov di,offset dac
+save:
+in al,dx
+mov cs:[di],al
+inc di
+dec cx
+jne save 
+pop di dx cx ax
+ret
+
+;restore le DAC
+restoredac:
+push ax cx dx si
+xor ax,ax
+cli
+mov dx,3DAh
+in al,dx
+mov dx,0
+out dx,al
+mov dx,3C8h
+out dx,al
+mov cx,256*3
+mov si,offset dac
+save2:
+mov al,cs:[si]
+inc si   
+out dx,al
+dec cx
+jne save2
+mov dx,3DAh
+in al,dx
+mov dx,32
+out dx,al
+pop si dx cx ax
+ret
 
 ;Change la police a CL
 changefont:
@@ -186,7 +238,7 @@ mode1        DB 67H,00H,  03H,00H,03H,00H,02H
              db 80,25
 
 ;80*50 16 couleurs
-mode1b        DB 63H, 00H, 03H,01H,03H,01H,02H
+mode2        DB 63H, 00H, 03H,01H,03H,01H,02H
              DB 5FH,4FH,50H,82H,55H,81H,0BFH,1FH,00H,47H,06H,07H,00H,00H,00H
              DB 00H,9CH,8EH,8FH,28H,1FH,96H,0B9H,0A3H,0FFH
              DB 00H,00H,00H,00H,00H,10H,0EH,00H,0FFH
@@ -204,7 +256,7 @@ mode3        DB 067H,00H,03H,01H,03H,01H,02H
              db 100,50        
 
 ;100*60 16 couleurs
-mode4b        DB 067H,00H,03H,01H,03H,01H,02H
+mode4        DB 0A7H,00H,03H,01H,03H,01H,02H
              DB 70H,63H,64H,85H,68H,84H,0FFH,1FH,00H,47H,06H,07H,00H,00H,00H
              DB 00H,0E7H,8EH,0DFH,32H,1FH,0DFH,0E5H,0A3H,0FFH
              DB 00H,00H,00H,00H,00H,10H,0EH,00H,0FFH
@@ -212,9 +264,8 @@ mode4b        DB 067H,00H,03H,01H,03H,01H,02H
              DB 0CH,00H,0FH,00H,00H
              db 100,60
 
-
 ;320*200 16 couleurs
-mode4      DB 63H,00H,  03H,09H,0FH,00H,06H
+mode5      DB 63H,00H,  03H,09H,0FH,00H,06H
              DB 2DH,27H,28H,90H,2BH,080H,0BFH,01FH,00H,0C0H,00H,00H,00H,00H,00H,00H
              DB 9CH,8EH,8FH,14H,00H,96H,0B9H,0E3H,0FFH
              DB 00H,00H,00H,00H,00H,00H,05H,0FH,0FFH
@@ -222,8 +273,8 @@ mode4      DB 63H,00H,  03H,09H,0FH,00H,06H
              DB 41H,00H,0FH,00H,00H
              db 40,25
 
-;320*200 256 couleurs
-mode5        DB 63H, 00H,  03H,01H,0FH,00H,0EH
+;320*200 256 couleurs 
+mode6        DB 63H, 00H,  03H,01H,0FH,00H,0EH
              DB 5FH,4FH,50H,82H,54H,80H,0BFH,1FH,00H,41H,00H,00H,00H,00H,00H,00H
              DB 9CH,0EH,8FH,28H,40H,96H,0B9H,0A3H,0FFH
              DB 00H,00H,00H,00H,00H,40H,05H,0FH,0FFH
@@ -231,8 +282,17 @@ mode5        DB 63H, 00H,  03H,01H,0FH,00H,0EH
              DB 41H,00H,0FH,00H,00H
              db 00,00
 
+;320*400 256 couleurs chain4
+mode7        DB 63H, 00H,  03H,01H,0FH,00H,06H
+             DB 5FH,4FH,50H,82H,54H,80H,0BFH,1FH,00H,40H,00H,00H,00H,00H,00H,00H
+             DB 9CH,8EH,8FH,28H,00H,96H,0B9H,0E3H,0FFH
+             DB 00H,00H,00H,00H,00H,40H,05H,0FH,0FFH
+             DB 00H,01H,02H,03H,04H,05H,06H,07H,08H,09H,0AH,0BH,0CH,0DH,0EH,0FH
+             DB 41H,00H,0FH,00H,00H
+             db 00,00
+
 ;640*400 16 couleurs
-mode6        DB 63H, 00H,  03H,01H,0FH,00H,0EH
+mode8        DB 63H, 00H,  03H,01H,0FH,00H,0EH
              DB 5FH,4FH,50H,82H,54H,80H,0BFH,1FH,00H,41H,00H,00H,00H,00H,00H,00H
              DB 9CH,0EH,8FH,28H,40H,96H,0B9H,0A3H,0FFH
              DB 00H,00H,00H,00H,00H,10H,05H,0FH,0FFH
@@ -241,7 +301,7 @@ mode6        DB 63H, 00H,  03H,01H,0FH,00H,0EH
              db 00,00
 
 ;640*400 256 couleurs
-mode7        DB 63H, 00H,  03H,01H,0FH,00H,0EH
+mode9        DB 63H, 00H,  03H,01H,0FH,00H,0EH
              DB 2DH,27H,27H,91H,2AH,9FH,0BFH,1FH,00H,0C0H,00H,00H,00H,00H,00H,00H
              DB 9CH,0EH,8FH,50H,00H,8FH,0C0H,0E3H,0FFH
              DB 00H,00H,00H,00H,00H,40H,05H,0FH,0FFH
@@ -368,7 +428,7 @@ out dx,ax
 inc al
 inc di
 cmp al,9
-jb initgraphic            
+jb initgraphic
 mov dx,statut
 in al,dx                          
 mov dx,attribs
@@ -452,6 +512,7 @@ mov bh,cs:x
 mov bl,cs:y
 xor bh,bh
 mov cl,cs:lines
+dec cl
 dec cl
 cmp bl,cl
 jne scro
@@ -572,6 +633,19 @@ SaveScreen:
         pop     es ds di si cx 
         ret
 
+;===================================sauve l'ecran rapidement en es:di================
+SaveScreento:
+        push    cx si di ds 
+        mov     cx,0B800H
+        mov     ds,cx
+        mov     cx,cs:pagesize
+        shr     cx,2
+        xor     si,si
+        cld
+        rep     movsd
+        pop     ds di si cx 
+        ret   
+
 ;===================================sauve l'ecran rapidement================
 Savepage1:
         push    cx si di ds es
@@ -603,6 +677,19 @@ RestoreScreen:
         rep     movsd
         pop     es ds di si cx 
         ret
+
+;===================================restore l'ecran rapidement de ds:si================
+RestoreScreenfrom:
+        push    cx si di ds es
+        mov     cx,0B800H
+        mov     es,cx
+        mov     cx,cs:pagesize
+        shr     cx,2
+        xor     di,di
+        cld
+        rep     movsd
+        pop     es ds di si cx 
+        ret   
 
 ;===============================Page2to1============================
 Page2to1:
@@ -912,6 +999,392 @@ rep movsb
 pop ds di si cx
 ret
 
+
+clearscr:
+push eax cx
+mov cx,320*200/4
+mov eax,0
+rep movsd
+pop cx eax
+
+loadbmp:
+push ax bx cx dx bp ds
+mov ax,ds:[18]
+mov si,ax
+shr ax,2
+and si,11b
+cmp si,0
+je is4x
+add ax,1
+is4x:
+mov cs:sizeh,ax
+mov ax,ds:[22]
+mov cs:sizev,ax
+mov di,0FFFFh-1024
+mov si,54
+mov cl, 0ffh
+paletteload:
+lodsb
+shr al, 2
+mov [di+2], al
+lodsb
+shr al, 2
+mov [di+1], al
+lodsb
+shr al, 2
+mov [di+0], al
+inc si
+add di, 3
+dec cl
+jnz paletteload
+mov si,0FFFFh-1024
+mov dx, 3c8h
+cld
+mov cl, 0ffh
+xor bx, bx
+palettemake:
+mov al, bl
+out dx, al
+inc dx
+lodsb
+out dx, al
+lodsb
+out dx, al
+lodsb
+out dx, al
+dec dx
+inc bl
+dec cl
+jnz palettemake
+pop ds bp dx cx bx ax  
+ret
+sizeh dw 0
+sizev dw 0
+
+showbmp:
+push ax bx cx dx si di ds es
+mov dx,cs:sizev
+add bx,dx
+mov di,cx
+mov ax,bx
+shl ax,6
+shl bx,8
+add di,bx
+add di,ax
+mov bx,di
+mov ax,0A000H
+mov es,ax
+mov si,1024+54
+mov ax,cs:sizeh
+bouclebmp:
+cmp di,64000
+jae nopp
+cld
+rep movsd
+no:
+mov cx,ax
+sub bx,320
+mov di,bx
+dec dx
+jnz bouclebmp
+fin:
+pop es ds di si dx cx bx ax 
+ret
+nopp:
+shl cx,2
+add si,cx
+jmp no
+
+fire:
+push ax cx dx si di
+xor si,si
+xor di,di
+mov cx,64000
+makefire:
+xor ax,ax
+mov al,[si]
+add al,[si+321]
+adc ah,0
+add al,[si-321]
+adc ah,0
+add al,[si+320]
+adc ah,0
+shr ax,2
+cmp al,191
+jb pp
+mov al,191
+pp:
+cmp al,0
+je p
+dec ax
+p:
+mov es:[di],al
+inc si
+inc di
+dec cx
+jnz makefire
+pop di si dx cx ax
+ret
+
+fireflamme:
+push ax cx dx si di
+xor si,si
+xor di,di
+mov cx,64000
+makefire2:
+xor ax,ax
+mov al,[si]
+add al,[si+1]
+adc ah,0
+add al,[si-1]
+adc ah,0
+add al,[si+320]
+adc ah,0
+shr ax,2
+cmp al,191
+jb ppp
+mov al,191
+ppp:
+cmp al,0
+je pppp
+dec ax
+pppp:
+mov es:[di],al
+inc si
+inc di
+dec cx
+jnz makefire2
+pop di si dx cx ax
+ret    
+
+gauss:
+push ax cx dx si di
+xor si,si
+xor di,di
+mov cx,64000
+makegauss:
+xor ax,ax
+mov al,[si+1]
+add al,[si-1]
+adc ah,0
+add al,[si+321]
+adc ah,0
+add al,[si+320]
+adc ah,0
+add al,[si+319]
+adc ah,0
+add al,[si-321]
+adc ah,0
+add al,[si-320]
+adc ah,0
+add al,[si-319]
+adc ah,0
+shr ax,3
+mov es:[di],al
+inc si
+inc di
+dec cx
+jnz makegauss
+pop di si dx cx ax
+ret
+
+lowgauss:
+push ax cx dx si di
+xor si,si
+xor di,di
+mov cx,64000
+makegausss:
+xor ax,ax
+mov al,[si+1]
+add al,[si-1]
+adc ah,0
+add al,[si+320]
+adc ah,0
+add al,[si-320]
+adc ah,0
+shr ax,2
+mov es:[di],al
+inc si
+inc di
+dec cx
+jnz makegausss
+pop di si dx cx ax
+ret
+
+firepalett:
+push ax cx dx
+mov dx,03C8h
+xor ax,ax
+out dx,al
+inc dx
+mov cx,64
+rouge1:
+out dx,al
+push ax
+xor al,al
+out dx,al
+out dx,al
+pop ax
+inc ax
+loop rouge1
+mov cx,64
+jaune1:
+push ax
+mov al,63
+out dx,al
+pop ax
+out dx,al
+push ax
+xor al,al
+out dx,al
+pop ax
+inc ax
+loop jaune1
+mov cx,63
+blanc1:
+push ax
+mov al,63
+out dx,al
+out dx,al
+pop ax
+out dx,al
+loop blanc1
+pop dx cx ax
+ret
+
+allfirepalett:
+push ax cx dx
+mov dx,03C8h
+xor ax,ax
+out dx,al
+inc dx
+mov cx,64
+rouge:
+push ax
+shr ax,1
+out dx,al
+xor al,al
+out dx,al
+out dx,al
+pop ax
+inc ax
+loop rouge
+mov cx,64
+rouge2:
+push ax
+shr ax,1
+out dx,al
+xor al,al
+out dx,al
+out dx,al
+pop ax
+inc ax
+loop rouge2
+mov cx,64
+Jaune:
+push ax
+mov al,63
+out dx,al
+pop ax
+out dx,al
+push ax
+xor al,al
+out dx,al
+pop ax
+inc ax
+loop jaune
+mov cx,64
+blanc:
+push ax
+mov al,63
+out dx,al
+out dx,al
+pop  ax
+out dx,al
+loop blanc
+pop dx cx ax
+ret
+
+gaussscreen:
+push ax ds es
+mov ax,0A000h
+mov ds,ax
+push fs
+pop es
+call gauss
+push ds
+pop es
+push fs
+pop ds
+call Copyscreen
+pop es ds ax
+ret
+
+lowgaussscreen:
+push ax ds es
+mov ax,0A000h
+mov ds,ax
+push fs
+pop es
+call lowgauss
+push ds
+pop es
+push fs
+pop ds
+call Copyscreen
+pop es ds ax
+ret
+
+firescreen:
+push ax ds es
+mov ax,0A000h
+mov ds,ax
+push fs
+pop es
+call fire
+push ds
+pop es
+push fs
+pop ds
+call Copyscreen
+pop es ds ax
+ret
+
+copyscreen:
+push si di cx
+xor si,si
+xor di,di
+mov cx,64000/4
+rep movsd
+pop cx di si
+ret
+
+;Sauve l'Çtat de la carte en es:di
+savestate:
+push cx si di ds 
+push cs
+pop ds
+mov cx,10
+mov si,offset lines
+cld
+rep movsb
+call savescreento
+pop ds di si cx
+ret
+
+;RÇcupäre l'Çtat de la carte en ds:si    
+restorestate:
+push cx si di es
+push cs
+pop es
+mov cx,10
+mov di,offset lines
+cld
+rep movsb
+call restorescreenfrom
+pop es di si cx
+ret       
+
 lines db 0
 columns db 0
 x db 0
@@ -923,7 +1396,7 @@ pagesize dw 0
 font equ $
 copy equ $+4000
 copy2 equ $+8000
-
-endofme equ $ +12000
+dac equ $+12000
+endofme equ $ +12768
 
 end start

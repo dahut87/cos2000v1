@@ -5,6 +5,7 @@ smart
 
 org 0100h
 
+
 start:
 jmp tsr
 db 'DRIVE'
@@ -47,10 +48,12 @@ tables   dw readsector
          dw verifysector2  
          dw loadfatway
          dw loadfile
+         dw compressrle
+         dw decompressrle
 
 ;cx entr‚e -> fatway chemin
 getfatway:
-push bx cx es
+push bx cx 
 mov bx,offset fatway
 fatagain:
 mov cs:[bx],cx
@@ -60,48 +63,50 @@ jae finishload
 call getfat
 jnc fatagain
 finishload:  
-pop es cx bx
+pop cx bx
 ret
 
-;Charge le fichier de chemin cx
+;Charge le fichier de chemin cx -> taille dx
 loadfatway:
-push ax bx cx di
+push ax bx cx di 
 call getfatway
 jc endload
 mov di,offset fatway
+xor dx,dx
 loadagain:
 mov cx,cs:[di]
 cmp cx,0FFF0h
 jae endload
 add di,2
-xor al,al
+mov al,1
 call readsector
 jc endload
 add bx,cs:sizec
+add dx,cs:sizec
 jmp loadagain
 endload:
 pop di cx bx ax
 ret        
 
-sizec dw 512
-reserv dw 1
 
 ;<-cx nøsecteur  ->cx code FAT
 getfat:
 push es ax bx dx
-mov ax,cx
-xor dx,dx
-div cs:sizec
-mov cx,ax
-add cx,cs:reserv
-mov bx,offset buffer
+push cs
+pop ds
 push cs
 pop es
+mov ax,cx
+xor dx,dx
+div sizec
+mov cx,ax
+add cx,reserv
+mov bx,offset buffer
 call readsector
 jc errorgetfat
 shl dx,1
 add bx,dx
-mov cx,cs:[bx]
+mov cx,[bx]
 errorgetfat:
 pop dx bx ax es
 ret
@@ -140,7 +145,7 @@ TryAgain:
   jnc Done
   dec SI
   jnz TryAgain
-mov word ptr cs:lastread,0ffffh
+ mov word ptr cs:lastread,0ffffh
 Done:
   pop si dx cx ax
 ret
@@ -176,7 +181,7 @@ TryAgain2:
   int 13h
   jnc Done2
   dec SI
-  jnz TryAgain2
+ jnz TryAgain2
 Done2:
   pop si dx cx ax
 ret
@@ -229,27 +234,32 @@ or byte ptr [bp+6],10b
 nook:
 ret
 
-;Charge le fichier Ds:si en es:di
+;Charge le fichier Ds:si en es:di taille-> cx
 loadfile:
-push bx cx
+push bx 
 call searchfile
+jc errorloadfile
 mov bx,di
 call loadfatway
-pop cx bx
-ret
+mov cx,dx
+errorloadfile:
+pop bx
+ret   
 
 ;Recherche le fichier et retourne sont path et en cx sont debut
 Searchfile:
 push bx dx si di ds es
 push cs
 pop es
+xor dx,dx
 mov di,offset temp
 call asciiztofit
-mov bx,offset buffer
 push cs
 pop ds
 mov cx,13
 check:
+mov al,1
+mov bx,offset buffer  
 call readsector
 jc errorboot
 xor di,di
@@ -261,6 +271,7 @@ mov si,di
 add si,bx
 mov di,offset temp
 mov cx,12+4
+cld
 rep cmpsb
 pop cx di si
 je oksystem
@@ -274,7 +285,11 @@ inc cx
 jmp Check
 oksystem:
 mov cx,[di+BX+26]
+cld
+jmp goodboot
 errorboot:
+stc
+goodboot:
 pop es ds di si dx bx
 ret
 
@@ -345,15 +360,15 @@ isSystchar:
 push di
 mov di,offset exeptchar
 isexcept:
-cmp al,[di]
+cmp al,cs:[di]
 je nogood
 inc di
-cmp byte ptr [di],0
+cmp byte ptr cs:[di],0
 jne isexcept
 endanal:
-pop di
+clc
+pop di 
 ret
-exeptchar db '/\<>:|.',01,0,0
 nogood:
 stc
 jmp endanal
@@ -380,19 +395,110 @@ clc
 pop ax cx di si
 ret
 
-nbfit equ 255 
+;decompress ds:si en es:di taille bp d‚compress‚ cx compress‚
+DecompressRle:
+push cx dx si di
+mov dx,cx
+mov bp,di
+decompression:
+mov eax,[si]
+cmp al,'/'
+jne nocomp
+cmp si,07FFFh-6
+jae thenen
+mov ecx,eax
+ror ecx,16
+cmp cl,'*'
+jne nocomp
+cmp byte ptr [si+4],'/'
+jne nocomp
+mov al,ch
+mov cl,ah
+xor ah,ah
+xor ch,ch
+rep stosb
+add si,5
+sub dx,5
+jnz decompression
+jmp thenen
+nocomp:
+mov es:[di],al
+inc si
+inc di
+dec dx
+jnz decompression
+thenen:
+mov ax,dx
+sub bp,di
+neg bp
+pop di si dx cx
+ret
+
+;compress ds:si en es:di taille cx d‚compress‚ BP compress‚
+CompressRle:
+push ax bx cx dx si di ds es
+mov bp,di
+xchg si,di
+push es
+push ds
+pop es
+pop ds
+mov dx,cx
+;mov bp,cx
+againcomp:
+mov bx,di
+mov al,es:[di]
+mov cx,dx
+cmp ch,0
+je poo
+mov cl,0ffh
+;mov cx,bp
+;sub cx,di
+;mov ah,cl
+poo:
+mov ah,cl
+inc di
+xor ch,ch
+repe scasb
+sub cl,ah
+neg cl
+cmp cl,6
+jbe nocomp2
+mov dword ptr [si],' * /'
+mov byte ptr [si+4],'/'
+mov [si+1],cl
+mov [si+3],al
+add si,5
+dec di
+xor ch,ch
+sub dx,cx
+jnz againcomp
+jmp fini
+nocomp2:
+mov [si],al
+inc si
+inc bx
+mov di,bx
+dec dx
+jnz againcomp
+fini:
+sub bp,si
+neg bp
+pop es ds di si dx cx bx ax
+ret
+
+nbfit equ 255
 namesize equ 12
 extsize equ 5
-
-
-temp db 12+5+1 dup (0)
-
+exeptchar db '/\<>:|.',01,0,0
+temp db 12+5+1+90 dup (0) 
 DiskSectorsPerTrack dw 18   
 DiskTracksPerHead dw 80
 DiskHeads dw 2
-
-fatway equ $
-
-buffer equ $+3000
+sizec dw 512
+reserv dw 1
+buffer equ $
 buffer2 equ $+512 
+fatway equ $+512
+
 end start

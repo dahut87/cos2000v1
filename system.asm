@@ -7,25 +7,81 @@ org 0100h
 
 start:
 mov si,offset video
-mov bx,8400h
+mov bx,400h
 mov ax,47h
 call installhandler
-mov si,offset lpt
-mov bx,7400h
-mov ax,49h
-call installhandler
-mov si,offset keyboard
-mov bx,7000h
-mov ax,9h
-call replacehandler
 mov si,offset timer
-mov bx,7800h
+mov bx,900h
 mov ax,8h
 call replacehandler
+mov si,offset pic
+mov bx,950h
+mov ax,50h
+call installhandler
 mov si,offset drive
-mov bx,9000h
+mov bx,1020h
 mov ax,48h
 call installhandler
+mov si,offset keyboard
+mov bx,1400h
+mov ax,9h
+call replacehandler
+mov ax,40h
+mov es,ax
+mov dx,es:[8]
+cmp dx,0
+je nolpt1
+mov al,0FFh
+add dx,2
+out dx,al
+mov si,offset lpt
+mov bx,1500h
+mov ax,0Fh
+call installhandler
+mov es,bx
+sub al,8
+xor ah,ah
+int 50h
+mov byte ptr es:[105h],'1'
+nolpt1:
+push es
+mov ax,40h
+mov es,ax
+mov dx,es:[10]
+pop es
+cmp dx,0
+je nolpt2
+mov al,0FFh
+add dx,2
+out dx,al
+mov si,offset lpt
+mov bx,1700h
+mov ax,0Dh
+call installhandler
+sub al,8
+xor ah,ah
+int 50h
+mov es,bx
+mov byte ptr es:[105h],'2'
+nolpt2:
+mov si,offset mouse
+mov bx,1900h
+mov ax,74h
+call installhandler   
+mov ax,0012
+int 50h         
+;mov ah, 00010000b
+;not ah
+;in al, 0a1h
+;and al, ah
+;out 0a1h, al
+mov ah,2
+int 74h
+
+
+
+
+
 start2:
 push cs
 push cs
@@ -398,6 +454,7 @@ ret
 ;Recherchele fichier et retourne sont path et en cx sont debut
 Searchfile:
 push bx dx si di ds es
+xor dx,dx
 push cs
 pop es
 mov di,offset temp
@@ -540,6 +597,8 @@ extsize equ 5
 
 
 nbfit equ 255
+mouse db 'mouse.sys',0
+pic db 'pic8259a.sys',0
 drive db 'drive.sys',0
 timer db 'timer.sys',0
 lpt db 'lpt.sys',0
