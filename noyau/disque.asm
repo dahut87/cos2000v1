@@ -69,6 +69,7 @@ tables  dw readsector
 	dw writecluster
 	dw getdir
 	dw projfile
+	dw execfile
 
 maxfunc equ 24
 
@@ -155,6 +156,45 @@ errorload:
 	stc
 	mov	ecx,0
 	pop   	di bx eax
+	ret
+	
+;============execfile (Fonction 18)===============
+;Execute le fichier ds:si
+;-> AH=18
+;<- Flag Carry si erreur
+;=====================================================
+execfile:
+	pushad
+	pushf
+        push    ds es fs gs	
+        mov     ah,17
+        int     48h
+        jc      reallyerror
+        push    cs
+        mov     ax,offset arrive
+        push    ax
+        push    es
+        push    0100h
+        push    es
+        push    es
+        push    es
+        pop     ds
+        pop     fs
+        pop     gs
+        push    7202h
+        popf
+        sti
+        db      0CBh
+        arrive:
+        cli
+        pop     gs fs es ds
+        popf
+	popad
+	ret
+reallyerror:
+        pop     gs fs es ds
+        popf
+	popad
 	ret
 
 ;============projfile (Fonction 17)===============
