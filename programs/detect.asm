@@ -41,8 +41,8 @@ mov ah,6
 int 47h
 
 mov si,offset nbbuses
-mov si,offset pcivers2
 mov ah,13
+int 47h
 xor edx,edx
 mov dl,nbbus
 inc dl
@@ -118,8 +118,6 @@ mov ah,06
 int 47h
 pop di cx
 
-jmp noerror
-noerror:
 inc ch
 cmp ch,7
 jbe search
@@ -132,7 +130,9 @@ xor cl,cl
 inc al
 cmp al,16
 jbe search
-ret
+xor ax,ax
+int 16h
+db 0CBh
 
 msg3 db ' Classe:',0
 msg1 db 'Peripherique :',0
