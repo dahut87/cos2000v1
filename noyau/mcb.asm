@@ -9,7 +9,7 @@ include ..\include\mem.h
 include ..\include\divers.h
 
 start:
-maxfunc equ 4
+maxfunc equ 5
 
 	jmp	tsr			;Saute à la routine résidente
 nameed db 'MB'			;Nom drivers
@@ -45,7 +45,7 @@ itsok:
         ;mov     ax,cs                   ;On récupère le segment et l'offset puis en renvoie l'adresse physique
         ;shl     eax,4                   ;de l'erreur.
         ;add     ax,cs:current
-        ;jmp     endofint                ;on termine l'int
+        jmp     endofint                ;on termine l'int
 noerror:
 	and 	byte ptr [bp+6],0FEh;Si pas d'erreur on efface le Bit CARRY du FLAG qui sera dépilé lors du IRET
 endofint:
@@ -58,12 +58,15 @@ tables dw MBinit		;Table qui contient les adresses de toutes les fonctions de VI
          dw MBFree
          dw MBCreate
          dw MBresident
-
+         dw MBGet
+         
 FirstMB dw 0
 
 ;Initialise les blocs de mémoire en prenant memorystart pour segment de base
 MBinit:
 	push	ax cx es
+	cmp     cs:FirstMB,0
+	jne     notforfree
 	mov	ax,memorystart
 	mov	cs:Firstmb,ax       	
         mov	cx,0A000h
@@ -71,6 +74,8 @@ MBinit:
 	dec	ax
 	dec	ax
 	mov	es,ax
+	cmp     es:[MB.Check],'NH'
+	je      notforfree
 	mov     es:[MB.Reference],Free
 	mov     es:[MB.Sizes],cx
 	mov     es:[MB.Check],'NH'
@@ -93,16 +98,52 @@ MBFree:
 	dec     bx
 	mov	es,bx
 	cmp	es:[MB.Check],'NH'
-	je	notforfree
-	mov	es:[MB.IsResident],0
+	je	wasfree
+	cmp	es:[MB.Reference],Free
+	je	wasfree
+	cmp	es:[MB.IsResident],true
+	je	wasfree
+	mov	es:[MB.IsResident],false
 	mov	es:[MB.Reference],Free
 	mov	dword ptr es:[MB.Names],'eerF'
 	mov	dword ptr es:[MB.Names+4],0
 	pop	es bx
 	ret
+wasfree:
+	stc
+	pop	es bx
+	ret
 
-;Renvoie en GS le MB n° bx
+;Renvoie en GS le MB n° cx  carry quand terminé
 MBGet:
+        push    bx dx
+        mov	bx,cs:firstmb
+	dec	bx
+	dec	bx
+	xor     dx,dx
+searchfree2:
+	mov     gs,bx
+	cmp	gs:[MB.Check],'NH'
+	jne	itsend
+        inc     bx
+        inc     bx
+	add	bx,gs:[MB.Sizes]
+	cmp     word ptr gs:[MB.Sizes],0
+	je      itsend
+	cmp     dx,cx
+	je      foundmcb
+	ja      itsend
+        inc     dx
+	cmp	gs:[MB.IsNotLast],true
+	je	searchfree2
+itsend:
+	stc
+	pop	dx bx
+	ret
+foundmcb:
+	clc
+	pop	dx bx
+	ret
 	
 
 ;Creér un bloc de nom ds:si de taille cx (octets) -> n°segment dans GS
