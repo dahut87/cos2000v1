@@ -78,8 +78,9 @@ MBloadfuncs:
        push    ax bx ecx dx si di ds es gs
        push    gs
        pop     ds
-       cmp     word ptr ds:[exe.Checks],"EC"
-       jne     notloaded
+       cmp     word ptr ds:[0],"EC"
+       ;jne     notloaded
+       jne     endofloading
        mov     si,ds:[exe.import]
 loadfuncs:
        cmp     word ptr [si],0
@@ -118,9 +119,6 @@ notloaded:
           stc
           pop gs es ds di si dx ecx bx ax
           ret
-
-
-
 
 
 ;Recherche une fonction pointé par DS:SI en mémoire et renvoie son adresse en GS:DX
