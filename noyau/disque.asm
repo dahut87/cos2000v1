@@ -874,7 +874,7 @@ invert:
 	add 	si,4
 	add     cx,4
 	cmp     cx,cs:myboot.sectorsize
-	jbe 	invert
+	jb 	invert
 	pop     cx si
 	ret
 
