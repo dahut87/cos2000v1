@@ -2,7 +2,7 @@ lnk_boot = tlink /x
 asm= tasm /t/m5/zi
 lnk= tlink /x/t
 
-all: boot.bin clavier.sys 8259a.sys disque.sys heure.sys horloge.sys manette.sys port.sys souris.sys systeme.sys video.sys
+all: boot.bin clavier.sys 8259a.sys disque.sys heure.sys horloge.sys manette.sys port.sys souris.sys systeme.sys video.sys mcb.sys
 
 boot.bin: boot.asm
 	$(asm) boot
@@ -58,6 +58,11 @@ video.sys: video.asm
 	$(asm) video
 	$(lnk) video
 	ren video.com video.sys
+
+mcb.sys: mcb.asm
+	$(asm) mcb
+	$(lnk) mcb
+	ren mcb.com mcb.sys
 
 clean:
   del *.obj
