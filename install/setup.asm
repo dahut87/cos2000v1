@@ -20,6 +20,7 @@ boot db 'boot.bin',0
 dat db 'data',0
 retu db 0Dh,0AH,'$'
 dta db 43 dup (0)
+nom db 25 dup (0)
 
 copycos:
         mov        ah,9
@@ -96,7 +97,11 @@ allfile:
         mov        ah,3ch
         push       cs
         pop        es
-        mov        di,offset dta+30-3
+        mov        si,offset dta+30-3
+        mov        di,offset nom
+        mov        cx,25
+        rep        movsb
+        mov        di,offset nom
         mov        word ptr [di],":a"
         mov        byte ptr [di+2],"\"
         xor        cx,cx
