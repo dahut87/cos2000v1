@@ -8,7 +8,8 @@ org 0100h
 
 
 start:
-mov cx,23
+mov si,offset video
+call searchfile
 mov bx,8400h
 mov es,bx
 mov bx,100h
@@ -16,7 +17,6 @@ call loadfatway
 mov di,bx
 mov bx,47h
 call setint
-ret
 mov bx,9
 call getint
 mov cs:int9seg,ds
@@ -79,6 +79,12 @@ add di,32
 inc bp
 jmp showall
 endof2:
+mov ah,21
+mov cl,112
+int 47h
+mov ah,13
+mov si,offset menu
+int 47h  
 mov xx,1
 mov xxold,2
 call Select
@@ -106,19 +112,45 @@ tre2:
      mov di,xx
      dec di
      shl di,5
-     mov cx,[di+bx+26]
+     mov dx,[di+bx+26]
      mov ah,6
      int 47h
+     int 47h
+     mov ah,21
+     mov cl,7
      int 47h
      mov ah,13
      mov si,offset msg2
      int 47h
+     mov cx,dx
      call executefatway
 tre3:
      cmp ah,59
-     jne endof
+     jne tre4
      mov lastread,0FFFFh
      jmp start2
+tre4:
+     cmp ah,67
+     jne endof
+     mov ax,0001
+     int 47h
+     mov ah,2
+     int 47h
+     mov ah,21
+     mov cl,4
+     int 47h
+     mov ah,13
+     mov si,offset msg3
+     int 47h
+     mov ax,0
+     int 16h
+     mov ax,40h
+     mov ds,ax
+     mov bx,1234h
+     mov ds:[072h],bx
+     push 0FFFFh  
+     push 0000h
+     db 0CBh
 
 executefatway:
      push cs
@@ -219,8 +251,10 @@ ret
 
 xx dw 1
 xxold dw 0
+menu db 'F1 Read disk F2 Read file F9 Quit F11 Change video F12 Debug                   ',0
 msg1 db 'Cos 2000 menu loader release 1.0',0
-msg2 db 'Program loading',0
+msg2 db 'The program is loading',0
+msg3 db 'Cos will restart your computer, eject the floppy disk and press a key',0                                                      
 prompt db '>',0
 spaces db '   ',0
 dot db '.',0
@@ -354,7 +388,7 @@ int9:
         int 47h
         mov al,cs:infos+7
         inc al
-        and ax,11b
+        and ax,111b
         int 47h
         pop es
 
@@ -495,9 +529,152 @@ regs db 'EDI:',0
      db ' SS:',0
 gr db '(',0
 dr db ')',0
-app db 'Press enter to quit...',0
+app db 'Press space to quit...',0
+
+Searchfile:
+push bx dx si di ds es
+mov di,offset temp
+mov bx,offset buffer
+call asciiztofit
+mov cx,13
+check:
+call readsector
+jc errorboot
+xor di,di
+findnext:
+cmp byte ptr [bx+di],0
+je errorboot
+push si di cx
+mov si,di
+add si,bx
+mov di,offset temp
+mov cx,12+4
+rep cmpsb
+pop cx di si
+je oksystem
+add di,32
+inc dx
+cmp dx,nbfit
+ja errorboot
+cmp di,sizec
+jb findnext
+inc cx
+jmp Check
+oksystem:
+mov cx,[di+BX+26]
+errorboot:
+pop es ds di si dx bx
+ret
+
+;->name ds:si ->es:di
+AsciiZtoFit:
+push ax bx cx dx si di ds es
+xor bx,bx
+mov dx,di
+noextens:
+mov al,[si+bx]
+cmp al,'.'
+je extens
+call Issystchar
+jc errortranslate
+mov es:[di],al
+inc di
+inc bx
+cmp bx,namesize ;(.)
+jne noextens
+erro:
+stc
+jmp errortranslate
+extens:  
+add si,bx
+inc si
+sub bx,namesize
+neg bx
+mov al,0
+mov cx,bx
+cld
+rep stosb
+xor bx,bx         
+wasextens:
+mov al,[si+bx]
+cmp al,0
+je endextens
+call Issystchar
+jc errortranslate
+mov es:[di],al
+inc di
+inc bx
+cmp bx,extsize
+jne wasextens
+jmp erro
+endextens:        
+sub bx,extsize
+neg bx
+mov al,0
+mov cx,bx
+cld
+rep stosb
+mov si,dx
+mov di,dx
+push es
+pop ds
+mov cx,extsize+namesize
+call uppercaseMEM  
+clc
+endtranslate:
+pop es ds di si dx cx bx ax
+ret
+errortranslate:
+stc
+jmp endtranslate
+
+;Carry si al = caractäre systäme
+isSystchar:
+push di
+mov di,offset exeptchar
+isexcept:
+cmp al,cs:[di]
+je nogood
+inc di
+cmp byte ptr cs:[di],0
+jne isexcept
+endanal:
+pop di
+ret
+exeptchar db '/\<>:|.',01,0,0
+nogood:
+stc
+jmp endanal
+
+;Transforme les x caractäres de la mem en ds:si en maj
+uppercaseMEM: 
+push si di cx ax
+mov di,si
+uppercaser:
+mov al,ds:[si]
+inc si
+cmp al,'A'
+jb nonmaj
+cmp al,'Z'
+ja nonmaj
+add al,'a'-'A'
+nonmaj:
+mov es:[di],al
+inc di
+dec cx
+jnz uppercaser
+enduppercase:
+clc
+pop ax cx di si
+ret
+
+namesize equ 12
+extsize equ 5
 
 
+nbfit equ 255
+video db 'video.sys',0
+temp db 12+5+1 dup (0)
 
 DiskSectorsPerTrack dw 18   
 DiskTracksPerHead dw 80

@@ -193,8 +193,17 @@ mode2        DB 63H, 00H, 03H,01H,03H,01H,02H
              DB 0CH,00H,0FH,00H,00H
              db 80,50
 
-;640*480 16 couleurs
-mode3        DB 63H, 00H,  03H,01H,0FH,00H,0EH
+;320*200 16 couleurs
+mode3      DB 63H,00H,  03H,09H,0FH,00H,06H
+             DB 2DH,27H,28H,90H,2BH,080H,0BFH,01FH,00H,0C0H,00H,00H,00H,00H,00H,00H
+             DB 9CH,8EH,8FH,14H,00H,96H,0B9H,0E3H,0FFH
+             DB 00H,00H,00H,00H,00H,00H,05H,0FH,0FFH
+             DB 00H,01H,02H,03H,04H,05H,06H,07H,08H,09H,0AH,0BH,0CH,0DH,0EH,0FH
+             DB 41H,00H,0FH,00H,00H
+             db 40,25
+
+;320*200 256 couleurs
+mode4        DB 63H, 00H,  03H,01H,0FH,00H,0EH
              DB 5FH,4FH,50H,82H,54H,80H,0BFH,1FH,00H,41H,00H,00H,00H,00H,00H,00H
              DB 9CH,0EH,8FH,28H,40H,96H,0B9H,0A3H,0FFH
              DB 00H,00H,00H,00H,00H,40H,05H,0FH,0FFH
@@ -202,8 +211,8 @@ mode3        DB 63H, 00H,  03H,01H,0FH,00H,0EH
              DB 41H,00H,0FH,00H,00H
              db 00,00
 
-;320*240 256 couleurs
-mode4        DB 63H, 00H,  03H,01H,0FH,00H,0EH
+;640*400 16 couleurs
+mode5        DB 63H, 00H,  03H,01H,0FH,00H,0EH
              DB 5FH,4FH,50H,82H,54H,80H,0BFH,1FH,00H,41H,00H,00H,00H,00H,00H,00H
              DB 9CH,0EH,8FH,28H,40H,96H,0B9H,0A3H,0FFH
              DB 00H,00H,00H,00H,00H,10H,05H,0FH,0FFH
@@ -211,6 +220,25 @@ mode4        DB 63H, 00H,  03H,01H,0FH,00H,0EH
              DB 41H,00H,0FH,00H,00H 
              db 00,00
 
+;640*400 16 couleurs
+mode6        DB 63H, 00H,  03H,01H,0FH,00H,0EH
+             DB 2DH,27H,27H,91H,2AH,9FH,0BFH,1FH,00H,0C0H,00H,00H,00H,00H,00H,00H
+             DB 9CH,0EH,8FH,50H,00H,8FH,0C0H,0E3H,0FFH
+             DB 00H,00H,00H,00H,00H,40H,05H,0FH,0FFH
+             DB 00H,01H,02H,03H,04H,05H,06H,07H,08H,09H,0AH,0BH,0CH,0DH,0EH,0FH
+             DB 41H,00H,0FH,00H,00H 
+             db 00,00
+
+;640*400 16 couleurs
+mode6        DB 63H, 00H,  03H,01H,0FH,00H,0EH
+             DB 2DH,27H,27H,91H,2AH,9FH,0BFH,1FH,00H,0C0H,00H,00H,00H,00H,00H,00H
+             DB 9CH,0EH,8FH,50H,00H,8FH,0C0H,0E3H,0FFH
+             DB 00H,00H,00H,00H,00H,40H,05H,0FH,0FFH
+             DB 00H,01H,02H,03H,04H,05H,06H,07H,08H,09H,0AH,0BH,0CH,0DH,0EH,0FH
+             DB 41H,00H,0FH,00H,00H 
+             db 00,00
+
+;
 ;=============CLEAR=========
 ;Efface l'ecran texte
 ;-> 
@@ -878,18 +906,6 @@ colors db 7
 mode db 0FFh
 pagesize dw 0
 special equ $
-
-
 endofme equ $ +4096
 
 end start
-
-
-
-
-
-
-
-
-
-

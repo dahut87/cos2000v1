@@ -177,7 +177,7 @@ waitst:
      int 16h  
      cmp ah,41h
      jne tre
-     mov dword ptr [pope],' EUV'
+     mov dword ptr [pope],'WEIV'
      push cs
      pop es
      mov cx,sect
@@ -343,9 +343,9 @@ xx dw 0
 yy dw 0
 xxyy dw 3
 xxyy2 dw 3
-errordisk db 'Une erreur est survenu sur le lecteur A:, appuyer sur une touche        ',0
-menu db 'Haut F1, Bas F2, Secteurs F3&F4, Load/Save F4&F5, Edit F7, Quitter F8  MODE '
-pope  db 'VUE  ',0         
+errordisk db 'An error has occured on drive A:, press a key to continu                   ',0
+menu db 'Bottom F1, Top F2, Sectors F3&F4, Load/Save F5&F6, Mode F7, Quit F8  MODE '
+pope  db 'VIEW     ',0         
 spaces db  ' ³ ',0
 
 showbuffer db 35 dup (0FFh)

@@ -34,7 +34,7 @@ okloading db 'COS search system',0Dh,0ah,0
 syst db 'Ok',0dh,0ah,0
 dot db '.',0
 carry db 0dh,0ah,0
-Sys db 'system      ',0
+Sys db 'system',0,0,0,0,0,0
 sys2 db 'sys',0
 
 errorboot:
@@ -175,7 +175,7 @@ push ax cx dx si
   mov CL, DL                    ;{ Set the sector                            }
   and CL, 63                    ;{ Top two bits are bits 8&9 of the cylinder }
   xor DX, DX
-  div head
+  div word ptr pope
   mov CH, DL                    ;{ Set the track bits 0-7                    }
   mov AL, DH
   ror AL, 1
@@ -183,7 +183,7 @@ push ax cx dx si
   and AL, 11000000b
   or CL, AL                     ;{ Set bits 8&9 of track                     }
   xor dX, DX
-  div pope
+  div head
   mov DH, DL                    ;{ Set the head                              }
   inc CL
   mov SI, 4
@@ -214,6 +214,6 @@ again:
 
 
 Buffer equ $
-
+boots ends
 end start
 
