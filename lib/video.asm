@@ -78,9 +78,13 @@ print PROC FAR
         mov     cl,byte ptr [si+1]
         cmp     cl,'c'
         je      @@showchar
-        cmp     cl,'i'
+        cmp     cl,'u'
         je      @@showint
-        cmp     cl,'j'
+        cmp     cl,'v'
+        je      @@showfixint
+        cmp     cl,'w'
+        je      @@showintr
+        cmp     cl,'i'
         je      @@showsigned
         cmp     cl,'h'
         je      @@showhex
@@ -119,6 +123,24 @@ print PROC FAR
         add     di,4
         jmp     @@strinaize0
 
+@@showfixint:
+        push    dword ptr [offset pointer+di+2]
+        add     di,4
+        push    word ptr [offset pointer+di+2]
+        add     di,2
+        call    showfixint
+        add     si,2
+        jmp     @@strinaize0
+
+@@showintr:
+        push    dword ptr [offset pointer+di+2]
+        add     di,4
+        push    word ptr [offset pointer+di+2]
+        add     di,2
+        call    showintr
+        add     si,2
+        jmp     @@strinaize0
+
 @@showsigned:
         call    @@Chosesize
         call    showsigned
@@ -135,17 +157,39 @@ print PROC FAR
         jmp     @@strinaize0
 
 @@showstring:
+        cmp     byte ptr [si+2],'P'
+        je      @@showstringpointer
         push    word ptr [offset pointer+di+2]
         call    showstring
         add     si,2
         add     di,2
         jmp     @@strinaize0
+@@showstringpointer:
+        push    ds
+        mov     ds,[offset pointer+di+2+2]
+        push    word ptr [offset pointer+di+2]
+        call    showstring
+        add     si,3
+        add     di,4
+        pop     ds
+        jmp     @@strinaize0
 
 @@showstring0:
+        cmp     byte ptr [si+2],'P'
+        je      @@showstring0pointer
         push    word ptr [offset pointer+di+2]
         call    showstring0
         add     si,2
         add     di,2
+        jmp     @@strinaize0
+@@showstring0pointer:
+        push    ds
+        mov     ds,[offset pointer+di+2+2]
+        push    word ptr [offset pointer+di+2]
+        call    showstring0
+        add     si,3
+        add     di,4
+        pop     ds
         jmp     @@strinaize0
 
 @@showbcd:
@@ -217,7 +261,7 @@ print PROC FAR
         add     si,3
         push    cx
         retn
-        
+
 @@special2:
         cmp     byte ptr [si+1],'\'
         jne     @@notshowit2
@@ -229,6 +273,8 @@ print PROC FAR
         je      @@showline
         cmp     cl,'g'
         je      @@goto
+        cmp     cl,'h'
+        je      @@gotox
         cmp     cl,'c'
         je      @@color
         cmp     cl,'m'
@@ -247,61 +293,89 @@ print PROC FAR
         je      @@setfont
         clc
         jmp     @@no0
-        
+
 @@color:
-        mov     cl,[si+2]
+        mov     ah,[si+2]
+        sub     ah,'0'
+        mov     cl,ah
+        shl     cl,3
+        add     cl,ah
+        add     cl,ah
         add     cl,[si+3]
-        sub     cl,'0'
         sub     cl,'0'
         mov     ah,21
         int     47h
         add     si,4
         jmp     @@strinaize0
-        
+
+@@gotox:
+        mov     ah,24
+        int     47h
+        mov     ah,[si+2]
+        sub     ah,'0'
+        mov     bh,ah
+        shl     bh,3
+        add     bh,ah
+        add     bh,ah
+        add     bh,[si+3]
+        sub     bh,'0'
+        mov     ah,25
+        int     47h
+        add     si,4
+        jmp     @@strinaize0
+
 @@setvideomode:
-        mov     al,[si+2]
+        mov     ah,[si+2]
+        sub     ah,'0'
+        mov     al,ah
+        shl     al,3
+        add     al,ah
+        add     al,ah
         add     al,[si+3]
-        sub     al,'0'
         sub     al,'0'
         mov     ah,0
         int     47h
         add     si,4
         jmp     @@strinaize0
-        
+
 @@setfont:
-        mov     cl,[si+2]
+        mov     ah,[si+2]
+        sub     ah,'0'
+        mov     cl,ah
+        shl     cl,3
+        add     cl,ah
+        add     cl,ah
         add     cl,[si+3]
-        sub     cl,'0'
         sub     cl,'0'
         mov     ah,3
         int     47h
         add     si,4
         jmp     @@strinaize0
-        
+
 @@showline:
         mov     ah,6
         int     47h
         add     si,2
         jmp     @@strinaize0
-        
+
 @@clearscreen:
         mov     ah,2
         int     47h
         add     si,2
         jmp     @@strinaize0
-        
+
 @@savestate:
         mov     ah,40
         int     47h
         add     si,2
         jmp     @@strinaize0
-        
+
 @@restorestate:
         mov     ah,41
         int     47h
         add     si,2
         jmp     @@strinaize0
-        
+
 @@enablescroll:
         mov     ah,42
         int     47h
@@ -313,16 +387,24 @@ print PROC FAR
         int     47h
         add     si,2
         jmp     @@strinaize0
-        
+
 @@goto:
-        mov     bh,[si+2]
+        mov     ah,[si+2]
+        sub     ah,'0'
+        mov     bh,ah
+        shl     bh,3
+        add     bh,ah
+        add     bh,ah
         add     bh,[si+3]
         sub     bh,'0'
-        sub     bh,'0'
           ;
-        mov     bl,[si+5]
-        add     bl,[si+6]
-        sub     bl,'0'
+        mov     ah,[si+2]
+        sub     ah,'0'
+        mov     bl,ah
+        shl     bl,3
+        add     bl,ah
+        add     bl,ah
+        add     bl,[si+3]
         sub     bl,'0'
         mov     ah,25
         int     47h
