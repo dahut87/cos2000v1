@@ -3,7 +3,7 @@
 smart
 .code
 
-org 0100h
+org 0h
 
 include ..\include\fat.h
 
@@ -47,11 +47,11 @@ mov cl,4
 int 47h
 jmp notall
 notdirectory:
-cmp [si+Entries.FilExt],'E'
+cmp [si+Entries.FilExt],'C'
 jne notexe
-cmp [si+Entries.FilExt+1],'X'
+cmp [si+Entries.FilExt+1],'E'
 jne notexe
-cmp [si+Entries.FilExt+2],'E'
+cmp [si+Entries.FilExt+2],' '
 jne notexe
 mov ah,21
 mov cl,5
