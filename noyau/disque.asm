@@ -168,16 +168,10 @@ execfile:
         push    bp dx
         mov     bp,sp
         mov     dx,ss:[bp+10]
-        mov ah,0Ah
-        mov cx,16
-        int 47h
 	pushad
         push    ds es fs gs
         call    projfile
         jc      reallyerror
-               mov ah,0Ah
-        mov cx,16
-        int 47h
         push    es
         pop     gs
         mov     ah,6
@@ -749,10 +743,9 @@ lastoff  dw 0
 ;=====================================================
 WriteSector:
 	push 	ax bx cx dx si es
-	cmp 	cs:Lastread,cx
- 	jne 	nodestruct
-  	mov 	cs:Lastread,0ffffh
-nodestruct:
+	mov	cs:lastseg,0
+	mov	cs:lastoff,0
+	mov 	cs:LastRead,0FFFFh
 	push 	ds
   	pop 	es
 	mov	ax,cx
@@ -768,7 +761,7 @@ nodestruct:
 	xchg 	cl,ch             
 	shl 	cl,6                
 	or 	cl, bl         
-	mov 	bx,si                         
+	mov 	bx,si
 	mov 	SI, 4
 	mov 	AL,1
 TryAgains:
@@ -817,25 +810,30 @@ getserial:
 ;<- Flag Carry si erreur, Flag Equal si secteurs égaux
 ;=====================================================
 VerifySector:
-	push 	bx cx si di ds es
+	push 	ecx si di ds es
 	push 	cs
 	pop 	es
 	push 	cs
 	pop 	ds
-	mov 	bx,offset bufferread
-	call 	ReadSector        
-	jc 	errorverify
+	mov 	di,offset bufferread
+	call 	ReadSector
+	mov 	si,offset bufferread
 	call 	inverse
 	call 	WriteSector
 	jc 	errorverify
-	mov 	bx,offset bufferwrite
-	call 	ReadSector        
+
+	mov 	di,offset bufferwrite
+	call 	ReadSector
+	mov 	si,offset bufferwrite	
 	call 	inverse
 	jc 	errorverify
-	mov 	bx,offset bufferread
+	
+	mov 	si,offset bufferread
 	call 	inverse
 	call 	WriteSector
 	jc 	errorverify
+	
+	xor     ecx,ecx
 	mov 	cx,cs:myboot.SectorSize
 	shr	cx,2
 	mov 	si,offset bufferread
@@ -843,18 +841,19 @@ VerifySector:
 	cld
 	rep 	cmpsd
 errorverify:
-	pop 	es ds di si cx bx
+	pop 	es ds di si ecx
 	ret
 
 Inverse:
-	mov 	si,cs:myboot.sectorsize
-	shr	si,2
+        push    si cx
+	xor     cx,cx
 invert:
-	shl 	si,2
-	not 	dword ptr [bx+si-4]
-	shr 	si,2
-	dec 	si
-	jnz 	invert
+	not 	dword ptr [si]
+	add 	si,4
+	add     cx,4
+	cmp     cx,cs:myboot.sectorsize
+	jbe 	invert
+	pop     cx si
 	ret
 
 VerifySector2:
@@ -889,6 +888,7 @@ decompression:
 	mov 	cl,ah
 	xor 	ah,ah
 	xor 	ch,ch
+	cld
 	rep 	stosb
 	add 	si,5
 	sub 	dx,5
