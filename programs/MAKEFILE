@@ -2,7 +2,12 @@ lnk_boot = tlink /x
 asm= tasm /t/m5/zi
 lnk= tlink /x/t
 
-all: detect.exe editeur.exe gestion.exe logo.exe pmode.exe souris.exe test.exe verifier.exe volume.exe
+all: detect.exe editeur.exe gestion.exe logo.exe pmode.exe souris.exe test.exe verifier.exe volume.exe memoire.exe
+
+memoire.exe: memoire.asm
+	$(asm) memoire
+	$(lnk) memoire
+	ren memoire.com memoire.exe
 
 detect.exe: detect.asm
 	$(asm) detect
