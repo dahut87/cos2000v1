@@ -3,7 +3,7 @@
 smart
 .code
 
-org 0100h
+org 0h
 
 start:
 mov si,offset message

@@ -3,7 +3,7 @@
 smart
 .code
 
-org 0100h
+org 0h
 
 include ..\include\mem.h
 include ..\include\divers.h

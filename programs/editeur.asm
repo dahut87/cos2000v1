@@ -1,7 +1,7 @@
 .model tiny
 .386c
 .code
-org 0100h
+org 0h
              
                 
 start:
