@@ -169,6 +169,7 @@ execfile:
         push    ds es fs gs
         call    projfile
         jc      reallyerror
+        push    es
         push    cs
         mov     ax,offset arrive
         push    ax
@@ -186,6 +187,9 @@ execfile:
         db      0CBh
         arrive:
         cli
+        pop     gs
+        mov     ah,01
+        int     49h
         pop     gs fs es ds
         popf
 	popad
@@ -203,9 +207,13 @@ reallyerror:
 ;<- Flag Carry si erreur
 ;=====================================================
 projfile:
-	push	eax bx di gs
+	push	eax bx di ds gs
 	push	cs
 	pop	es
+	call    uppercase
+        mov     ah,5
+	int     49h
+	jnc      errorload2
 	mov	di,offset tempfit
 	call	searchfile
 	jne   	errorload2
@@ -226,12 +234,12 @@ projfile:
 	jc    	errorload2
 	clc
 	mov	ecx,eax
-	pop   	gs di bx eax
+	pop   	gs ds di bx eax
 	ret
 errorload2:
 	stc
 	mov	ecx,0
-	pop   	gs di bx eax
+	pop   	gs ds di bx eax
 	ret
 	
 
