@@ -98,7 +98,7 @@ print PROC FAR
         je      @@showstring
         cmp     cl,'0'
         je      @@showstring0
-        cmp     cl,'d'
+        cmp     cl,'y'
         je      @@showbcd
         cmp     cl,'z'
         je      @@showsize
@@ -114,10 +114,25 @@ print PROC FAR
         jmp     @@no0
 
 @@showchar:
+        cmp     byte ptr [si+2],'M'
+        je      @@showmultchar
         push    word ptr [offset pointer+di+2]
         call    showchar
         add     si,2
         add     di,2
+        jmp     @@strinaize0
+@@showmultchar:
+        mov     cx,[offset pointer+di+2+2]
+        cmp     cx,0
+        je      @@nextfunc
+@@showcharx:
+        push    word ptr [offset pointer+di+2]
+        call    showchar
+        dec     cx
+        jnz     @@showcharx
+@@nextfunc:
+        add     si,3
+        add     di,4
         jmp     @@strinaize0
 
 @@showint:
@@ -299,12 +314,9 @@ print PROC FAR
         jmp     @@no0
 
 @@color:
-        mov     ah,[si+2]
-        sub     ah,'0'
-        mov     cl,ah
-        shl     cl,3
-        add     cl,ah
-        add     cl,ah
+        mov     cl,[si+2]
+        sub     cl,'0'
+        shl     cl,4
         add     cl,[si+3]
         sub     cl,'0'
         mov     ah,21
@@ -402,13 +414,13 @@ print PROC FAR
         add     bh,[si+3]
         sub     bh,'0'
           ;
-        mov     ah,[si+2]
+        mov     ah,[si+5]
         sub     ah,'0'
         mov     bl,ah
         shl     bl,3
         add     bl,ah
         add     bl,ah
-        add     bl,[si+3]
+        add     bl,[si+6]
         sub     bl,'0'
         mov     ah,25
         int     47h
