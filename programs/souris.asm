@@ -5,13 +5,23 @@ smart
 
 org 0h
 
+include ..\include\mem.h
+
 start:
-mov si,offset message
-mov ah,13
-int 47h
+header exe <,1,0,,,offset imports,,>
+
+realstart:
 mov ah,2
 int 74h
-db 0CBh
+push offset message
+call [print]
+retf
 
 message db 'Activation de la souris',0
+
+imports:
+        db "VIDEO.LIB::print",0
+print   dd 0
+        dw 0
+
 end start

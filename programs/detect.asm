@@ -6,54 +6,29 @@ smart
 org 0h
 
 include ..\include\pci.h
+include ..\include\mem.h
 
 start:
+header exe <,1,0,,,offset imports,,>
+
+realstart:
 call getpciinfos
-mov pciversion,bx
-mov nbbus,cl
-mov pcitype,al
+mov [pciversion],bx
+mov [nbbus],cl
+mov [pcitype],al
 
-mov si,offset msg
-mov ah,13
-int 47h
-mov ah,6
-int 47h
-
-mov si,offset pcivers
-mov ah,13
-int 47h
 xor edx,edx
-mov dx,bx
-xchg dl,dh
-mov cx,8
-mov ah,0Ah
-int 47h
-mov si,offset poin
-mov ah,13
-int 47h
-shr dx,8
-mov ah,0Ah
-int 47h
-mov si,offset pcivers2
-mov ah,13
-int 47h
-mov ah,6
-int 47h
-
-mov si,offset nbbuses
-mov ah,13
-int 47h
-xor edx,edx
-mov dl,nbbus
+mov dl,[nbbus]
 inc dl
-mov ah,08
-int 47h
-mov ah,06
-int 47h
+push edx
+mov dx,[pciversion]
+push edx
+mov dx,[pciversion]
+shr dx,8
+push edx
+push offset msg
+call [print]
 
-mov si,offset typesof
-mov ah,13
-int 47h
 mov di,offset types
 mov bx,7
 mov al,pcitype
@@ -61,89 +36,50 @@ vote:
 bt ax,bx
 jnc nowas
 shl bx,1
-mov si,[di+bx]
-mov ah,13
-int 47h
-mov si,offset spac
-mov ah,13
-int 47h
+push word ptr [di+bx]
+call [print]
 shr bx,1
 nowas:
 dec bx
 jns vote
-mov ah,6
-int 47h
+push offset return
+call [print]
 
 xor ax,ax
 xor cx,cx
-mov di,offset infos
+mov si,offset infos
 search:
+mov di,si
 call Getallfunctionsinfos
 jc stopthis
-
-mov bp,cx
-push cx di
-mov si,offset msg1
-mov ah,13
-int 47h
-mov cx,16
-xor edx,edx
-mov dx,[di+pci.device]
-mov ah,0Ah
-int 47h
-mov si,offset msg2
-mov ah,13
-int 47h
-mov dx,[di+pci.vendor]
-mov ah,0Ah
-int 47h
-mov si,offset msg4
-mov ah,13
-int 47h
-xor dx,dx
-mov dl,al
-mov cx,8
-mov ah,0Ah
-int 47h
-mov ah,07
-mov dl,'.'
-int 47h
-mov dx,bp
-xor dh,dh
-mov cx,8
-mov ah,0Ah
-int 47h
-mov ah,07
-mov dl,'.'
-int 47h
-mov dx,bp
-shr dx,8
-mov cx,8
-mov ah,0Ah
-int 47h
-mov ah,05h
-int 47h
-mov si,offset msg3
-mov ah,13
-int 47h
-mov cl,[di+pci.class]
-mov ch,[di+pci.subclass]
-mov di,offset temp
-call getpciclass
-mov si,di
-mov ah,13
-int 47h
-mov si,offset poin
-mov ah,13
-int 47h
-mov di,offset temp
+mov dh,[si+pci.subclass]
+mov dl,[si+pci.class]
+;sousclasse
+mov di,offset subclasse
 call getpcisubclass
-mov si,di
-mov ah,13
-int 47h
-mov ah,06
-int 47h
-pop di cx
+push di
+;classe
+mov di,offset classe
+call getpciclass
+push di
+;fonction
+mov dl,ch
+push edx
+;device
+mov dl,cl
+push edx
+;bus
+mov dl,al
+push edx
+;device
+mov dx,[si+pci.device]
+push edx
+;vendeur
+mov dx,[si+pci.vendor]
+push edx
+
+push offset msg2
+call [print]
 
 inc ch
 cmp ch,7
@@ -157,31 +93,24 @@ xor cl,cl
 inc al
 cmp al,16
 jbe search
-db 0CBh
+retf
 
-msg3 db ' Classe :',0
-msg1 db 'Peripherique :',0
-msg2 db ' Constructeur :',0 
-msg4 db ' iD :',0
-msg db 'COS2000 hardware detecteur V1.6',0
-pcivers  db 'BIOS PCI version ',0
-pcivers2 db ' a ete detecte !',0
-nbbuses db 'Nombre de bus : ',0
-typesof db 'Caracterisques PCI: ',0
-poin db '.',0
-virg db ', ',0
-spac db ' ',0
-temp db 128 dup (0)
+msg db "COS2000 hardware detecteur V1.6\lBIOS PCI version %hB.%hB a ete detecte !\lNombre de bus : %u\lCaracterisques PCI: ",0
+msg2 db "Peripherique :%hW Constructeur :%hW Id :%hB.%hB.%hB Classe :%0.%0\l",0
+return db "\l",0
+classe db 128 dup (0)
+subclasse db 128 dup (0)
 
 types 	dw	config1
 	dw	config2
-	dw    	poin
-	dw    	poin
+	dw    	null
+	dw    	null
 	dw	config3
 	dw	config4	
-	dw    	poin
-	dw	poin
-  
+	dw    	null
+	dw	null
+	
+null       db 'indefini',0
 config1    db 'Config Mechanism 1',0
 config2    db 'Config Mechanism 2',0
 config3    db 'Special Cycle Mechanism 1',0
@@ -194,12 +123,12 @@ infos db 256 dup (0)
 
 ;fonction 0-7  bus 0-255   device 0-31
 
-;renvoie en es:di de classe cl
+;renvoie en es:di de classe dl
 getpciclass:
-push ax cx si di ds es
+push ax cx dx si di ds es
 push es
 push di
-mov di,cx
+mov di,dx
 and di,0FFh
 shl di,1
 mov di,[offset classes+di]
@@ -217,27 +146,27 @@ pop ds
 pop di
 pop es
 rep movsb
-pop es ds di si cx ax 
+pop es ds di si dx cx ax
 ret
 
-;renvoie en es:di la sous-classe de ch et de classe cl
+;renvoie en es:di la sous-classe de dh et de classe dl
 getpcisubclass:
-push ax cx si di ds es
+push ax cx dx si di ds es
 push es
 push di
-mov di,cx
+mov di,dx
 and di,0FFh
 shl di,1
 mov di,[offset classesd+di]
-xchg ch,cl
-xor ch,ch
-cmp cx,80h
+xchg dh,dl
+xor dh,dh
+cmp dx,80h
 jne suiteac
 mov di,offset divers
 jmp found
 suiteac:
-shl cx,1
-add di,cx
+shl dx,1
+add di,dx
 mov di,[di]
 found:
 mov cx,0FFh
@@ -254,7 +183,7 @@ pop ds
 pop di
 pop es
 rep movsb
-pop es ds di si cx ax 
+pop es ds di si dx cx ax
 ret
 divers db 'divers',0
 
@@ -538,5 +467,10 @@ pci_type2_detect:
                  jne     endofdetectiontype2
 endofdetectiontype2:
                     ret
+                    
+imports:
+        db "VIDEO.LIB::print",0
+print   dd 0
+        dw 0
 
 end start
