@@ -9,7 +9,7 @@ include ..\include\mem.h
 include ..\include\divers.h
 
 start:
-maxfunc equ 7
+maxfunc equ 8
 
 	jmp	tsr			;Saute à la routine résidente
 nameed db 'MB'			;Nom drivers
@@ -61,6 +61,7 @@ tables dw MBinit		;Table qui contient les adresses de toutes les fonctions de VI
          dw MBGet
          dw MBFind
          dw MBChown
+         dw MBAlloc
          
 FirstMB dw 0
 
@@ -96,6 +97,7 @@ notforfree:
 MBFree:
 	push	bx es
 	mov	bx,gs
+	mov     ax,bx
 	dec     bx
 	dec     bx
 	mov	es,bx
@@ -107,6 +109,27 @@ MBFree:
 	mov	es:[MB.Reference],Free
 	mov	dword ptr es:[MB.Names],'eerF'
 	mov	dword ptr es:[MB.Names+4],0
+        mov	bx,cs:firstmb
+	dec	bx
+	dec	bx
+searchtofree:
+	mov     gs,bx
+	cmp	gs:[MB.Check],'NH'
+	jne	wasfree
+        inc     bx
+        inc     bx
+	add	bx,gs:[MB.Sizes]
+	cmp     word ptr gs:[MB.Sizes],0
+	je      wasfree
+	cmp     ax,gs:[MB.Reference]
+	jne     nottofree
+	mov	gs:[MB.IsResident],false
+	mov	gs:[MB.Reference],Free
+	mov	dword ptr gs:[MB.Names],'eerF'
+	mov	dword ptr gs:[MB.Names+4],0
+nottofree:
+        cmp	gs:[MB.IsNotLast],true
+	je	searchtofree	
 	pop	es bx
 	ret
 wasfree:
@@ -131,6 +154,20 @@ wasfree2:
 	pop	es bx
 	ret
 	
+;Alloue un bloc de CX caractere pour le process visé -> GS
+MBAlloc:
+        push    dx si bp ds
+        mov     bp,sp
+        mov     dx,ss:[bp+12]	
+	push    cs
+	pop     ds
+	mov     si,offset data
+	call    MBCreate
+	call    MBChown
+	pop     ds bp si dx
+	ret
+	
+data db '/Data',0
 
 ;Renvoie en GS le MB n° cx  carry quand terminé
 MBGet:
@@ -161,12 +198,7 @@ itsend:
 foundmcb:
 	clc
 	pop	dx bx
-	ret
-	
-	
-	
-	
-	
+	ret	
 
 ;==============================Affiche le nombre nb hexa en EDX de taille CX et couleur BL==============
 ShowHex:
