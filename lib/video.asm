@@ -43,6 +43,10 @@ exports:
          dw showstring
          db "showstring0",0
          dw showstring0
+         db "showintr",0
+         dw showintr
+         db "showintl",0
+         dw showintl
          dw 0
 
 ;================PRINT==============
@@ -128,7 +132,7 @@ print PROC FAR
         add     di,4
         push    word ptr [offset pointer+di+2]
         add     di,2
-        call    showfixint
+        call    showintl
         add     si,2
         jmp     @@strinaize0
 
@@ -458,7 +462,7 @@ ShowDate PROC FAR
 	and	dx,11111b
 	push    edx
 	push    2
-	call	showfixint
+	call	showintl
 	push    '/'
 	call	showchar
 	mov	dx,[date]
@@ -466,7 +470,7 @@ ShowDate PROC FAR
 	and	dx,111b
 	push    edx
 	push    2
-	call	showfixint
+	call	showintl
 	push	'/'
 	call	showchar
 	mov	dx,[date]
@@ -475,7 +479,7 @@ ShowDate PROC FAR
 	add	dx,1956
 	push    edx
 	push    4
-	call	showfixint
+	call	showintl
 	pop	edx
 	pop     bp
 	retf    taille
@@ -497,7 +501,7 @@ ShowTime PROC FAR
 	and	dx,11111b
 	push    edx
 	push    2
-	call	showfixint
+	call	showintl
 	push    ':'
 	call	showchar
 	mov	dx,[time]
@@ -505,7 +509,7 @@ ShowTime PROC FAR
 	and	dx,111111b
 	push    edx
 	push    2
-	call	showfixint
+	call	showintl
 	push    ':'
 	call	showchar
 	mov	dx,[time]
@@ -513,7 +517,7 @@ ShowTime PROC FAR
 	shl	dx,1
 	push    edx
 	push    2
-	call	showfixint
+	call	showintl
 	pop	edx
 	pop     bp
 	retf    taille
@@ -744,12 +748,12 @@ ShowInt PROC FAR
 showbuffer 	db 50 dup (0FFh)
 ShowInt ENDP
 
-;==========SHOWFIXINT===========
-;Affiche un entier %0 aprés le curseur de taille %1
-;-> %0 un entier
+;==========SHOWINTL===========
+;Affiche un entier %0 aprés le curseur de taille %1 caractère centré a gauche
+;-> %0 un entier  % taille en caractères
 ;<-
-;===========================================
-ShowfixInt PROC FAR
+;===============================
+ShowIntL PROC FAR
         ARG     sizeofint:word,integer:dword=taille
         push    bp
        	mov     bp,sp
@@ -791,13 +795,13 @@ ShowfixInt PROC FAR
       	pop  	di esi edx cx bx eax
       	pop     bp
 	retf    taille
-ShowfixInt ENDP
+showintl ENDP
 
 ;==========SHOWINTR===========
-;Affiche un entier %0 aprés le curseur de taille %1
-;-> %0 %1
+;Affiche un entier %0 aprés le curseur de taille %1 caractère centré a droite
+;-> %0 un entier  % taille en caractères
 ;<-
-;=============================
+;===============================
 ShowIntR PROC FAR
         ARG     sizeofint:word,integer:dword=taille
         push    bp
@@ -846,7 +850,7 @@ ShowIntR ENDP
 ;Affiche un entier %0 de taille %1 aprés le curseur
 ;-> %0 un entier, %1 la taille
 ;<-
-;==============================================
+;===============================
 Showsigned PROC FAR
         ARG     sizeofint:word,integer:dword=taille
         push    bp
