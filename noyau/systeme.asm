@@ -153,6 +153,9 @@ suites:
 	call 	nextline
 	jnz 	suiteloading
 	
+	;initialisation des MCBs
+	mov     ah,0
+	int     49h
 	
 	mov	si,offset fini
 	mov	bl,7
@@ -164,7 +167,7 @@ suites:
 	call 	projfile
 	jc	nopromptload
         push    es
-        push    di
+        push    0100h
         push    7202h
         popf
 	push	es
@@ -802,9 +805,9 @@ nocarry:
 	pop 	si dx bx ax
 	ret
 
-;============projfile (Fonction 4)===============
-;Charge le fichier ds:si sur un bloc mémoire->ecx taille es:di
-;-> AH=4
+;============projfile (Fonction 17)===============
+;Charge le fichier ds:si sur un bloc mémoire -> ecx taille -> es bloc
+;-> AH=17
 ;<- Flag Carry si erreur
 ;=====================================================
 projfile:
