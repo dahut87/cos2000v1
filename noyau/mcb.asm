@@ -9,7 +9,7 @@ include ..\include\mem.h
 include ..\include\divers.h
 
 start:
-maxfunc equ 9
+maxfunc equ 10
 
 	jmp	tsr			;Saute à la routine résidente
 nameed db 'MB'			;Nom drivers
@@ -63,6 +63,7 @@ tables dw MBinit		;Table qui contient les adresses de toutes les fonctions de VI
          dw MBChown
          dw MBAlloc
          dw MBclean
+         dw MBfindsb
          
 FirstMB dw 0
 
@@ -191,12 +192,6 @@ nottofree:
 	pop	es bx ax
 	ret
 wasfree:
-pushad
- mov ah,0Dh
- mov cx,16
- mov dx,1999h
- int 47h
-popad
 	stc
 	pop	es bx ax
 	ret
@@ -484,11 +479,61 @@ itsend2:
 	pop	di si bx ax
 	ret
 foundmcb2:
+        mov     bx,gs
+        inc     bx
+        inc     bx
+        mov     gs,bx
 	clc
 	pop	di si bx ax
 	ret
 		
-
+;Renvoie en GS le sous mcb qui correspond a ds:si et qui appartien a dx
+MBFindsb:
+        push    ax bx si di
+        mov	bx,cs:firstmb
+	dec	bx
+	dec	bx
+	mov     di,MB.Names
+search2:
+	mov     gs,bx
+	cmp	gs:[MB.Check],'NH'
+	jne	itsend3
+        inc     bx
+        inc     bx
+	add	bx,gs:[MB.Sizes]
+	cmp     word ptr gs:[MB.Sizes],0
+	je      itsend3
+	push    si di
+cmpnames2:
+        mov     al,gs:[di]
+        cmp     al,ds:[si]
+        jne     ok2
+        cmp     al,0
+        je      ok2
+        inc     si
+        inc     di
+        jmp     cmpnames2
+ok2:
+        pop     di si
+	jne     notfoundmcb2
+	cmp     gs:[MB.Reference],dx
+	je      foundmcb3
+notfoundmcb2:
+	cmp	gs:[MB.IsNotLast],true
+	je	search2
+itsend3:
+	stc
+	pop	di si bx ax
+	ret
+foundmcb3:
+        mov     bx,gs
+        inc     bx
+        inc     bx
+        mov     gs,bx
+	clc
+	pop	di si bx ax
+	ret
+	
 ;Creér un bloc de nom ds:si de taille cx (octets) -> n°segment dans GS
 MBCreate:
         push    bp
