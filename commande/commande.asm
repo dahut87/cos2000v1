@@ -396,7 +396,7 @@ int 47h
 	ret
 errorrefreshing db 'Impossible de lire le support',0
 
-extcom db '.EXE',0
+extcom db '.COM',0
 
 Code_Mem:
 mov si,offset msgs
