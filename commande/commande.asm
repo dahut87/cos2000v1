@@ -10,32 +10,11 @@ include ..\include\mem.h
 include ..\include\divers.h
 
 start:
-	push    cs
-        push    cs
-        push    cs
-        push    cs
-        pop     ds
-        pop     es
-        pop     fs
-        pop     gs
-     mov ah,21
-     mov cl,7
-     int 47h
-	mov	ah,3
-	int	48h
-	mov	ax,0002
-	int	47h
-        mov     ah,2
-        int     47h
-        mov     ah,6
-        int     47h
-        mov     ah,6
-        int     47h
-        mov     ah,42
-        int     47h
-        mov     ah,13
-        mov     si,offset msg
-        int     47h
+header exe <,1,0,,,offset imports,,>
+
+realstart:
+        push    offset msginit
+        call    [print]
         xor     bp,bp
         mov     dl,' '
         call    setdelimiter0
@@ -48,11 +27,8 @@ noret:
 	mov	ah,16
 	mov	di,offset dir
 	int	48h
-	mov	si,di    
-        mov     ah,13
-	int	47h
-        mov     si,offset prompt
-        int     47h
+        push    offset prompt
+        call    [print]
         mov     di,offset buffer
 waitchar:
         mov     ax,0
@@ -62,9 +38,8 @@ waitchar:
         jne     norr
         cmp     bp,0
         je      waitchar
-        mov     ah,13
-        mov     si,cs:[bp-8]
-        int     47h
+        push    word ptr cs:[bp-8]
+        call    [print]
         push    cs
         pop     es   
         call    copy0
@@ -84,14 +59,13 @@ norr:
         je      waitchar
         mov     [di],al
         inc     di
-        mov     dl,al  
-        mov     ah,7
-        int     47h
+        push    ax
+        call    [showchar]
         jmp     waitchar
 escape:
         cmp     di,offset buffer
         je      waitchar
-        mov     ah,18h
+        mov     ah,24
         int     47h
         mov     dx,offset buffer
         mov     cx,di
@@ -99,20 +73,21 @@ escape:
         js      waitchar
         je      waitchar
         sub     bh,cl
-        mov     ah,19h
+        mov     ah,25
         int     47h
         mov     di,offset buffer
         mov     byte ptr [di],0
 backspace:
         cmp     di,offset buffer
         je      waitchar
-        mov     ah,18h
+        mov     ah,24
         int     47h
         dec     bh
-        mov     dl,' '
-        mov     ah,0Eh
+        mov     ah,25
         int     47h
-        mov     ah,19h
+        push    ' '
+        call    [showchar]
+        mov     ah,25
         int     47h
         dec     di
         mov     byte ptr [di],0
@@ -186,27 +161,23 @@ noaddext:
         xor     bp,bp
         jmp     replay
 reallyerror:
-        mov     ah,13
-        mov     si,offset Error_Syntax
-        int     47h
-        mov     ah,13
-        mov     si,cs:[bp-8]
-        int     47h
+        push    offset Error_Syntax
+        call    [print]
+        push    word ptr cs:[bp-8]
+        call    [print]
         jmp     replay
 errorprec:
-        mov     ah,13
-        mov     si,offset derror
-        int     47h
+        push    offset derror
+        call    [print]
         jmp     replay
         
 Code_Exit:
         pop     ax
-        db      0CBh
+        retf
         
 Code_Version:
-        mov     ah,13
-        mov     si,offset Version_Text
-        int     47h
+        push    offset Version_Text
+        call    [print]
         ret
         
 Version_Text db 'Cos 2000 version 1.2Fr par Nico',0
@@ -228,8 +199,8 @@ showalls:
         add     bx,8
         cmp     si,0
         je      endoff
-        mov     ah,13
-        int     47h
+        push    si
+        call    [print]
         mov     ah,6
         int     47h
         jmp     showalls
@@ -247,238 +218,138 @@ Code_Mode:
         int     47h
         ret
 
-present db 'Le volume insere est nomme ',0
-present2 db ', Numero de serie : ',0
+present db 'Le volume insere est nomme %0, Numero de serie : %hD\l\l',0
 nomdisque db 13 dup (0)
 Code_Dir:
-mov si,offset present
-mov ah,13
-int 47h
+mov ah,12
+int 48h
+push edx
 mov ah,11
 mov di,offset nomdisque
 int 48h
-mov si,di
-mov ah,13
-int 47h
-mov si,offset present2
-mov ah,13
-int 47h
-mov ah,12
-int 48h
-mov ah,10
-mov cx,32
-int 47h
-mov ah,6
-int 47h
-mov ah,6
-int 47h
-xor ebp,ebp
+push di
+push offset present
+call [print]
+xor bp,bp
 mov di,offset bufferentry
-mov si,di
 mov ah,7
 int 48h
 jc nofiles
 go:
-mov ah,46
-int 47h
-mov ah,05
-int 47h
-int 47h
-int 47h
-mov ah,44
-mov dx,[si+Entries.FileDateCrea]
-int 47h
-mov ah,05
-int 47h
-int 47h
-int 47h
-mov ah,45
-mov dx,[si+Entries.FileTimeCrea]
-int 47h
-mov ah,05
-int 47h
-int 47h
-int 47h
-mov ah,44
-mov dx,[si+Entries.FileDate]
-int 47h
-mov ah,05
-int 47h
-int 47h
-int 47h
-mov ah,45
-mov dx,[si+Entries.FileTime]
-int 47h
-mov ah,05
-int 47h
-int 47h
-int 47h
-mov ah,48
-mov edx,[si+Entries.FileSize]
-int 47h
-mov ah,05
-int 47h
-int 47h
-int 47h
-mov ah,47
-mov dl,[si+Entries.FileAttr]
-int 47h
-mov ah,6
-int 47h
+push word ptr [di+Entries.FileAttr]
+push dword ptr [di+Entries.FileSize]
+push word ptr [di+Entries.FileTime]
+push word ptr [di+Entries.FileDate]
+push word ptr [di+Entries.FileTimeCrea]
+push word ptr [di+Entries.FileDateCrea]
+push di
+push offset line
+call [print]
 inc bp
 mov ah,8
 int 48h
 jnc go
 nofiles:
-mov edx,ebp
-mov ah,6
-int 47h
-mov ah,8
-int 47h
-mov si,offset filess
-mov ah,13
-int 47h
+push ebp
+push offset filess
+call [print]
 ret
 bufferentry db 32 dup (0)
-filess db ' Fichier(s) au total',0
+line db '\c07%n   %d   %t   %d   %t   %z   %a\l',0
+filess db '\l\l%u Fichier(s) au total\l',0
 
 changing db 'Changement de repertoire vers ',0
 code_cd:
 	mov     cx,0
         call    gettypeditem0
-	push	si
-	mov	si,offset changing
-	mov	ah,13
-	int	47h
-	pop	si
-	int	47h
-	mov 	ah,6
-	int 	47h
+	push    offset changing
+        call    [print]	
 	mov	si,di
 	mov	ah,13
 	int	48h
 	jnc	okchange
-	mov	si,offset errorchanging
-	mov	ah,13
-	int	47h
+	push    offset errorchanging
+        call    [print]	
 okchange:
 	ret
-errorchanging db 'Impossible d''atteindre ce dossier',0
+errorchanging db '\c04Impossible d''atteindre ce dossier',0
 
 code_refresh:
 	mov 	ah,3
 	int 	48h
 	jnc	okrefresh
-	mov	si,offset errorrefreshing
-	mov	ah,13
-	int	47h
+	push offset errorrefreshing
+      call [print]
 ret
 okrefresh:
-mov si,offset present
-mov ah,13
-int 47h
+mov ah,12
+int 48h
+push edx
 mov ah,11
 mov di,offset nomdisque
 int 48h
-mov si,di
-mov ah,13
-int 47h
-mov si,offset present2
-mov ah,13
-int 47h
-mov ah,12
-int 48h
-mov ah,10
-mov cx,32
-int 47h
-mov ah,6
-int 47h
-	ret
-errorrefreshing db 'Impossible de lire le support',0
+push di
+push offset present
+call [print]
+ret
+errorrefreshing db '\c04Impossible de lire le support',0
 
-extcom db '.CE ',0
+extcom db '.CE',0
 
 Code_Mem:
-mov si,offset msgs
-mov ah,13
-int 47h
-mov ah,6
-int 47h
-mov ah,6
-int 47h
-mov si,offset menu
-mov ah,13
-int 47h
-mov ah,6
-int 47h
-mov ah,18h
-int 47h
+push offset msg
+call [print]
 xor cx,cx
 listmcb:
 mov ah,4
 int 49h
 jc fino
 inc cx
-mov ah,18h
-int 47h
-push gs
-pop ds
-mov bh,0
-mov si,MB.Names
-mov ah,14h
-int 47h
-mov bh,15
-xor edx,edx
-mov dx,ds:[MB.Sizes]
-shl edx,4
-mov ah,0Fh
-int 47h
-mov bh,24
-cmp ds:[MB.IsResident],true
-push cs
-pop ds
-jne notresident
-mov si,offset resident
-mov ah,14h
-int 47h
-jmp suitelistmcb
-notresident:
-mov si,offset nonresident
-mov ah,14h
-int 47h
-suitelistmcb:
-mov bh,30
-cmp gs:[MB.Reference],0
-je next
-cmp gs:[MB.Reference],1000h
-jb next
-mov ax,gs:[MB.Reference]
-dec ax
-dec ax
-mov ds,ax
-mov si,MB.Names
-mov ah,14h
-int 47h
-next:
-mov bh,46
-xor edx,edx
+;placement mémoire
 mov dx,gs
 inc dx
 inc dx
-push cx
-mov cx,16
-mov ah,11h
-int 47h
-mov ah,6h
-int 47h
-pop cx
+push edx
+;parent
+cmp gs:[MB.Reference],0
+je next
+mov dx,gs:[MB.Reference]
+dec dx
+dec dx
+push dx
+push offset MB.Names
+jmp suitemn
+next:
+push cs
+push offset none
+suitemn:
+;Resident
+cmp gs:[MB.IsResident],true
+jne notresident
+push offset resident
+jmp suitelistmcb
+notresident:
+push offset nonresident
+suitelistmcb:
+;taille memoire
+xor edx,edx
+mov dx,gs:[MB.Sizes]
+shl edx,4
+push 6
+push edx
+;nom
+push gs
+push offset MB.Names
+push offset line2
+call [print]
 jmp listmcb
 fino:
 ret
-resident db 'oui',0
-nonresident db 'non',0
-msgs db 'Plan de la memoire',0
-menu db 'Nom            Taille   Res   Parent          Mem',0
+resident       db "oui",0
+nonresident    db "non",0
+line2           db "%0P\h15%w\h24%0\h30%0P\h46%hW\l",0
+msg            db "Plan de la memoire\l\lNom            Taille   Res   Parent          Mem\l",0
+none           db ".",0
 
 
 ;converti le jeux scancode/ascii en fr ax->ax
@@ -618,10 +489,10 @@ Help_Dir     db 0
 Help_refresh     db 0   
 Help_cd     db 0
 Help_Mem db 0
-derror        db 'Erreur de Syntaxe !',0
-Error_Syntax  db 'La commande ou l''executable n''existe pas ! F1 pour ',0
-prompt        db '>',0
-msg           db 'Interpreteur de commande COS V1.9',0
+derror        db '\c04Erreur de Syntaxe !',0
+Error_Syntax  db '\c04La commande ou l''executable n''existe pas ! F1 pour ',0
+prompt        db '\c07>',0
+msginit           db '\m02\e\c07\l\lInterpreteur de commande COS V1.9',0
 
         include str0.asm
 
@@ -629,5 +500,13 @@ dir           db 32 dup (0)
 buffer        db 256 dup (0)
 buffer2       db 256 dup (0)
 
+imports:
+         db "VIDEO.LIB::print",0
+print    dd 0
+         db "VIDEO.LIB::showhex",0
+showhex  dd 0
+         db "VIDEO.LIB::showchar",0
+showchar dd 0
+         dw 0
 
 end start
