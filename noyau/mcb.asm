@@ -78,9 +78,9 @@ MBloadfuncs:
        push    ax bx ecx dx si di ds es gs
        push    gs
        pop     ds
-       cmp     word ptr ds:[102h],"EC"
+       cmp     word ptr ds:[exe.Checks],"EC"
        jne     notloaded
-       mov     si,ds:[100h+exe.import+2]
+       mov     si,ds:[exe.import]
 loadfuncs:
        cmp     word ptr [si],0
        je      endofloading
@@ -135,9 +135,9 @@ findend:
         call    MBfind
         mov     byte ptr [bx],':'
         jc      notfoundattallthesb
-        cmp     word ptr gs:[102h],"EC"
+        cmp     word ptr gs:[exe.checks],"EC"
         jne     notfoundattallthesb
-        mov     di,gs:[100h+exe.export+2]
+        mov     di,gs:[exe.export]
         inc     bx
         inc     bx
 functions:
