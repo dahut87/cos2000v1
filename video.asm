@@ -1018,7 +1018,7 @@ rep movsd
 pop cx eax
 
 loadbmp:
-push ax bx cx dx bp ds
+push ax bx cx dx ds
 mov ax,ds:[18]
 mov si,ax
 shr ax,2
@@ -1066,7 +1066,7 @@ dec dx
 inc bl
 dec cl
 jnz palettemake
-pop ds bp dx cx bx ax  
+pop ds dx cx bx ax  
 ret
 sizeh dw 0
 sizev dw 0
