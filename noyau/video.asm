@@ -100,6 +100,7 @@ tables dw setvideomode		;Table qui contient les adresses de toutes les fonctions
 	 dw showname
 	 dw showattr
 	 dw showsize
+	 dw getchar
 
 ;================================Table des modes videos (64 BYTES) ============================================
 ;40*25 16 couleurs
@@ -226,7 +227,7 @@ Attribs 	equ 03C0h
 graphics    	equ 03CEh
 statut 		equ 03DAh
 
-maxfunc equ 48
+maxfunc equ 39h
 maxmode	equ 9
 planesize	equ 64000
 ;============================================Fonctions de l'int VIDEO===========================================
@@ -1274,6 +1275,20 @@ getxy:
 ;=====================================
 setxy:
 	push 	ax bx cx dx
+;         	xor ax,ax
+;	int 16h
+;        mov     cl,cs:lines
+;        dec     cl
+;	sub     cl,bl
+;	neg     cl
+;	js      zero
+;	xor     ch,ch
+;	inc     cl
+;       jmp     nozero
+;zero:
+;        mov     cx,0
+;nozero:
+;	call    scrolldown
 	mov 	cs:x,bh
 	mov 	cs:y,bl
 	mov 	al,bl
@@ -1298,6 +1313,7 @@ setxy:
 oktext:
 	mov 	ax,0B800h
 	mov 	es,ax
+	call   setcursor
 endofsetxy:
 	pop 	dx cx bx ax
 	ret
@@ -1507,12 +1523,59 @@ waitr:
 	pop 	dx ax
 	ret
 
+;Renvoie le caractère sur le curseur en dl	
+getchar:
+        push    ax di es
+        mov	ax,0B800h
+	mov	es,ax
+	mov	di,cs:xy
+	mov	dl,es:[di]
+        pop     es di ax
+        ret
+
 ;Ecrit le caractère ASCII CL attribut CH aprés le curseur, en le mettant à jours
 charout:
 	push 	ax bx cx dx di es
 	cmp	byte ptr cs:graphics,1
 	jne	textaccess
-	mov	dx,cx
+        call    emulatechar
+        jmp     adjusttext
+textaccess:
+	mov	ax,0B800h
+	mov	es,ax
+	mov	di,cs:xy
+	mov	es:[di],cx
+	add	cs:xy,2
+adjusttext:
+        inc     cs:x
+	mov	  cl,cs:columns
+	cmp	  cs:x,cl
+	jb	  noadjusted
+        call    showline
+noadjusted:
+        call    setcursor
+	pop 	es di dx cx bx ax
+	ret
+
+setcursor:
+          push ax cx dx
+	mov 	dx,CCRT
+	mov 	al,0Eh
+	mov 	cx,cs:xy
+	shr     cx,1
+	mov 	ah,ch
+	out 	dx,ax
+	mov 	ah,cl
+	inc	al
+	out 	dx,ax
+	pop dx cx ax
+	ret
+
+
+;Ecrit le caractère ASCII CL attribut CH aprés le curseur graphique, en le mettant à jours en mode graphique
+emulatechar:
+        push    ax bx cx dx di
+        mov	dx,cx
 	mov	di,dx
 	and 	di,11111111b
 	shl 	di,3
@@ -1548,33 +1611,12 @@ transparent:
 	mov	cx,cs:linesize
 	shl	cx,2
 	cmp	cs:xg,cx
-	jb	adjusttext
+	jb	ended
 	mov	cs:xg,0
 	add	cs:yg,8
-	jmp	adjusttext
-textaccess:
-	mov	ax,0B800h
-	mov	es,ax
-	mov	di,cs:xy
-	mov	es:[di],cx
-	add	cs:xy,2
-adjusttext:
-      inc     cs:x
-	mov	  cl,cs:columns
-	cmp	  cs:x,cl
-	jb	  noadjusted
-      call    showline
-noadjusted:
-	;mov 	dx,3D4h
-	;mov 	al,0Eh
-	;mov 	di,offset xy
-	;mov 	ah,cs:[di]
-	;out 	dx,ax
-	;mov 	ah,cs:[di+1]
-	;dec 	al
-	;out 	dx,ax
-	pop 	es di dx cx bx ax
-	ret
+ended:
+        pop     di dx cx bx ax
+        ret
 
 
 
