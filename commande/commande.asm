@@ -210,7 +210,7 @@ Code_Version:
         int     47h
         ret
         
-Version_Text db 'Cos 2000 version 3.0.2Fr par Nico',0
+Version_Text db 'Cos 2000 version 1.2Fr par Nico',0
         
 Code_Cls:
         mov     ah,2
@@ -622,7 +622,7 @@ Help_Mem db 0
 derror        db 'Erreur de Syntaxe !',0
 Error_Syntax  db 'La commande ou l''executable n''existe pas ! F1 pour ',0
 prompt        db '>',0
-msg           db 'Interpreteur de commande COS V1.1',0
+msg           db 'Interpreteur de commande COS V1.8',0
 
         include str0.asm
 
