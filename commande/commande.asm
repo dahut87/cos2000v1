@@ -6,6 +6,8 @@ smart
 org 0100h
 
 include ..\include\fat.h
+include ..\include\mem.h
+include ..\include\divers.h
 
 start:
 	push    cs
@@ -16,9 +18,10 @@ start:
         pop     es
         pop     fs
         pop     gs
-	  mov ah,21
+     mov ah,21
      mov cl,7
      int 47h
+
 	mov	ah,3
 	int	48h
 	mov	ax,0002
@@ -71,6 +74,8 @@ waitchar:
 norr:
         cmp     al,0Dh
         je      entere
+        cmp     al,' '
+        jb      waitchar
         cmp     di,offset buffer+256
         je      waitchar
         mov     [di],al
@@ -147,10 +152,6 @@ noaddext:
         xor     bp,bp
         jmp     replay
 reallyerror:
-        pop     ax
-        pop     ax
-        pop     ax
-        pop     ax
         mov     ah,13
         mov     si,offset Error_Syntax
         int     47h
@@ -362,6 +363,103 @@ int 47h
 errorrefreshing db 'Impossible de lire le support',0
 
 extcom db '.EXE',0
+
+Code_Mem:
+mov si,offset msgs
+mov ah,13
+int 47h
+mov ah,6
+int 47h
+mov si,offset menu
+mov ah,13
+int 47h
+mov ah,18h
+int 47h
+xor cx,cx
+listmcb:
+mov ah,4
+int 49h
+jc fino
+inc cx
+inc bl
+push gs
+pop ds
+mov bh,0
+mov si,MB.Names
+mov ah,14h
+int 47h
+mov bh,15
+xor edx,edx
+mov dx,ds:[MB.Sizes]
+shl edx,4
+mov ah,0Fh
+int 47h
+mov bh,24
+cmp ds:[MB.IsResident],true
+push cs
+pop ds
+jne notresident
+mov si,offset resident
+mov ah,14h
+int 47h
+jmp suitelistmcb
+notresident:
+mov si,offset nonresident
+mov ah,14h
+int 47h
+suitelistmcb:
+mov bh,30
+cmp gs:[MB.Reference],0
+je next
+cmp gs:[MB.Reference],1000h
+jb next
+mov ax,gs:[MB.Reference]
+dec ax
+dec ax
+mov ds,ax
+mov si,MB.Names
+mov ah,14h
+int 47h
+next:
+mov bh,46
+xor edx,edx
+mov dx,gs
+inc dx
+inc dx
+push cx
+mov cx,16
+mov ah,11h
+int 47h
+pop cx
+jmp listmcb
+fino:
+ret
+resident db 'oui',0
+nonresident db 'non',0
+msgs db 'Plan de la mémoire',0
+menu db 'Nom            Taille   Res   Parent          Mem',0
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         
 commands      dw Str_Exit   ,Code_Exit   ,Syn_Exit   ,Help_Exit
               dw Str_Version,Code_Version,Syn_Version,Help_Version
@@ -372,6 +470,7 @@ commands      dw Str_Exit   ,Code_Exit   ,Syn_Exit   ,Help_Exit
               dw Str_Dir   ,Code_Dir   ,Syn_Dir   ,Help_Dir
               dw Str_refresh   ,Code_refresh   ,Syn_refresh   ,Help_refresh
 	      dw Str_cd   ,Code_cd   ,Syn_cd   ,Help_cd
+	      dw Str_Mem   ,Code_Mem   ,Syn_Mem   ,Help_Mem
               dw 0
       
 Str_Exit      db 'QUIT',0
@@ -383,6 +482,7 @@ Str_Mode      db 'MODE',0
 Str_Dir		db 'VOIR',0
 Str_refresh 	db 'LIRE',0
 Str_cd 		db 'CH',0
+Str_Mem 	db 'MEM',0
 Syn_Exit      db 0
 Syn_Version   db 0
 Syn_Cls       db 0
@@ -392,6 +492,7 @@ Syn_Mode      db 'FFH',0
 Syn_Dir   db 0
 Syn_refresh   db 0
 Syn_cd   db '@',0
+Syn_Mem db 0
 Help_Exit     db 0
 Help_Version  db 0
 Help_Cls      db 0
@@ -400,7 +501,8 @@ Help_Command  db 0
 Help_Mode     db 0
 Help_Dir     db 0  
 Help_refresh     db 0   
-Help_cd     db 0                              
+Help_cd     db 0
+Help_Mem db 0
 derror        db 'Erreur de Syntaxe !',0
 Error_Syntax  db 'La commande ou l''executable n''existe pas ! F1 pour ',0
 prompt        db '>',0
@@ -408,9 +510,9 @@ msg           db 'Interpreteur de commande COS V1.1',0
 
         include str0.asm
 
-dir           equ $
-buffer        equ $+128
-buffer2       equ $+128+512
+dir           db 32 dup (0)
+buffer        db 256 dup (0)
+buffer2       db 256 dup (0)
 
 
 end start
