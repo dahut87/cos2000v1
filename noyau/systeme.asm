@@ -6,6 +6,7 @@ smart
 org 0100h
 
 include ..\include\fat.h
+include ..\include\mem.h
 
 start:
 push cs
@@ -70,11 +71,15 @@ noone:
 	pop 	es
 	pop 	fs
 	pop 	gs
-
+	mov	si,offset premice2
+	mov	bl,7
+	call	showstr
+	call    MBinit
+	jc      nomem1
 	call 	InitDrive
 
 	mov	si,offset premice
-	mov	bx,7
+	mov	bl,7
 	call	showstr
 	mov	si,offset next
 	call	showstr
@@ -89,23 +94,25 @@ noone:
 	jc 	noconfread
 
 	mov	si,offset debut
-	mov	bx,7
+	mov	bl,7
 	call	showstr
-	mov	bx,500h
 	xor	cx,cx
 	mov  	si,offset loadinglist
 suiteloading:
 	call 	readline
 	jc	noconfload
-	push	bx si
+	mov     cx,19000
+	call    MBCreate
+	jc      nomem2
+	push	si
 	mov	bl,7
 	mov	si,offset next
 	call	showstr
-	pop	si bx
+	pop	si
 	call	showstr
-	mov	dx,bx
-	push	bx si
-	mov	bx,7
+	mov	dx,gs
+	push	si
+	mov	bl,7
 	mov	si,offset address
 	call	showstr
 	mov	cx,16
@@ -136,7 +143,7 @@ haveirq:
 	mov	si,offset irqsend
 	call	showstr
 noadd:
-	pop	si bx
+	pop	si
 	cmp	bp,1
 	jne	install
 	call	replacehandler
@@ -145,7 +152,6 @@ install:
 	call 	installhandler
 suites:	
 	jc 	nohandlerload
-	add	bx,0F00h
 	inc	cx
 	call 	nextline
 	jnz 	suiteloading
@@ -191,6 +197,19 @@ noconfread:
 	mov	bl,4
 	call	showstr
 	jmp	erroron
+	
+nomem1:
+	mov	si,offset premice2e
+	mov	bl,4
+	call	showstr
+	jmp	erroron
+	
+nomem2:
+	mov	si,offset premice3e
+	mov	bl,4
+	call	showstr
+	jmp	erroron
+
 
 noconfload:
 	mov	di,si
@@ -235,7 +254,9 @@ confe db 0Dh,0Ah,'Erreur dans le fichier de configuration a la ligne ',0
 confee db 0Dh,0Ah,'Erreur de lecture du fichier de configuration',0
 confe2 db ' caractere ',0
 erreur 	db 0Dh,0Ah,'Pressez une touche pour redemarrer...',0
-
+premice2 db 0Dh,0Ah,'Initialisation de la memoire',0
+premice2e db 0Dh,0Ah,'Erreur lors de l''initialisation memoire',0
+premice3e db 0Dh,0Ah,'Erreur lors de la reservation memoire',0
 ;==positionne si sur l'entrée suivante de la loading liste jusqu'a equal
 nextline:
 push ax cx di
@@ -334,14 +355,23 @@ ShowHex:
         neg     cx
         shl     edx,cl
         shr     di,2
-        mov 	ah,0Eh
+        mov 	ah,09h
         and 	bx,1111b
 Hexaize:
         rol     edx,4
         mov     si,dx
 	and	si,1111b
 	mov	al,[si+offset tab]
-        int 	10h
+	push    cx
+	mov     cx,1
+        cmp     al,32
+        jb       control2
+        mov         ah,09h
+        int       10h
+control2:
+        mov    ah,0Eh
+        int    10h
+        pop     cx
         dec     di
         jnz     Hexaize
         pop     di si edx cx bx ax
@@ -350,26 +380,200 @@ Tab db '0123456789ABCDEF'
 
 ;==============================Affiche une chaine DS:SI de couleur BL==============
 showstr:
-        push ax bx si
+        push ax bx cx si
+        mov cx,1
 again:
         lodsb
         or al,al
         jz fin
+        and bx,0111b
+        cmp al,32
+        jb  control
+        mov ah,09h
+        int 10h
+control:
         mov ah,0Eh
-        and bx,1111b
         int 10h
         jmp again
         fin:
-        pop si bx ax
+        pop si cx bx ax
         ret
+;================================================
+;Routine de gestion de la mémoire
+;================================================
+
+include ..\include\mem.h
+
+FirstMB dw 0
+
+;vide GS  pour 200 octets (pour test)
+erroresu:
+pushad
+pushf
+mov si,offset poppp
+mov bx,7
+call Showstr
+mov dx,es
+mov cx,16
+mov bx,7
+call ShowHex
+mov si,offset poppp
+mov bx,7
+call Showstr
+xor si,si
+loopererr:
+mov dx,es:[si]
+mov cx,8
+mov bx,7
+call ShowHex
+inc si
+cmp si,200
+jb loopererr
+mov si,offset poppp
+mov bx,7
+call Showstr
+xor ax,ax
+int 16h
+popf
+popad
+ret
+
+poppp db 0Ah,0Dh,'*********',0Ah,0Dh,0
+
+
+;Initialise les blocs de mémoire en prenant GS pour segment de base
+MBinit:
+	push	ax cx es
+	mov	ax,memorystart
+	mov	cs:Firstmb,ax       	
+        mov	cx,0A000h
+	sub	cx,ax
+	dec	ax
+	dec	ax
+	mov	es,ax
+	mov     es:[MB.Reference],Free
+	mov     es:[MB.Sizes],cx
+	mov     es:[MB.Check],'NH'
+	mov	dword ptr es:[MB.Names],'eerF'	
+	mov	dword ptr es:[MB.Names+4],0
+	mov	es:[MB.IsNotLast],False
+	clc
+	pop	es cx ax
+	ret
+notforfree:
+	stc
+	pop	es cx ax
+	ret
+
+;Libère le bloc de mémoire GS
+MBFree:
+	push	bx es
+	mov	bx,gs
+	dec     bx
+	dec     bx
+	mov	es,bx
+	cmp	es:[MB.Check],'NH'
+	je	notforfree
+	mov	es:[MB.IsResident],0
+	mov	es:[MB.Reference],Free
+	mov	dword ptr es:[MB.Names],'eerF'
+	mov	dword ptr es:[MB.Names+4],0
+	pop	es bx
+	ret	
+
+;Creér un bloc de nom ds:si de taille cx (octets) -> n°segment dans GS
+MBCreate:
+	push	ax bx cx dx si di es	
+	shr	cx,4
+	inc	cx
+	mov	bx,cs:firstmb
+	dec	bx
+	dec	bx
+	mov     dl,1
+searchfree:
+	cmp	dl,False
+	je	wasntgood
+	mov   es,bx
+	cmp	es:[MB.Check],'NH'
+	jne	wasntgood
+	cmp	es:[MB.IsNotLast],True
+	sete  dl
+	cmp	es:[MB.Reference],Free
+	jne	notsogood
+	mov	ax,es:[MB.Sizes]
+	cmp	cx,ax
+	ja	notsogood
+        mov   word ptr es:[MB.Check],'NH'
+	mov	es:[MB.IsNotLast],True
+	mov	es:[MB.Reference],cs
+	mov	es:[MB.IsResident],False
+	mov	es:[MB.Sizes],cx
+	mov     di,MB.Names
+	push	ax cx
+	mov 	cx,32
+loops:
+	mov	dh,[si]
+	inc 	si
+	dec	cx
+	jz	endofloops
+	cmp	dh,0
+	je 	endofloops
+	mov	es:[di],dh
+	inc	di
+	jmp	loops
+endofloops:
+	inc	cx
+	mov	al,0
+	rep	stosb
+	pop	cx ax
+	sub	ax,cx
+	dec	ax
+	dec	ax
+	;js	nofree
+	inc     bx
+	inc     bx
+	mov	gs,bx
+	add	bx,cx
+	mov	es,bx	
+	mov	es:[MB.IsNotLast],dl
+	mov	es:[MB.IsResident],False
+	mov	es:[MB.Reference],Free
+	mov	es:[MB.Sizes],ax
+	mov	dword ptr es:[MB.Names],'eerF'
+	mov	dword ptr es:[MB.Names+4],0
+	mov	es:[MB.Check],'NH'
+nofree:
+	clc
+	pop	es di si dx cx bx ax
+	ret
+wasntgood:
+	stc
+	pop	es di si dx cx bx ax
+	ret
+notsogood:
+        inc     bx
+        inc     bx
+	add	bx,es:[MB.Sizes]
+	jmp	searchfree
+
+;Rend le segment GS résident
+MBresident:
+	push	bx es
+	mov	bx,gs
+	dec	bx
+	mov	es,bx
+	mov	es:[MB.IsResident],True
+	pop	es bx
+	ret
 
 ;================================================
 ;Routine de gestion de handler
 ;================================================
 
-;remplace le handler pointer par ds:si en bx:100h interruption ax
+;remplace le handler pointer par ds:si en gs:100h interruption ax
 replacehandler:
 push ax bx cx si di ds es
+mov bx,gs
 mov es,bx
 mov di,0100h
 call loadfile
@@ -386,6 +590,7 @@ ret
 ;install le handler pointer par ds:si en bx:100h interruption ax
 installhandler:
 push bx cx di es
+mov bx,gs
 mov es,bx
 mov di,100h
 call loadfile
