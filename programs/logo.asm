@@ -36,9 +36,9 @@ push es
 pop ds
 xor si,si
 
-mov ax,0008h
+mov ah,28h
 int 47h
-mov ah,38
+mov ax,0008h
 int 47h
 mov ah,2
 int 47h
@@ -56,10 +56,8 @@ mov si,offset poper
 int 47h
 mov ax,0
 int 16h
-mov ah,39
+mov ah,29h
 int 47h
-mov ax,0004
-int 47h                      
 db 0CBH      
 
 problem:

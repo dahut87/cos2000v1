@@ -8,6 +8,8 @@ start:
      mov ax,0305h
      mov bx,0008h
      int 16h
+     mov ah,28h
+     int 47H
      mov ax,0002
      int 47H   
      mov ah,2
@@ -282,6 +284,8 @@ cursor:
      suit7:
      cmp ax,4200h
      jne adres2
+     mov ah,29h
+     int 47H
      db 0CBH
      ret
 
@@ -374,7 +378,7 @@ spaces db  ' ³ ',0
 showbuffer db 35 dup (0FFh)
 oldmode db 0 
 infos db 40 dup (0)                   
-buffer equ $
+buffer db 512 dup (0)
 
 end start
 

@@ -5,10 +5,10 @@ org 0100h
              
                 
 start:
+    mov ah,28h
+    int 47H
     mov ax,0002
     int 47H   
-    mov ah,26
-    int 47H
 replay:
     mov ah,2
     int 47h
@@ -25,12 +25,16 @@ int 47h
         mov bx,0231h
         mov si,offset msgapp
         int 47h
+        mov bp,1000h
 VerifAll:
         mov ah,1
         int 16h
+        jz nokey
         cmp al,32
         je enend
+nokey:
         mov ax,cx
+        inc ax
         mov si,100
         mul si
         mov si,2880
@@ -43,8 +47,9 @@ VerifAll:
         mov ah,13
         mov si,offset po
         int 47h
-        mov ah,15         
+        mov ah,15
         mov dx,cx
+        inc dx
         mov bx,0A10h
         int  47h
         mov ah,13
@@ -83,8 +88,8 @@ int 47h
  someof:
   mov ah,0
   int 16h
-    mov ah,27
-    int 47h
+  mov ah,29h
+    int 47H
     db 0CBH
  errors:
 mov ah,21
@@ -106,7 +111,7 @@ error2 db 'Le disque est defectueux, appuyez sur une touche pour quitter',0
 po db ' %',0
 msgapp db '<Pressez espace pour quitter>',0
 msg db '- Test de surface du disque -',0
-msg2 db ' cluster tested.           ',0
+msg2 db ' cluster testes.           ',0
 msg3 db ' cluster defectueux.       ',0
 ;->Increment CX
 gauge:
