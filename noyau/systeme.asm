@@ -3,7 +3,7 @@
 smart
 .code
 
-org 0100h
+org 0h
 
 include ..\include\fat.h
 include ..\include\mem.h
@@ -148,7 +148,7 @@ suites:
 	call 	projfile
 	jc	nopromptload
         push    es
-        push    0100h
+        push    0000h
         push    7202h
         popf
 	push	es
@@ -221,7 +221,7 @@ address db ' [',0
 addressend db ':0100] ',0
 irqs db ' (IRQ ',0
 irqsend db ')',0
-prompt db 'commande.exe',0
+prompt db 'commande.ce ',0
 conf db 'systeme.ini',0
 premice 	db 0Dh,0Ah,'Chargement du fichier de configuration:',0
 debut 	db 0Dh,0Ah,'Chargement des pilotes systeme:',0
@@ -659,8 +659,8 @@ call projfile
 jc reph
 mov bx,ax
 call getint
-mov es:[102h],si
-mov es:[104h],ds
+mov es:[2h],si
+mov es:[4h],ds
 call setint
 reph:
 pop ds di si cx bx ax
@@ -684,7 +684,7 @@ cli
 shl bx,2
 xor ax,ax
 mov ds,ax
-mov word ptr ds:[bx],0100h
+mov word ptr ds:[bx],0h
 mov ds:[bx+2],es
 pop ds bx ax
 sti
@@ -777,13 +777,12 @@ projfile:
 	jc	errorload
 	mov	eax,cs:tempfit.FileSize
 	mov     ecx,eax
-	add ecx,100h
 	call    MBCreate
 	jc      errorload
 	push    gs
 	pop     es
 	mov	cx,cs:tempfit.FileGroup
-	mov     di,100h
+	mov     di,0h
 	call	loadway
 	jc    	errorload
 	clc
