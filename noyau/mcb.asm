@@ -9,7 +9,7 @@ include ..\include\mem.h
 include ..\include\divers.h
 
 start:
-maxfunc equ 5
+maxfunc equ 7
 
 	jmp	tsr			;Saute à la routine résidente
 nameed db 'MB'			;Nom drivers
@@ -60,6 +60,7 @@ tables dw MBinit		;Table qui contient les adresses de toutes les fonctions de VI
          dw MBresident
          dw MBGet
          dw MBFind
+         dw MBChown
          
 FirstMB dw 0
 
@@ -94,12 +95,6 @@ notforfree:
 ;Libère le bloc de mémoire GS
 MBFree:
 	push	bx es
-	pushad
-	mov dx,gs
-	mov cx,16
-	mov ah,0ah
-	int 47h
-	popad
 	mov	bx,gs
 	dec     bx
 	dec     bx
@@ -118,6 +113,24 @@ wasfree:
 	stc
 	pop	es bx
 	ret
+	
+;Change le proprietaire de GS a dx
+MBChown:
+	push	bx es
+	mov	bx,gs
+	dec     bx
+	dec     bx
+	mov	es,bx
+	cmp	es:[MB.Reference],Free
+	je	wasfree2
+	mov	es:[MB.Reference],dx
+	pop	es bx
+	ret
+wasfree2:
+	stc
+	pop	es bx
+	ret
+	
 
 ;Renvoie en GS le MB n° cx  carry quand terminé
 MBGet:
@@ -382,6 +395,9 @@ foundmcb2:
 
 ;Creér un bloc de nom ds:si de taille cx (octets) -> n°segment dans GS
 MBCreate:
+        push    bp
+        mov     bp,sp
+        mov     gs,ss:[bp+6]
 	push	ax bx cx dx si di es	
 	shr	cx,4
 	inc	cx
@@ -404,7 +420,7 @@ searchfree:
 	ja	notsogood
         mov   word ptr es:[MB.Check],'NH'
 	mov	es:[MB.IsNotLast],True
-	mov	es:[MB.Reference],cs
+	mov	es:[MB.Reference],gs
 	mov	es:[MB.IsResident],False
 	mov     di,MB.Names
 	push	ax cx
@@ -446,10 +462,12 @@ nofree:
 	mov	gs,bx
 	clc
 	pop	es di si dx cx bx ax
+	pop     bp
 	ret
 wasntgood:
 	stc
 	pop	es di si dx cx bx ax
+        pop     bp
 	ret
 notsogood:
         inc     bx
