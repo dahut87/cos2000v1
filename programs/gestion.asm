@@ -192,6 +192,6 @@ msg2 db 'Programme en cours de chargement',0
 prompt db '--------------------------------------------------------------------------------',0
 infos  db 'Nom      Ext.  Date creation           Date modification      Taille   Attributs',0   
 
-bufferentry equ $
+bufferentry db 512
 
 end start
