@@ -161,6 +161,9 @@ tre3:
 tre4:
      cmp ah,67
      jne endof
+     mov ah,15h
+     mov cl,7
+     int 47h
       db      0CBh
 
 ;selectionne la ligne xx
