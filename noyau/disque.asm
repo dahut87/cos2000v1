@@ -337,29 +337,38 @@ CmpNames:
 	repe 	cmpsb
 	jne 	nequal
 	inc 	si
+	jmp     equal
 nequal:
+        cmp 	byte ptr es:[di-1],' '
+        jne     notequal	
+equal:
 	cmp 	byte ptr [si-1],'.'
 	jne 	trynoext
 	mov 	al,' '
 	rep 	scasb
 	mov 	cx,3
 	rep 	cmpsb
-	jne 	notequal
-	cmp 	byte ptr [si],0
-	jne 	notequal
-	cmp 	cx,0
-	jl 	notequal
+	jne 	nequal2
+        inc     si
+        jmp     equal2
+nequal2:
+        cmp 	byte ptr es:[di-1],' '
+        jne     notequal
+equal2:
+	cmp 	byte ptr [si-1],0
+	jne     notequal
 itok:
+        clc
 	pop 	di si cx ax
 	ret
+notequal:
+	stc
+	pop 	di si cx ax
+	ret	
 trynoext:
 	cmp	byte ptr [si-1],0
 	jne	notequal
 	jmp	itok
-notequal:
-	stc
-	pop 	di si cx ax
-	ret
 
 ;charge le fichier de de groupe CX et de taille eax
 LoadWay:
