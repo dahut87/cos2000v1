@@ -141,38 +141,9 @@ error:
         call    concat0
 noaddext:
         mov     si,offset buffer
-        push    cs
-        mov     ax,offset arrive
-        push    ax
-        mov     di,offset vga
-        mov     ah,40
-        int     47h
-        mov     ah,17
+        mov     ah,18
         int     48h
         jc      reallyerror
-        push    es
-        push    0100h
-        push    es
-        push    es
-        push    es
-        pop     ds
-        pop     fs
-        pop     gs
-        push    7202h
-        popf 
-        db      0CBh
-        arrive:
-        push    cs
-        push    cs
-        push    cs
-        push    cs
-        pop     ds
-        pop     es
-        pop     fs
-        pop     gs
-        mov     si,offset vga
-        mov     ah,41
-        int     47h
         xor     bp,bp
         jmp     replay
 reallyerror:
@@ -440,7 +411,6 @@ msg           db 'Interpreteur de commande COS V1.1',0
 dir           equ $
 buffer        equ $+128
 buffer2       equ $+128+512
-vga           equ $+128+512+512
 
 
 end start
