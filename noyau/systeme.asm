@@ -57,6 +57,9 @@ noone:
 	call	showstr
 	call    MBinit
 	jc      nomem1
+	mov     cx,65453
+	mov     si,offset sysname
+	call    MBcreate
 	call 	InitDrive
 	mov	si,offset premice
 	mov	bl,7
@@ -136,6 +139,12 @@ suites:
 	
 	;initialisation des MCBs
 	mov     ah,0
+	int     49h
+	push    memorystart
+	pop     gs
+	mov     ah,10
+	int     49h
+	mov     ah,1
 	int     49h
 	
 	mov	si,offset fini
@@ -218,11 +227,12 @@ erroron:
 	db 	0CBh
 
 address db ' [',0
-addressend db ':0100] ',0
+addressend db '] ',0
 irqs db ' (IRQ ',0
 irqsend db ')',0
-prompt db 'commande.ce ',0
+prompt db 'commande.ce',0
 conf db 'systeme.ini',0
+sysname db 'SYSTEME.SYS',0
 premice 	db 0Dh,0Ah,'Chargement du fichier de configuration:',0
 debut 	db 0Dh,0Ah,'Chargement des pilotes systeme:',0
 fini	db 0Dh,0Ah,'Chargement de l''interpreteur de commande:',0
@@ -898,36 +908,45 @@ enduppercase:
 	pop 	ax si
 	ret
 
-;Compare le nom ds:si '.' avec es:di 
+;Compare le nom ds:si '.' avec es:di
 CmpNames:
 	push 	ax cx si di
 	mov 	cx,8
 	repe 	cmpsb
 	jne 	nequal
 	inc 	si
+	jmp     equal
 nequal:
+        cmp 	byte ptr es:[di-1],' '
+        jne     notequal	
+equal:
 	cmp 	byte ptr [si-1],'.'
 	jne 	trynoext
 	mov 	al,' '
 	rep 	scasb
 	mov 	cx,3
 	rep 	cmpsb
-	jne 	notequal
-	cmp 	byte ptr [si],0
-	jne 	notequal
-	cmp 	cx,0
-	jl 	notequal
+	jne 	nequal2
+        inc     si
+        jmp     equal2
+nequal2:
+        cmp 	byte ptr es:[di-1],' '
+        jne     notequal
+equal2:
+	cmp 	byte ptr [si-1],0
+	jne     notequal
 itok:
+        clc
 	pop 	di si cx ax
 	ret
+notequal:
+	stc
+	pop 	di si cx ax
+	ret	
 trynoext:
 	cmp	byte ptr [si-1],0
 	jne	notequal
 	jmp	itok
-notequal:
-	stc
-	pop 	di si cx ax
-	ret
 
 ;charge le fichier de de groupe CX et de taille eax
 LoadWay:
