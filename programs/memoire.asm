@@ -83,7 +83,7 @@ fino:
 db 0CBh
 resident db 'oui',0
 nonresident db 'non',0
-msg db 'Memory manager V1.3',0
+msg db 'Memory manager V1.5',0
 menu db 'Nom          | Taille | Res | Parent        | Mem',0
 
 end start
