@@ -36,15 +36,23 @@ noerrorint:
 itsok:
 	push 	bp		
 	mov 	bp,sp			;On prend sp dans bp pour adresser la pile
-	jnc 	noerror		;La fonction appelée a renvoyer une erreur :  Flag CARRY ?
+	pushf
+        jnc 	noerror		;La fonction appelée a renvoyer une erreur :  Flag CARRY ?
       or    byte ptr [bp+6],1b;Si oui on le retranscrit sur le registre FLAG qui sera dépilé lors du IRET
       ;xor  eax,eax
       ;mov  ax,cs                   ;On récupère le segment et l'offset puis en renvoie l'adresse physique
       ;shl  eax,4                   ;de l'erreur.
       ;add  ax,cs:current
-      jmp  endofint                ;on termine l'int
+      jmp  endofscan                ;on termine l'int
 noerror:
 	 and 	byte ptr [bp+6],0FEh;Si pas d'erreur on efface le Bit CARRY du FLAG qui sera dépilé lors du IRET
+endofscan:
+       popf
+       jne    noequal
+       or    byte ptr [bp+6],1000000b
+       jmp  endofint
+noequal:
+       and 	byte ptr [bp+6],0BFh
 endofint:
        pop 	bp
 	 sti				;On réactive les interruptions logiciellement
@@ -53,7 +61,7 @@ endofint:
 current dw 0			;Mot temporaire qui contient l'adresse de la fonction appelée
 tables  dw readsector
         dw writesector
-        dw verifysector2
+        dw verifysector
         dw initdrive
         dw loadfile
         dw compressrle
@@ -899,13 +907,6 @@ invert:
 	cmp     cx,cs:myboot.sectorsize
 	jb 	invert
 	pop     cx si
-	ret
-
-VerifySector2:
-	call 	verifysector
-	jne 	nook
-	or 	byte ptr [bp+6],10b
-nook:
 	ret
 
 ;=============DecompressRle (Fonction 05H)==============
