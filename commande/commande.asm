@@ -58,6 +58,7 @@ noret:
 waitchar:
         mov     ax,0
         int     16h
+        call    convertfr
         cmp     ah,59
         jne     norr
         cmp     bp,0
@@ -481,11 +482,85 @@ msgs db 'Plan de la memoire',0
 menu db 'Nom            Taille   Res   Parent          Mem',0
 
 
+;converti le jeux scancode/ascii en fr ax->ax
+convertfr:
+            push        dx si
+            mov         si,offset fr
+searchtouch:
+            mov         dx,cs:[si]
+            cmp         dx,0
+            je          endofconv
+            add         si,4
+            cmp         dx,ax
+            jne         searchtouch
+            mov         ax,cs:[si-2]
+endofconv:
+            pop          dx si
+            ret
 
-
-
-
-
+fr:                     db   '1', 02, '&', 02
+                        db   '!', 02, '1', 02
+                        db   '2', 03, '‚', 03
+                        db   '@', 03, '2', 03
+                        db   '3', 04, '"', 04
+                        db   '#', 04, '3', 04
+                        db   '4', 05,  39, 05
+                        db   '$', 05, '4', 05
+                        db   '5', 06, '(', 06
+                        db   '%', 06, '5', 06
+                        db   '6', 07, '-', 07
+                        db   '^', 07, '6', 07
+                        db   '7', 08, 'Š', 08
+                        db   '&', 08, '7', 08
+                        db   '8', 09, '_', 09
+                        db   '*', 09, '8', 09
+                        db   '9', 10, '‡', 10
+                        db   '(', 10, '9', 10
+                        db   '0', 11, '…', 11
+                        db   ')', 11, '0', 11
+                        db   '-', 12, ')', 12
+                        db   '_', 12, 'ø', 12
+                        db   'Q', 16, 'A', 16
+                        db   'q', 16, 'a', 16
+                        db   'W', 17, 'Z', 17
+                        db   'w', 17, 'z', 17
+                        db   '{', 26, '‰', 26
+                        db   '[', 26, 'ˆ', 26
+                        db   ']', 27, '$', 27
+                        db   '}', 27, 'œ', 27
+                        db   'A', 30, 'Q', 30
+                        db   'a', 30, 'q', 30
+                        db   ':', 39, 'M', 39
+                        db   ';', 39, 'm', 39
+                        db    39, 40, '—', 40
+                        db   '"', 40, '%', 40
+                        db    00, 40, '%', 40
+                        db   '\', 43, '*', 43
+                        db   '|', 43, 'æ', 43
+                        db   'Z', 44, 'W', 44
+                        db   'z', 44, 'w', 44
+                        db   'm', 50, ',', 50
+                        db   'M', 50, '?', 50
+                        db   ',', 51, ';', 51
+                        db   '<', 51, '.', 51
+                        db   '.', 52, ':', 52
+                        db   '>', 52, '/', 52
+                        db   '?', 53, 'õ', 53
+                        db   '/', 53, '!', 53
+                        db   '\', 86, '<', 86
+                        db   '|', 86, '>', 86
+                        db   00, 79h, '~', 03
+                        db   00, 7Ah, '#', 04
+                        db   00, 7Bh, '{', 05
+                        db   00, 7Ch, '[', 06
+                        db   00, 7Dh, '|', 07
+                        db   00, 7Eh, '`', 08
+                        db   00, 7Fh, '\', 09
+                        db   00, 80h, '^', 10
+                        db   00, 81h, '@', 11
+                        db   00, 82h, ']', 12
+                        db   00, 83h, '}', 13
+                        db   00,  00,  00, 00
 
 
 
