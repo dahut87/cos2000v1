@@ -7,3 +7,5 @@ call asm pic8259a
 call asm timer
 call asm drive
 call asm mouse
+call asm joystick
+call asm boot

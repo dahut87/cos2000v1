@@ -21,7 +21,7 @@ mov ah,6
 int 48h
 push es
 pop ds
-mov ax,0006h
+mov ax,0009h
 int 47h
 mov ah,38
 int 47h
@@ -29,8 +29,10 @@ mov ah,35
 int 47h
 mov ah,37
 int 47h   
-xor cx,cx
-xor bx,bx
+mov ah,2
+int 47h
+mov cx,400
+mov bx,40
 mov ah,36
 int 47h
 mov ax,0

@@ -1,11 +1,11 @@
 @echo off
 
 echo Assembling file %1... 
-util\tasm %1.asm /m5/x/t
+..\util\tasm %1.asm /m5/x/t
 if errorlevel 1 goto end
 if "%1"=="boot" goto boot
 echo Linking file %1...
-util\tlink %1.obj /x/t
+..\util\tlink %1.obj /x/t
 if errorlevel 1 goto end
 echo Copying file %1...  
 if "%1"=="video" goto video
@@ -15,17 +15,19 @@ if "%1"=="mouse" goto system
 if "%1"=="pic8259a" goto system 
 if "%1"=="timer" goto system
 if "%1"=="drive" goto system 
+if "%1"=="joystick" goto system 
 if "%1"=="system" goto system
 if "%1"=="setup" goto setup 
+if "%1"=="hours" goto system
 copy %1.com ..\data\%1.exe>nul
 goto end   
 
 :boot
 echo Linking file %1...
-util\tlink %1.obj /x
+..\util\tlink %1.obj /x
 if errorlevel 1 goto end
 echo Copying file %1...
-util\exe2boot %1.exe
+..\util\exe2boot %1.exe
 copy %1.bin ..\data\%1.bin>nul 
 goto end
 

@@ -70,6 +70,7 @@ int 21h
 jc error
 mov dx,offset boot
 call addfile
+jc error
 mov ax,0F0FFh
 mov cx,14
 mov di,offset fat
@@ -112,6 +113,9 @@ mov si,offset dta+30
 mov cl,13
 call uppercasemem
 mov dx,si
+cmp dword ptr [si],'toob'
+clc
+je  allfilesend
 int 21h
 jc error
 call addfile
@@ -127,6 +131,7 @@ mov al,0
 mov cl,13
 cld
 rep stosb
+allfilesend:
 mov ah,4fh
 int 21h
 jnc allfile
@@ -223,12 +228,16 @@ end1:
 mov ah,3eh
 mov bx,cs:temp
 int 21h
+errorend:
 pop es ds bp di si dx bx ax
 ret
 entrie dw 0
 error2:
+mov ah,3eh
+mov bx,cs:temp
+int 21h
 stc
-jmp end1
+jmp errorend
 temp dw 0
 
 makefit:
@@ -236,6 +245,7 @@ push bx cx si di bp
 mov ax,cx
 mov bx,offset fat
 mov cx,13
+retry:
 call readsector
 jc error3
 xor si,si
@@ -245,7 +255,8 @@ je finishfit
 add si,32
 cmp si,512
 jb findfit
-jmp error3
+inc cx
+jmp retry
 finishfit:
 mov di,si
 add di,bx
@@ -253,7 +264,6 @@ mov si,dx
 call asciiztofit
 jc error3
 mov [di+26],ax
-mov cx,13
 call writesector
 jc error3
 end3:

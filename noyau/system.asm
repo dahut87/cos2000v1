@@ -10,22 +10,27 @@ mov si,offset video
 mov bx,400h
 mov ax,47h
 call installhandler
+jc erroron
 mov si,offset timer
 mov bx,900h
 mov ax,8h
 call replacehandler
+jc erroron
 mov si,offset pic
 mov bx,950h
 mov ax,50h
 call installhandler
+jc erroron
 mov si,offset drive
 mov bx,1020h
 mov ax,48h
 call installhandler
+jc erroron
 mov si,offset keyboard
 mov bx,1400h
 mov ax,9h
 call replacehandler
+jc erroron
 mov ax,40h
 mov es,ax
 mov dx,es:[8]
@@ -38,6 +43,7 @@ mov si,offset lpt
 mov bx,1500h
 mov ax,0Fh
 call installhandler
+jc erroron
 mov es,bx
 sub al,8
 xor ah,ah
@@ -58,6 +64,7 @@ mov si,offset lpt
 mov bx,1700h
 mov ax,0Dh
 call installhandler
+jc erroron
 sub al,8
 xor ah,ah
 int 50h
@@ -68,19 +75,19 @@ mov si,offset mouse
 mov bx,1900h
 mov ax,74h
 call installhandler   
+jc erroron
 mov ax,0012
 int 50h         
-;mov ah, 00010000b
-;not ah
-;in al, 0a1h
-;and al, ah
-;out 0a1h, al
 mov ah,2
 int 74h
-
-
-
-
+;mov si,offset joystick
+;mov bx,2700h
+;mov ax,08h
+;call replacehandler   
+mov si,offset hours
+mov bx,2900h
+mov ax,08h
+call replacehandler   
 
 start2:
 push cs
@@ -231,65 +238,6 @@ executefatway:
      push 7202h
      popf
      db 0CBh
-               
-;cx entr‚e -> fatway chemin
-getfatway:
-push bx cx es
-mov bx,offset fatway
-fatagain:
-mov cs:[bx],cx
-add bx,2 
-cmp cx,0FFF0h
-jae finishload
-call getfat
-jnc fatagain
-finishload:  
-pop es cx bx
-ret
-
-loadfatway:
-push ax bx cx di
-call getfatway
-jc endload
-mov di,offset fatway
-mov si,offset dot
-mov ah,13
-loadagain:
-mov cx,cs:[di]
-cmp cx,0FFF0h
-jae endload
-add di,2
-call readsector
-jc endload
-int 47h
-add bx,cs:sizec
-jmp loadagain
-endload:
-pop di cx bx ax
-ret        
-
-sizec dw 512
-reserv dw 1
-
-;<-cx nøsecteur  ->cx code FAT
-getfat:
-push es ax bx dx
-mov ax,cx
-xor dx,dx
-div cs:sizec
-mov cx,ax
-add cx,cs:reserv
-mov bx,offset buffer
-push cs
-pop es
-call readsector
-jc errorgetfat
-shl dx,1
-add bx,dx
-mov cx,cs:[bx]
-errorgetfat:
-pop dx bx ax es
-ret
 
 ;selectionne la ligne xx
 Select:
@@ -318,7 +266,70 @@ msg3 db ' Cos will restart your computer, eject the floppy disk and press a key'
 prompt db '>',0
 spaces db '   ',0
 dot db '.',0
+               
+;cx entr‚e -> fatway chemin
+getfatway:
+push bx cx 
+mov bx,offset fatway
+fatagain:
+mov cs:[bx],cx
+add bx,2 
+cmp cx,0FFF0h
+jae finishload
+call getfat
+jnc fatagain
+finishload:  
+pop cx bx
+ret
 
+;Charge le fichier de chemin cx -> taille dx
+loadfatway:
+push ax bx cx di 
+call getfatway
+jc endload
+mov di,offset fatway
+mov si,offset dot
+mov ah,13
+xor dx,dx
+loadagain:
+mov cx,cs:[di]
+cmp cx,0FFF0h
+jae endload
+add di,2
+call readsector
+jc endload
+add bx,cs:sizec
+add dx,cs:sizec
+jmp loadagain
+endload:
+pop di cx bx ax
+ret        
+
+
+sizec dw 512
+reserv dw 1
+
+;<-cx nøsecteur  ->cx code FAT
+getfat:
+push es ax bx dx
+push cs
+pop ds
+push cs
+pop es
+mov ax,cx
+xor dx,dx
+div sizec
+mov cx,ax
+add cx,reserv
+mov bx,offset buffer
+call readsector
+jc errorgetfat
+shl dx,1
+add bx,dx
+mov cx,[bx]
+errorgetfat:
+pop dx bx ax es
+ret
 
 ReadSector:
 push ax cx dx si
@@ -396,38 +407,45 @@ Lastread dw 0FFFFh
 
 ;remplace le handler pointer par ds:si en bx:100h interruption ax
 replacehandler:
-push ax bx si di ds es
+push ax bx cx si di ds es
 mov es,bx
 mov di,0100h
 call loadfile
+jc reph
 mov bx,ax
 call getint
 mov es:[102h],si
 mov es:[104h],ds
 call setint
-pop es ds di si bx ax
+reph:
+pop es ds di si cx bx ax
 ret
       
 ;install le handler pointer par ds:si en bx:100h interruption ax
 installhandler:
-push bx di es
+push bx cx di es
 mov es,bx
 mov di,100h
 call loadfile
+jc insh
 mov bx,ax
 call setint
-pop es di bx
+insh:
+pop es di cx bx
 ret
 
-
-;Charge le fichier Ds:si en es:di
+;Charge le fichier Ds:si en es:di taille-> cx
 loadfile:
-push bx cx
+push bx 
 call searchfile
+jc errorloadfile
 mov bx,di
 call loadfatway
-pop cx bx
-ret
+jc errorloadfile
+mov cx,dx
+errorloadfile:
+pop bx
+ret   
                               
 ;met es:di le handle de l'int bx
 setint:
@@ -453,17 +471,19 @@ mov ds,es:[bx+2]
 pop es bx ax
 ret 
 
-;Recherchele fichier et retourne sont path et en cx sont debut
+;Recherche le fichier et retourne sont path et en cx sont debut
 Searchfile:
-push bx dx si di ds es
-xor dx,dx
+push ax bx dx si di ds es
 push cs
 pop es
+xor dx,dx
 mov di,offset temp
-mov bx,offset buffer
 call asciiztofit
+push cs
+pop ds
 mov cx,13
 check:
+mov bx,offset buffer  
 call readsector
 jc errorboot
 xor di,di
@@ -475,6 +495,7 @@ mov si,di
 add si,bx
 mov di,offset temp
 mov cx,12+4
+cld
 rep cmpsb
 pop cx di si
 je oksystem
@@ -488,8 +509,12 @@ inc cx
 jmp Check
 oksystem:
 mov cx,[di+BX+26]
+cld
+jmp goodboot
 errorboot:
-pop es ds di si dx bx
+stc
+goodboot:
+pop es ds di si dx bx ax
 ret
 
 ;->name ds:si ->es:di
@@ -565,9 +590,9 @@ inc di
 cmp byte ptr cs:[di],0
 jne isexcept
 endanal:
-pop di
+clc
+pop di 
 ret
-exeptchar db '/\<>:|.',01,0,0
 nogood:
 stc
 jmp endanal
@@ -594,11 +619,43 @@ clc
 pop ax cx di si
 ret
 
+erroron:
+push cs
+pop ds
+xor edx,edx
+mov dx,ax
+mov ax,0001h
+int 47h
+mov ah,6
+int 47h
+mov ah,6
+int 47h
+mov ah,13
+mov si,offset errormsg
+int 47h
+mov ah,10
+mov cx,16
+int 47h
+mov ah,6
+int 47h
+mov ah,6
+int 47h
+mov ah,13
+mov si,offset errormsg2 
+int 47h
+mov ax,0
+int 16h
+push 0FFFFh
+push 0
+db 0CBh
+
+errormsg db 'Error with drivers loading on interrupt nø',0
+errormsg2 db 'Press a key to restart...',0
 namesize equ 12
-extsize equ 5
-
-
+extsize equ 5       
 nbfit equ 255
+hours db 'hours.sys',0
+joystick db 'joystick.sys',0
 mouse db 'mouse.sys',0
 pic db 'pic8259a.sys',0
 drive db 'drive.sys',0
@@ -607,7 +664,7 @@ lpt db 'lpt.sys',0
 video db 'video.sys',0
 keyboard db 'keyboard.sys',0
 temp db 12+5+1 dup (0)
-
+exeptchar db '/\<>:|.',01,0,0
 DiskSectorsPerTrack dw 18   
 DiskTracksPerHead dw 80
 DiskHeads dw 2
@@ -615,4 +672,5 @@ DiskHeads dw 2
 fatway equ $
 
 buffer equ $+3000
+
 end start

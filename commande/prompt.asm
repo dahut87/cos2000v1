@@ -12,6 +12,8 @@ start:
         int     47h
         mov     ah,6
         int     47h
+        mov     ah,42
+        int     47h
         mov     ah,13
         mov     si,offset msg
         int     47h
@@ -182,7 +184,7 @@ Code_Version:
         int     47h
         ret
         
-Version_Text db 'Cos 2000 version 1.1.1B by Nico',0
+Version_Text db 'Cos 2000 version 2.0.1B by Nico',0
         
 Code_Cls:
         mov     ah,2

@@ -146,7 +146,6 @@ ret
 ;envoie en di les coordonn‚es ecran et en dl les boutons
 getmousescreen:
 mov di,cs:xy
-mov cx,cs:ry
 mov dl,cs:button
 sub dl,8
 and dl,0Fh
@@ -166,15 +165,15 @@ rx      dw 0
 ry      dw 0
 VX      db 0
 VY      db 0
-X       dw 0
-Y       dw 0
+X       dw 7FFFh
+Y       dw 7FFFh
 speed   db 6
 spherex db 0
 spherey db 0
 count   db 0
 error   db 0
 xy      dw 0
-old     dw 0
+old     db 0
 ;Gestionnaire de souris PS/2
 react:
         push ax bx cx dx di ds es
@@ -224,8 +223,12 @@ endgest:
         shl bx,cl
         cmp spherey,0
         jne nolimity
-        mov al,[di]
         xor ah,ah
+        mov al,[di]
+       cmp byte ptr [di+7],4
+        jbe text4
+       shl ax,3
+text4:
         dec ax
         cmp bx,0
         jg decy
@@ -242,8 +245,12 @@ noaddy:
         shl bx,cl
         cmp spherex,0
         jne nolimitx
+         xor ah,ah
         mov al,[di+1]
-        xor ah,ah
+        cmp byte ptr [di+7],4
+        jbe text5
+       shl ax,3
+text5: 
         dec ax
         cmp bx,0
         jl decx
@@ -260,27 +267,53 @@ noaddx:
         mov bx,0FFFFh
         xor ch,ch
         mov cl,[di+1]
+       cmp byte ptr [di+7],4
+        jbe text1
+       shl cx,3
+text1:
         mul cx
         div bx
         mov rx,ax
         mov ax,y
+        xor ch,ch
         mov cl,[di]
+       cmp byte ptr [di+7],4
+        jbe text2
+       shl cx,3
+text2:
         mul cx
         div bx
         mov ry,ax
-        mul byte ptr [di+1]
+        xor ch,ch
+        mov cl,[di+1]
+        cmp byte ptr [di+7],4
+        jbe text3
+       shl cx,3
+text3:   
+        mul cx
         add ax,rx
-        shl ax,1
+       cmp byte ptr [di+7],4
         mov di,ax
+        jbe textpoint
+       mov ax,0A000h
+        mov es,ax
+        jmp graphpoint
+textpoint:
         mov ax,0B800h
         mov es,ax
+        shl di,1
+        inc di
+graphpoint: 
         mov bx,xy
-        mov ax,old
-        mov word ptr es:[bx],ax 
+        cmp byte ptr es:[bx],070h 	
+        jne waschanged
+        mov al,old
+        mov byte ptr es:[bx],al 
+waschanged:
         mov xy,di
-        mov ax,es:[di]
-        mov old,ax
-        mov word ptr es:[di],0FF70h 
+        mov al,es:[di]
+        mov old,al
+        mov byte ptr es:[di],070h 
         mov al, 20h
         out 0a0h, al                         
         out 20h, al             
@@ -289,6 +322,6 @@ errormouse:
         mov cs:isact,0
         pop bx
         iret
- infos db 10 dup (0)
+ infos db 40 dup (0)
 
 end start

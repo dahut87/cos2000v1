@@ -33,7 +33,7 @@ tsr:
         sti
         iret
         isstate db 0
-        infos db 10 dup (0)
+        infos db 40 dup (0)
 
 F11:
      push ax di es
@@ -42,9 +42,13 @@ F11:
      mov di,offset infos
      mov ah,34
      int 47h
-     mov al,cs:infos+7
+     mov al,cs:[di+7]
      inc al
-     and ax,111b
+     cmp al,9
+     jbe notabove
+     mov al,0
+notabove:
+     mov ah,0
      int 47h
      pop es di ax
      jmp endof

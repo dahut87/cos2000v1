@@ -48,11 +48,13 @@ int 47h
 mov ah,6
 int 47h
 mov edx,-6876253
+mov cx,32
 mov ah,9
 int 47h
 mov ah,6
 int 47h
 mov edx,-311212323
+mov cx,32
 mov ah,9
 int 47h
 mov ah,6

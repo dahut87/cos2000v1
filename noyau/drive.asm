@@ -241,6 +241,7 @@ call searchfile
 jc errorloadfile
 mov bx,di
 call loadfatway
+jc errorloadfile
 mov cx,dx
 errorloadfile:
 pop bx
@@ -248,7 +249,7 @@ ret
 
 ;Recherche le fichier et retourne sont path et en cx sont debut
 Searchfile:
-push bx dx si di ds es
+push ax bx dx si di ds es
 push cs
 pop es
 xor dx,dx
@@ -290,7 +291,7 @@ jmp goodboot
 errorboot:
 stc
 goodboot:
-pop es ds di si dx bx
+pop es ds di si dx bx ax
 ret
 
 ;->name ds:si ->es:di

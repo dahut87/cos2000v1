@@ -177,29 +177,33 @@ ret
 
 ;remplace le handler pointer par ds:si en bx:100h interruption ax
 replacehandler:
-push ax bx si di ds es
+push ax bx cx si di ds es
 mov es,bx
 mov di,0100h
 mov ah,4
 int 48h
+jc  reph
 mov bx,ax
 call getint
 mov es:[102h],si
 mov es:[104h],ds
 call setint
-pop es ds di si bx ax
+reph:
+pop es ds di si cx bx ax
 ret
       
 ;install le handler pointer par ds:si en bx:100h interruption ax
 installhandler:
-push bx di es
+push bx cx di es
 mov es,bx
 mov di,100h
 mov ah,4
 int 48h
+jc inh
 mov bx,ax
 call setint
-pop es di bx
+inh:
+pop es di cx bx
 ret    
 
 ;met es:di le handle de l'int al

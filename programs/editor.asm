@@ -10,41 +10,25 @@ start:
      int 16h
      mov ax,0002
      int 47H   
-     mov ah,26
-     int 47H
      mov ah,2
      int 47h
-     xor bp,bp 
+     xor ebp,ebp
+     xor ax,ax
+     mov fs,ax
+     mov ah,43
+     int 47h
 Adres:
      mov di,offset infos
      mov ah,34
      int 47h
-     dec infos
-     push cs
-     pop es
-     mov cx,sect
-     mov bx,offset buffer
-     mov ax,0001h
-     int 48h 
-     jnc noerror
-     errtr:
-     mov ah,25
-     mov bl,infos
-     xor bh,bh
-     int 47h
-     mov ah,21
-     mov cl,116
-     int 47h
-     mov ah,13
-     mov si,offset errordisk
-     int 47h
-     mov ax,0
-     int 16h
-     noerror:
- adres2:
-     mov di,offset infos
-     mov ah,34
-     int 47h
+     dec byte ptr [di]
+     mov al,[di+1]
+     sub al,16
+     mov bl,al
+     shr al,2
+     mov [di+1],al
+     and bl,11b
+     mov [di+2],bl
      mov al,[di+7]
      cmp al,oldmode
      je noinit
@@ -52,17 +36,18 @@ Adres:
      int 47h
      mov oldmode,al
      noinit:
-     dec infos
      mov bx,0
      mov ah,25
      int 47h
      mov bh,infos
-     mov di,bp
+     mov edi,ebp
      mov ah,21
      mov cl,7
      int 47h
 lines:
-     mov dx,sect
+     mov edx,edi
+     shr edx,4*4
+     shl edx,4*3
      mov cx,16
      mov ah,10
      int 47h
@@ -75,106 +60,105 @@ lines:
      mov ah,13
      mov si,offset spaces
      int 47h
-    mov ah,5
-    int 47h
-     mov al,16
+     mov ah,5
+     int 47h
+     mov al,infos+1
      mov cl,7
      mov ah,21
      int 47h
-     mov si,di
+     mov esi,edi
 doaline:
-     mov dl,[di+offset buffer]
+     mov edx,edi
+     shr edx,4*4
+     shl edx,4*3
+     mov fs,dx      
+     mov dl,fs:[di]
      mov ah,10
      mov cl,8
      int 47h
      mov ah,5
      int 47h
-     inc di
+     inc edi
      dec al
      jnz doaline
-     mov di,si
+     mov edi,esi
      mov si,offset spaces
      mov ah,13
      int 47h
-     mov al,16
+     mov al,infos+1
      mov ah,21
      mov cl,7
      int 47h
 doaline2:
-     mov dl,[di+offset buffer]
+     mov edx,edi
+     shr edx,4*4
+     shl edx,4*3
+     mov fs,dx     
+     mov dl,fs:[di]
      mov ah,7
      int 47h
-     inc di
+     inc edi
      dec al
      jnz doaline2
-       dec bh
+     dec bh
      je outes
+     cmp byte ptr infos+2,0
+     je  lines
      mov ah,6
      int 47h
      jmp lines
-outes:  
+outes:     
      mov ah,21
      mov cl,112
      int 47h
+     mov bh,0
+     mov bl,infos
      mov si,offset menu
-     mov ah,13
+     mov ah,14h
      int 47h
      waitkey:
      mov ax,0
      int 16h
      cmp ax,3B00h
      jne suit
-     cmp bp,8*16
-     jae waitkey
-     add bp,16  
-     jmp adres2
+     inc ebp
+     jmp adres
      suit:
      cmp ax,3C00h
      jne suit2
-     cmp bp,0
-     je waitkey
-     sub bp,16
-     jmp adres2
+     dec ebp
+     jmp adres
      suit2:
      cmp ax,3D00h
      jne suit3
-     cmp sect,2880
-     ja waitkey
-     inc sect
+     add ebp,24*16
      jmp adres
      suit3:
      cmp ax,3E00h
      jne suit4
-     cmp sect,0
-     je waitkey
-     dec sect
+     sub ebp,24*16
      jmp adres   
      suit4:
      cmp ax,3F00h
      jne suit5
-     jmp adres2
+     add ebp,010000h
+     jmp adres
      suit5:
      cmp ax,4000h
      jne suit6
-     mov cx,sect
-     mov bx,offset buffer
-     mov ah,1
-     int 48h
-     jnc waitkey
-     jmp errtr
+     sub ebp,010000h
+     jmp adres
      suit6:
      cmp ax,4100h
      jne suit7
-     mov dword ptr [pope],'TIDE'
-     mov bl,infos
-     xor bh,bh
-     mov ah,25
-     int 47h
      mov ah,21
      mov cl,116
      int 47h
+     mov dword ptr [pope],'TIDE'
+     mov bl,infos
+     xor bh,bh
      mov si,offset menu
-     mov ah,13
+     mov ah,14h
      int 47h
      mov ah,21
      mov cl,7
@@ -190,15 +174,10 @@ waitst:
      int 16h  
      cmp ah,41h
      jne tre
-     mov dword ptr [pope],'WEIV'
+     mov dword ptr [pope],' EUV'
      push cs
      pop es
-     mov cx,sect
-     mov bx,offset buffer
-     mov ah,1
-     int 48h
-     jnc adres
-     jmp errtr
+     jmp adres
 tre:
      cmp al,0
      jne write      
@@ -237,7 +216,9 @@ write:
      cmp cl,15
      ja waitst
      call calc1
-     call calc2      
+     call calc2
+     mov edi,es:[bx-1]
+     mov dx,es:[si-1] 
      mov byte ptr es:[bx],0112
      mov es:[bx-1],al
 writs:
@@ -253,7 +234,40 @@ writs:
      mov es:[si-1],ch
      mov ax,bx
      call calc3
-     mov [bx],ch
+     mov gs:[bx],ch
+     pusha
+     popa
+     mov cl,gs:[bx]
+     cmp ch,cl
+     je no
+     push si ax
+     mov ah,25
+     mov bl,infos
+     xor bh,bh
+     int 47h
+     mov ah,21
+     mov cl,117
+     int 47h
+     mov si,offset msg
+     mov ah,13
+     int 47h
+     mov ax,0
+     int 16h
+     mov bl,infos
+     xor bh,bh
+     mov ah,25
+     int 47h
+     mov ah,21
+     mov cl,116
+     int 47h
+     mov ah,13
+     mov si,offset menu
+     int 47h
+     pop bx si
+     mov es:[bx-1],edi
+     mov es:[si-1],dx
+     no:
+
      inc xx 
      cmp xx,16
      jne pasde
@@ -270,10 +284,10 @@ cursor:
      jmp waitst
      suit7:
      cmp ax,4200h
-     jne waitkey
+     jne adres
      mov ah,27
      int 47h
-     db 0CBH
+     db 0CBH     ; +++++++
      ret
 
 calc1:
@@ -283,7 +297,7 @@ calc1:
      shl ax,2
      shl dx,1
      add ax,dx
-     add ax,25
+     add ax,27
      mov bx,YY
      mov dx,yy
      shl bx,5
@@ -309,7 +323,7 @@ calc2:
      mov dx,xx
      shl dx,1
      add si,dx
-     add si,127
+     add si,129
      mov byte ptr es:[si],112
      mov bx,xxyy2
      mov byte ptr es:[bx],07
@@ -319,13 +333,16 @@ calc2:
 
 calc3:
      push dx
-     xor bx,bx
+     xor ebx,ebx
      mov bx,xx
      mov dx,yy
      shl dx,4
      add bx,dx
-     add bx,bp
-     add bx,offset buffer
+     add ebx,ebp
+     mov edx,ebx
+     shr edx,4*4
+     shl edx,4*3
+     mov gs,dx 
      pop dx 
      ret
 
@@ -357,16 +374,14 @@ xx dw 0
 yy dw 0
 xxyy dw 3
 xxyy2 dw 3
-errordisk db 'An error has occured on drive A:, press a key to continu                   ',0
-menu db 'Bottom F1, Top F2, Sectors F3&F4, Load/Save F5&F6, Mode F7, Quit F8  MODE '
-pope  db 'VIEW',0         
+msg db 'Error : Unchangeable area (ROM) press a key to continu                              ',0
+menu db 'Top F1, Bottom F2, Offset F3&F4, Segment F5&F6, Mode F7, Quit F8 MODE  '
+pope  db 'VUE     ',0         
 spaces db  ' ³ ',0
 
 showbuffer db 35 dup (0FFh)
-oldmode db 0 
-infos db 10 dup (0)                   
-buffer equ $
-
+oldmode db 0
+infos db 40 dup (0)
 end start
 
 
