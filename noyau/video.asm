@@ -1578,168 +1578,306 @@ noadjusted:
 
 
 
+;sauve l'ecran dans un bloc de mémoire
+savescreen:
+push    ax cx dx si di bp ds es gs
+mov     bp,sp
+mov     dx,ss:[bp+22]
+mov     ah,2
+mov     cx,cs:pagesize
+push    cs
+pop     ds
+mov     si,offset data3
+int     49h
+mov     ah,6
+int     49h
+push    gs
+pop     es
+xor     di,di
+call    savescreento
+pop     gs es ds bp di si dx cx ax
+ret
 
+data3 db '/vgascreen',0
 
-
-;===================================sauve l'ecran rapidement================
-SaveScreen:
-        push    cx si di ds es
-        mov     cx,0B800H
-        mov     ds,cx
-        push    cs
-        pop     es
-        mov     cx,cs:pagesize
-        shr     cx,2
-        xor     si,si
-        mov     di,offset Copy2
-        cld
-        rep     movsd
-        pop     es ds di si cx 
-        ret
 
 ;===================================sauve l'ecran rapidement en es:di================
 SaveScreento:
         push    cx si di ds 
-        mov     cx,0B800H
+        mov     cx,0B800h
         mov     ds,cx
+        xor     ecx,ecx
         mov     cx,cs:pagesize
         shr     cx,2
         xor     si,si
         cld
         rep     movsd
         pop     ds di si cx 
-        ret   
-
-;===================================sauve l'ecran rapidement================
-Savepage1:
-        push    cx si di ds es
-        mov     cx,0B800H
-        mov     ds,cx
-        push    cs
-        pop     es
-        mov     cx,cs:pagesize
-        shr     cx,2
-        xor     si,si
-        mov     di,offset Copy
-        cld
-        rep     movsd
-        pop     es ds di si cx 
         ret
 
-;===================================sauve l'ecran rapidement================
-RestoreScreen:
-        push    cx si di ds es
-        mov     cx,0B800H
-        mov     es,cx
+;===================================sauve les parametres en es:di================
+Saveparamto:
+        push    ecx si di ds
         push    cs
         pop     ds
+        xor     ecx,ecx
+        mov     cx,datablocksize
+        mov     si,offset datablock
+        cld
+        rep     movsb
+        pop     ds di si ecx
+        ret
+        
+;===================================restore les parametres depuis en ds:si================
+Restoreparamfrom:
+        push    ecx si di es
+        push    cs
+        pop     es
+        xor     ecx,ecx
+        mov     cx,datablocksize
+        mov     di,offset datablock
+        cld
+        rep     movsb
+        pop     es di si ecx
+        ret
+        
+;sauve la page1 dans un bloc de mémoire
+Savepage1:
+push    ax cx dx si di bp ds es gs
+mov     bp,sp
+mov     dx,ss:[bp+22]
+mov     ah,2
+mov     cx,cs:pagesize
+push    cs
+pop     ds
+mov     si,offset data4
+int     49h
+mov     ah,6
+int     49h
+push    gs
+pop     es
+xor     di,di
+call    Savepage1to
+pop     gs es ds bp di si dx cx ax
+ret
+
+data4 db '/vgapage1',0
+
+;===================================sauve l'ecran rapidement================
+Savepage1to:
+        push    ecx si di ds
+        mov     cx,0B800H
+        mov     ds,cx
+        xor     ecx,ecx
         mov     cx,cs:pagesize
         shr     cx,2
-        mov     si,offset Copy2
-        xor     di,di
+        mov     si,cs:pagesize
         cld
         rep     movsd
-        pop     es ds di si cx 
+        pop     ds di si ecx
         ret
+        
+;R‚cupŠre l'ecran de la carte depuis son bloc mémoire
+RestoreScreen:
+push    ax dx si bp ds gs
+mov     bp,sp
+mov     dx,ss:[bp+16]
+push    cs
+pop     ds
+mov     si,offset data3
+mov     ah,9
+int     49h
+push    gs
+pop     ds
+xor     si,si
+call    restorescreenfrom
+pop     gs ds bp si dx ax
+ret
 
 ;===================================restore l'ecran rapidement de ds:si================
 RestoreScreenfrom:
-        push    cx si di ds es
+        push    ecx si di ds es
         mov     cx,0B800H
         mov     es,cx
+        xor     ecx,ecx
         mov     cx,cs:pagesize
         shr     cx,2
         xor     di,di
         cld
         rep     movsd
-        pop     es ds di si cx 
-        ret   
+        pop     es ds di si ecx
+        ret
+
+
 
 ;===============================Page2to1============================
 Page2to1:
-        push    cx si di ds es
+        push    ecx si di ds es
         mov     cx,0B800H
         mov     es,cx
         mov     ds,cx
+        xor     ecx,ecx
         mov     cx,cs:pagesize
         shr     cx,2
-        mov     si,4000
+        mov     si,cs:pagesize
         xor     di,di
         cld
         rep     movsd
-        pop     es ds di si cx 
+        pop     es ds di si ecx
         ret
 
 ;===============================Page1to2============================
 Page1to2:
-        push    cx si di ds es
+        push    ecx si di ds es
         mov     cx,0B800H
         mov     es,cx
         mov     ds,cx
+        xor     ecx,ecx
         mov     cx,cs:pagesize
         shr     cx,2
-        mov     di,4000
+        mov     di,cs:pagesize
         xor     si,si
         cld
         rep     movsd
-        pop     ds es di si cx 
+        pop     ds es di si ecx
         ret
- 
+
 ;===============================xchgPages============================
 xchgPages:
-        push    cx si di ds es
-        call    savepage1
-        call    page2to1
-        mov     cx,0B800H
-        mov     es,cx
-        push    cs
-        pop     ds
-        mov     cx,cs:pagesize
-        shr     cx,2
-        mov     si,offset Copy
-        mov     di,4000
-        rep     movsd
-        pop     es ds di si cx 
-        ret
-
-;Sauve l'‚tat de la carte en es:di
-savestate:
-push cx si di ds 
-push cs
-pop ds
-mov cx,datablocksize
-mov si,offset lines
+push    ax cx dx si di bp ds es gs
+mov     bp,sp
+mov     dx,ss:[bp+22]
+mov     ah,2
+mov     cx,datablocksize
+add     cx,cs:pagesize
+add     cx,3*256
+push    cs
+pop     ds
+mov     si,offset data4
+int     49h
+mov     ah,6
+int     49h
+push    gs
+pop     es
+xor     di,di
+call    savescreento
+call    Page2to1
+push    gs
+pop     ds
+xor     si,si
+mov     cx,0B800H
+mov     es,cx
+mov     di,cs:pagesize
+xor     ecx,ecx
+mov     cx,cs:pagesize
+shr     cx,2
 cld
-rep movsb
-call savescreento
-pop ds di si cx
+rep     movsd
+mov     ah,01h
+int     49h
+pop     gs es ds bp di si dx cx ax
 ret
 
-;R‚cupŠre l'‚tat de la carte en ds:si    
-restorestate:
-push ax cx si di es
-mov al,[si+7]
-cmp cs:mode,al
-je nochangemode
-mov ah,0
-call setvideomode
-nochangemode:
-push cs
-pop es
-mov cx,datablocksize
-mov di,offset lines
-cld
-rep movsb
-call restorescreenfrom
-pop es di si cx ax
-ret       
 
-;sauve le DAC
+;Sauve l'‚tat de la carte dans un bloc mémoire
+savestate:
+push    ax cx dx si di bp ds es gs
+mov     bp,sp
+mov     dx,ss:[bp+22]
+mov     ah,2
+mov     cx,datablocksize
+add     cx,cs:pagesize
+add     cx,3*256
+push    cs
+pop     ds
+mov     si,offset data
+int     49h
+mov     ah,6
+int     49h
+push    gs
+pop     es
+xor     di,di
+call    saveparamto
+add     di,datablocksize
+call    savescreento
+add     di,cs:pagesize
+call    savedacto
+pop     gs es ds bp di si dx cx ax
+ret
+
+data db '/vga',0
+
+;R‚cupŠre l'‚tat de la carte depuis son bloc mémoire
+restorestate:
+push    ax dx si bp ds gs
+mov     bp,sp
+mov     dx,ss:[bp+16]
+push    cs
+pop     ds
+mov     si,offset data
+mov     ah,9
+int     49h
+push    gs
+pop     ds
+mov     al,ds:[7]
+cmp     cs:mode,al
+je      nochangemode
+mov     ah,0
+call    setvideomode
+nochangemode:
+xor     si,si
+call    restoreparamfrom
+add     si,datablocksize
+call    restorescreenfrom
+add     si,cs:pagesize
+call    restoredacfrom
+pop     gs ds bp si dx ax
+ret
+
+;sauve le DAC dans un bloc de mémoire
 savedac:
+push    ax cx dx si di bp ds es gs
+mov     bp,sp
+mov     dx,ss:[bp+22]
+mov     ah,2
+mov     cx,3*256
+push    cs
+pop     ds
+mov     si,offset data2
+int     49h
+mov     ah,6
+int     49h
+push    gs
+pop     es
+xor     di,di
+call    savedacto
+pop     gs es ds bp di si dx cx ax
+ret
+
+data2 db '/vgadac',0
+
+;R‚cupŠre le dac depuis son bloc mémoire
+restoredac:
+push    ax dx si bp ds gs
+mov     bp,sp
+mov     dx,ss:[bp+16]
+push    cs
+pop     ds
+mov     si,offset data2
+mov     ah,9
+int     49h
+push    gs
+pop     ds
+xor     si,si
+call    restoredacfrom
+pop     gs ds bp si dx ax
+ret
+
+;sauve le DAC en es:di
+savedacto:
 push ax cx dx di
 mov dx,3C7h
 mov cx,256
-mov di,offset dac
 save:
 mov al,cl
 dec al
@@ -1747,13 +1885,13 @@ out dx,al
 inc dx
 inc dx
 in al,dx
-mov cs:[di],al
+mov es:[di],al
 inc di
 in al,dx
-mov cs:[di],al
+mov es:[di],al
 inc di
 in al,dx
-mov cs:[di],al
+mov es:[di],al
 inc di
 dec dx
 dec dx
@@ -1762,25 +1900,24 @@ jne save
 pop di dx cx ax
 ret
 
-;restore le DAC
-restoredac:
+;restore le DAC depuis ds:si
+restoredacfrom:
 push ax cx dx si
 xor ax,ax
 mov dx,3C8h
 mov cx,256
-mov si,offset dac
 save2:
 mov al,cl
 dec al
 out dx,al
 inc dx 
-mov al,cs:[si]
+mov al,ds:[si]
 inc si
 out dx,al
-mov al,cs:[si]
+mov al,ds:[si]
 inc si 
 out dx,al
-mov al,cs:[si]
+mov al,ds:[si]
 inc si  
 out dx,al
 dec dx
@@ -1814,8 +1951,5 @@ include ..\include\pol8x8.inc
 font8x16:
 include ..\include\pol8x16.inc
 
-copy 		equ $
-copy2           equ $+8192
-dac             equ $+8192+8192
 
 end start
