@@ -39,10 +39,10 @@ mov dx,ds:[MB.Sizes]
 shl edx,4
 mov ah,0Fh
 int 47h
+mov bh,24
+cmp ds:[MB.IsResident],true
 push cs
 pop ds
-mov bh,24
-cmp ds:[MB.Sizes],true
 jne notresident
 mov si,offset resident
 mov ah,14h
@@ -81,7 +81,7 @@ fino:
 db 0CBh
 resident db 'oui',0
 nonresident db 'non',0
-msg db 'Memory manager V1.2',0
+msg db 'Memory manager V1.3',0
 menu db 'Nom          | Taille | Res | Parent        | Mem',0
 
 end start
