@@ -1,6 +1,7 @@
 boots segment
 .386
-org 000h
+org 7C00h
+;org 100h
 assume cs:boots,ds:boots
 
 start:
@@ -8,26 +9,33 @@ jmp boot
 
 
 bootdb  db     'COS2000A'               ;ID Formatage
-        dw      512                      ;octet/secteur
+sizec   dw      512                      ;octet/secteur
         db      1                        ;secteur/cluster
-        dw      1                        ;secteur reserv‚
-        db      2                        ;nb de FAT
-        dw      224                      ;nb secteur rep racine
-        dw      2880                     ;nb secteur du volume
+reserv  dw      1                        ;secteur reserv‚
+nbfat   db      1                        ;nb de FAT
+nbfit   dw      25                       ;nb secteur rep racine
+allclu  dw      2880                     ;nb secteur du volume
         db      0F0h                     ;ID support
-        dw      9                        ;secteur/FAT
-        dw      18                       ;secteur/piste       
-        dw      2                        ;nb de tˆte
-        dw      0                        ;distance 1er sect et sect masse
-        db      0,0,0,0,0,0,0,0,29h     ;?
-        db      01,02,03,04      ;no de serie
-        db      'COS2000    '            ;nom de volume
+fatsize dw      12                        ;secteur/FAT
+nbtrack dw      18                       ;secteur/piste       
+head    dw      2                        ;nb de tˆte
+hidden  dd      0                        ;nombre de secteur cach‚s
+        dd      0                        ;si nbsecteur = 0 nbsect                                       ; the number of sectors
+bootdrv db      0                        ;Lecteur de d‚marrage
+        db      0                        ;NA
+bootsig db      29h                      ;boot signature 29h
+        dd      01020304h                ;no de serie
+pope    db      'COS2000    '            ;nom de volume
         db      'FAT16   '               ;FAT
 specialboot:
-        db      0                        ;Secteur Systeme
-errorloading  db 'The disk inserted in the floppy drive is not a system disk !!',0dh,0
-okloading db 'COS is loading',0dh,0
 
+errorloading  db 'It''s not a COS disk!',0dh,0ah,0
+okloading db 'COS search system',0Dh,0ah,0
+syst db 'Ok',0dh,0ah,0
+dot db '.',0
+carry db 0dh,0ah,0
+Sys db 'System file',0
+sys2 db 'sys',0
 
 errorboot:
         mov si,offset errorloading
@@ -36,77 +44,138 @@ errorboot:
         int 16h
         int 19h
 boot:
-        cli
-        mov ax,07C0h
-        mov ds,ax
+        mov Bootdrv,dl
+        cli        
         mov ax,09000h
         mov ss,ax
         mov sp,0FFFFh
-        mov ax,1000h
-        mov es,ax
-        sti
+	sti
+        p:
+        push cs
+        pop ds
         xor ax,ax
-        xor dx,dx
         int 13h
         jc errorboot
         mov si,offset okloading
         call showstr
-        mov cx,13
-        mov bx,100h
-        call readsector
-        jc errorboot
-        mov cx,es:[bx+26]
-        call readsector
-        jc errorboot
-        add bx,512
-        inc cx
-        call readsector
-        jc errorboot
-        db 2eh,0ffh,1eh
-        dw offsets
-        Offsets  dw 100h
-                 dw 1000h
-        ret
+        mov cx,nbtrack       
+        les si,ds:[1Eh*4]
+        mov byte ptr es:[si+4], cl
+        mov byte ptr es:[si+9], 0Fh
+        xor ax,ax
+        mov al,NbFat
+        mov bx,FatSize
+        mul bx
+        mov cx,ax
+        add cx,word ptr [offset Hidden]
+        adc cx,word ptr [offset Hidden+2]
+        add cx,Reserv     
+        mov word ptr [offset BootSig],cx
+        xor dx,dx
+        mov ax,allclu
+        div nbtrack
+        xor dx,dx
+        div head
+        mov word ptr [offset pope],ax
+        push cs
+        pop es
+        mov bx,offset buffer
+        mov si,bx
+        xor dx,dx 
+CheckRoot:
+call readsector
+jc errorboot
+xor di,di
+findnext:
+cmp byte ptr [bx+di],0
+je errorboot
+push si di cx
+mov si,di
+add si,bx
+call showstr
+mov ax,si
+mov si,offset dot
+call showstr
+mov si,ax
+add si,12
+call showstr
+mov si,offset carry
+call showstr
+mov si,ax
+mov di,offset sys
+mov cx,12+4
+rep cmpsb
+pop cx di si
+je oksystem
+add di,32
+inc dx
+cmp dx,nbfit
+ja errorboot
+cmp di,sizec
+jb findnext
+inc cx
+jmp Checkroot
+oksystem:
+mov si,offset syst
+call showstr
+mov cx,[di+BX+26]
+mov bx,1000h
+mov es,bx
+push bx
+mov bx,0100h
+push bx
+mov si,offset dot
+fatagain:
+cmp cx,0FFF0h
+jae finishload
+call readsector
+jc errorboot
+call showstr
+add bx,sizec
+call getfat
+jnc fatagain
+finishload:
+push es
+push es
+push es
+pop ds
+pop fs
+pop gs
+push 7202h
+popf
+db 0CBh
 
 
-DiskSectorsPerTrack dw 18   
-DiskTracksPerHead dw 80
-DiskHeads dw 2
-
-;===================================Afficher un int EDX a l'‚cran================
-ShowInt:
-        push    eax edx esi di es
-        mov     di,xy
-        mov     ax,0B800h
-        mov     es,ax
-        mov     eax,edx
-        mov     esi,10
-decint2:
-        xor     edx,edx
-        div     esi
-        add     dl,'0'
-        mov     dh,colors
-        mov     es:[di],dx
-        sub     di,2
-        cmp     ax,0
-        jne     decint2
-        sub     di,2
-        mov     xy,di
-        pop     es di esi edx eax 
+         
+;<-cx nøsecteur  ->cx code FAT
+getfat:
+push es bx
+mov ax,cx
+xor dx,dx
+div sizec
+mov cx,ax
+add cx,reserv
+mov bx,offset buffer
+push cs
+pop es
+call readsector
+jc errorgetfat
+shl dx,1
+add bx,dx
+mov cx,[bx]
+errorgetfat:
+pop bx es
 ret
 
-xy dw 20
-colors db 4
-
 ReadSector:
-push cx dx si
+push ax cx dx si
   mov AX, CX
   xor DX, DX
-  div DiskSectorsPerTrack
+  div nbtrack
   mov CL, DL                    ;{ Set the sector                            }
   and CL, 63                    ;{ Top two bits are bits 8&9 of the cylinder }
   xor DX, DX
-  div DiskTracksPerHead
+  div head
   mov CH, DL                    ;{ Set the track bits 0-7                    }
   mov AL, DH
   ror AL, 1
@@ -114,31 +183,20 @@ push cx dx si
   and AL, 11000000b
   or CL, AL                     ;{ Set bits 8&9 of track                     }
   xor dX, DX
-  div DiskHeads
+  div pope
   mov DH, DL                    ;{ Set the head                              }
   inc CL
   mov SI, 4
 TryAgain:
-  mov AL, 1
-  mov DL, 0
-  mov AH, 2
+  mov AX,0201h
+  mov DL, bootdrv
   int 13h
   jnc Done
   dec SI
   jnz TryAgain
 Done:
-  pop si dx cx 
+  pop si dx cx ax
 ret  
-
-showcrlf:
-  push ax bx
-  mov ax, 0E0Dh
-  xor bx, bx
-  int 10h
-  mov al, 0Ah
-  int 10h
-  pop bx ax
-ret
 
 showstr:
         push ax bx si
@@ -146,19 +204,16 @@ again:
         lodsb
         or al,al
         jz fin
-        cmp al,0Dh
-        jne noret
-        call showcrlf
-        jmp again
-noret:
         mov ah,0Eh
         mov bx,07h
         int 10h
         jmp again
         fin:
         pop si bx ax
-        ret  
+        ret
 
+
+Buffer equ $
 
 end start
 

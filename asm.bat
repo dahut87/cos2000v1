@@ -1,6 +1,6 @@
 @echo off
 del system.bin
-ren id.com system.bin
+copy id.com system.bin
 tasm boot.asm /t/x/m4
 tlink boot.obj /x
 del boot.obj

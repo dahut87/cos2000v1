@@ -17,15 +17,15 @@ zoomout equ 43h
 
                 
 start:
-                ;mov ax,cs
-
-                mov ax,01000h
-                mov ds,ax
-                mov es,ax
-                mov gs,ax
+                xor eax,eax
+                xor ebx,ebx
+                xor ecx,ecx
+                xor edx,edx
+                xor esi,esi
+                xor edi,edi
                 mov     ax,13h
-                int     10h                     
-                                                
+                int     10h                 
+                                               
 		mov	dx,3C8h
 		mov	al,7
                 out     dx,al                   
@@ -40,7 +40,7 @@ start:
 		mov	ds,ax
 		push	ds
 		push	es
-                push    gs
+                push    cs
                 mov     di,logo2coord
                 mov     cx,logo2coordsize
                 xor     si,si                   
@@ -57,7 +57,7 @@ loopcoord2:
 		mov	ax,bx
 		sub	ax,14h
                 stosw                           
-                inc     gs:nblogo2
+                inc     cs:nblogo2
 nothingcoord2:
 		add	dx,3
                 cmp     dx,0BAh
@@ -91,7 +91,7 @@ loopcoord:
                 shl     ax,1                   
 		sub	ax,1Eh
                 stosw                          
-                inc     gs:nblogo
+                inc     cs:nblogo
 nothingcoord:
 		inc	dx
 		inc	dx
@@ -105,7 +105,7 @@ loc_6:
 
 		push	ds
 		pop	es
-                push    gs
+                push    cs
                 pop     ds
 masterloop:
                 inc    logox                            ;++++

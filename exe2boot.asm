@@ -33,7 +33,7 @@ cmp dx,0
 jne error
 mov ax,4200h
 xor cx,cx
-mov dx,512
+mov dx,7E00h
 int 21h
 jc error
 mov ah,3fh
