@@ -1,0 +1,52 @@
+all:
+	cd commande
+	make
+	cd ..
+
+	cd programs
+	make
+	cd ..
+
+	cd noyau
+	make
+	cd ..
+
+	cd contribs
+	make
+	cd ..
+
+	cd install
+	make
+	cd ..
+
+copy:
+	make all
+	copy commande\*.exe ..\data
+	copy programs\*.exe ..\data
+	copy programs\*.rip ..\data
+	copy noyau\*.sys ..\data
+	rem copy noyau\*.bin ..\data
+	copy contribs\*.exe ..\data
+	copy install\*.com ..\
+	make clean
+
+clean:
+	cd commande
+	make clean
+	cd ..
+
+	cd programs
+	make clean
+	cd ..
+
+	cd noyau
+	make clean
+	cd ..
+
+	cd contribs
+	make clean
+	cd ..
+
+	cd install
+	make clean
+	cd ..

@@ -1,0 +1,57 @@
+lnk_boot = tlink /x
+asm= tasm /t/m5/zi
+lnk= tlink /x/t
+
+all: detect.exe editeur.exe gestion.exe logo.exe pmode.exe souris.exe test.exe verifier.exe volume.exe
+
+detect.exe: detect.asm
+	$(asm) detect
+	$(lnk) detect
+	ren detect.com detect.exe
+
+editeur.exe: editeur.asm
+	$(asm) editeur
+	$(lnk) editeur
+	ren editeur.com editeur.exe
+
+gestion.exe: gestion.asm
+	$(asm) gestion
+	$(lnk) gestion
+	ren gestion.com gestion.exe
+
+logo.exe: logo.asm
+	$(asm) logo
+	$(lnk) logo
+	ren logo.com logo.exe
+
+pmode.exe: pmode.asm
+	$(asm) pmode
+	$(lnk) pmode
+	ren pmode.com pmode.exe
+
+souris.exe: souris.asm
+	$(asm) souris
+	$(lnk) souris
+	ren souris.com souris.exe
+
+test.exe: test.asm
+	$(asm) test
+	$(lnk) test
+	ren test.com test.exe
+
+verifier.exe: verifier.asm
+	$(asm) verifier
+	$(lnk) verifier
+	ren verifier.com verifier.exe
+
+volume.exe: volume.asm
+	$(asm) volume
+	$(lnk) volume
+	ren volume.com volume.exe
+
+clean:
+  del *.obj
+  del *.exe
+  del *.com
+  del *.sys
+  del *.err

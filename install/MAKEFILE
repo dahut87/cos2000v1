@@ -1,0 +1,16 @@
+lnk_boot = tlink /x
+asm= tasm /t/m5/zi
+lnk= tlink /x/t
+
+all: setup.com
+
+setup.com: setup.asm
+	$(asm) setup
+	$(lnk) setup
+
+clean:
+  del *.obj
+  del *.exe
+  del *.com
+  del *.sys
+  del *.err
