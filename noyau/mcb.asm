@@ -3,13 +3,13 @@
 smart
 .code
 
-org 0100h
+org 0h
 
 include ..\include\mem.h
 include ..\include\divers.h
 
 start:
-maxfunc equ 10
+maxfunc equ 13
 
 	jmp	tsr			;Saute à la routine résidente
 nameed db 'MB'			;Nom drivers
@@ -64,8 +64,116 @@ tables dw MBinit		;Table qui contient les adresses de toutes les fonctions de VI
          dw MBAlloc
          dw MBclean
          dw MBfindsb
+         dw MBnonresident
+         dw MBSearchfunc
+         dw MBLoadfuncs
+         ;dw MBdefrag
+         ;dw MBcopy
+         ;dw MBchname
          
 FirstMB dw 0
+
+;Resouds les dépendances du bloc de mémoire GS
+MBloadfuncs:
+       push    ax bx ecx dx si di ds es gs
+       push    gs
+       pop     ds
+       cmp     word ptr ds:[102h],"EC"
+       jne     notloaded
+       mov     si,ds:[100h+exe.import+2]
+loadfuncs:
+       cmp     word ptr [si],0
+       je      endofloading
+       call    MBSearchfunc
+       jnc     toendoftext
+       mov     bx,si
+findend2:
+        inc     bx
+        cmp     byte ptr [bx], ':'
+        jne     findend2
+        mov     byte ptr [bx],0
+        mov     ah,17
+        int     48h
+        jc      notloaded
+        mov     byte ptr [bx],':'
+        call    MBSearchfunc
+        jc      notloaded
+toendoftext:
+        mov     al,[si]
+        cmp     al,0
+        je      oktonext2
+        inc     si
+        jmp     toendoftext
+oktonext2:
+        inc     si
+        mov     [si],dx
+        mov     [si+2],gs
+        add     si,4
+        jmp     loadfuncs
+endofloading:
+          clc
+          pop gs es ds di si dx ecx bx ax
+          ret
+notloaded:
+          stc
+          pop gs es ds di si dx ecx bx ax
+          ret
+
+
+
+
+
+;Recherche une fonction pointé par DS:SI en mémoire et renvoie son adresse en GS:DX
+MBSearchfunc:
+        push    bx si di
+        mov     bx,si
+findend:
+        inc     bx
+        cmp     byte ptr [bx], ':'
+        jne     findend
+        mov     byte ptr [bx],0
+        call    MBfind
+        mov     byte ptr [bx],':'
+        jc      notfoundattallthesb
+        cmp     word ptr gs:[102h],"EC"
+        jne     notfoundattallthesb
+        mov     di,gs:[100h+exe.export+2]
+        inc     bx
+        inc     bx
+functions:
+        cmp     word ptr gs:[di],0
+        je      notfoundattallthesb
+        mov     si,bx
+cmpnamesfunc:
+        mov     al,gs:[di]
+        cmp     al,ds:[si]
+        jne     notfoundthesb
+        cmp     al,0
+        je      seemsok
+        inc     si
+        inc     di
+        jmp     cmpnamesfunc
+notfoundthesb:
+        mov     al,gs:[di]
+        cmp     al,0
+        je      oktonext
+        inc     di
+        jmp     notfoundthesb
+oktonext:
+        inc     di
+        inc     di
+        inc     di
+        jmp     functions
+seemsok:
+        mov     dx,gs:[di+1]
+        clc
+        pop     di si bx
+        ret
+notfoundattallthesb:
+        stc
+        pop     di si bx
+        ret
+
 
 ;Mise a nivo de la mémoire (jonction de blocs libre)
 MBclean:
@@ -400,10 +508,10 @@ endofloops:
 	inc     bx
 	inc     bx	
         sub	ax,cx
-	dec	ax
-	dec	ax
 	cmp     ax,0
 	je      nofree
+	dec	ax
+	dec	ax
 	mov	es:[MB.Sizes],cx
 	add	cx,bx
 	mov	es,cx	
@@ -439,6 +547,17 @@ MBresident:
 	dec     bx
 	mov	es,bx
 	mov	es:[MB.IsResident],True
+	pop	es bx
+	ret
+	
+;Rend le segment GS résident
+MBnonresident:
+	push	bx es
+	mov	bx,gs
+	dec	bx
+	dec     bx
+	mov	es,bx
+	mov	es:[MB.IsResident],False
 	pop	es bx
 	ret
 	
