@@ -2,61 +2,61 @@ lnk_boot = tlink /x
 asm= tasm /t/m5/zi
 lnk= tlink /x/t
 
-all: detect.exe editeur.exe gestion.exe logo.exe pmode.exe souris.exe test.exe verifier.exe volume.exe memoire.exe
+all: detect.com editeur.com gestion.com logo.com pmode.com souris.com test.com verifier.com volume.com memoire.com
 
-memoire.exe: memoire.asm
+memoire.com: memoire.asm
 	$(asm) memoire
 	$(lnk) memoire
-	ren memoire.com memoire.exe
+	ren memoire.com memoire.com
 
-detect.exe: detect.asm
+detect.com: detect.asm
 	$(asm) detect
 	$(lnk) detect
-	ren detect.com detect.exe
+	ren detect.com detect.com
 
-editeur.exe: editeur.asm
+editeur.com: editeur.asm
 	$(asm) editeur
 	$(lnk) editeur
-	ren editeur.com editeur.exe
+	ren editeur.com editeur.com
 
-gestion.exe: gestion.asm
+gestion.com: gestion.asm
 	$(asm) gestion
 	$(lnk) gestion
-	ren gestion.com gestion.exe
+	ren gestion.com gestion.com
 
-logo.exe: logo.asm
+logo.com: logo.asm
 	$(asm) logo
 	$(lnk) logo
-	ren logo.com logo.exe
+	ren logo.com logo.com
 
-pmode.exe: pmode.asm
+pmode.com: pmode.asm
 	$(asm) pmode
 	$(lnk) pmode
-	ren pmode.com pmode.exe
+	ren pmode.com pmode.com
 
-souris.exe: souris.asm
+souris.com: souris.asm
 	$(asm) souris
 	$(lnk) souris
-	ren souris.com souris.exe
+	ren souris.com souris.com
 
-test.exe: test.asm
+test.com: test.asm
 	$(asm) test
 	$(lnk) test
-	ren test.com test.exe
+	ren test.com test.com
 
-verifier.exe: verifier.asm
+verifier.com: verifier.asm
 	$(asm) verifier
 	$(lnk) verifier
-	ren verifier.com verifier.exe
+	ren verifier.com verifier.com
 
-volume.exe: volume.asm
+volume.com: volume.asm
 	$(asm) volume
 	$(lnk) volume
-	ren volume.com volume.exe
+	ren volume.com volume.com
 
 clean:
   del *.obj
-  del *.exe
+  del *.com
   del *.com
   del *.sys
   del *.err
