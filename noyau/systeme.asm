@@ -589,22 +589,6 @@ MBinit:
 notforfree:
 	stc
 	pop	es cx ax
-	ret
-
-;Libère le bloc de mémoire GS
-MBFree:
-	push	bx es
-	mov	bx,gs
-	dec     bx
-	dec     bx
-	mov	es,bx
-	cmp	es:[MB.Check],'NH'
-	je	notforfree
-	mov	es:[MB.IsResident],0
-	mov	es:[MB.Reference],Free
-	mov	dword ptr es:[MB.Names],'eerF'
-	mov	dword ptr es:[MB.Names+4],0
-	pop	es bx
 	ret	
 
 ;Creér un bloc de nom ds:si de taille cx (octets) -> n°segment dans GS
@@ -632,7 +616,7 @@ searchfree:
         mov   word ptr es:[MB.Check],'NH'
 	mov	es:[MB.IsNotLast],True
 	mov	es:[MB.Reference],cs
-	mov	es:[MB.IsResident],False
+	mov	es:[MB.IsResident],True
 	mov	es:[MB.Sizes],cx
 	mov     di,MB.Names
 	push	ax cx
@@ -681,16 +665,6 @@ notsogood:
         inc     bx
 	add	bx,es:[MB.Sizes]
 	jmp	searchfree
-
-;Rend le segment GS résident
-MBresident:
-	push	bx es
-	mov	bx,gs
-	dec	bx
-	mov	es,bx
-	mov	es:[MB.IsResident],True
-	pop	es bx
-	ret
 
 ;================================================
 ;Routine de gestion de handler
