@@ -171,6 +171,8 @@ tre2:
      dec di
      shl di,5
      mov dx,[di+bx+26]
+     cmp [di+bx+12],00657865h ;EXE
+     jne tre3
      mov ah,6
      int 47h
      int 47h

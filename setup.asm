@@ -156,6 +156,7 @@ jc error2
 mov ax,3D00h
 int 21h
 jc error2
+mov cs:temp,ax
 mov bx,ax
 mov ax,4202h
 xor cx,cx
@@ -219,13 +220,16 @@ pop es
 call writesector
 mov cx,entrie
 end1:
+mov ah,3eh
+mov bx,cs:temp
+int 21h
 pop es ds bp di si dx bx ax
 ret
 entrie dw 0
 error2:
 stc
 jmp end1
-
+temp dw 0
 
 makefit:
 push bx cx si di bp

@@ -59,6 +59,8 @@ tables   dw cmdmouse
          dw cmdmouse2
          dw detectmouse
          dw getmouse
+         dw getmousescreen
+         dw configmouse
 
 isact db 0
 
@@ -133,27 +135,46 @@ endoftest:
 
 ;envoie en bx,cx les coordonn‚es et en dl les boutons
 getmouse:
-mov bl,cs:vx
-xor bh,bh
-mov cl,cs:vy
-xor ch,ch
+mov bx,cs:rx
+mov cx,cs:ry
 mov dl,cs:button
-;sub dl,8
-;and dl,0Fh
+sub dl,8
+and dl,0Fh
 clc
 ret
 
-Button       db 0
-rx dw 0
-ry dw 0
-VX            db 0
-VY            db 0
-X dw 0
-Y dw 0
-count        db 0
-error        db 0
-xy dw 0
-old dw 0
+;envoie en di les coordonn‚es ecran et en dl les boutons
+getmousescreen:
+mov di,cs:xy
+mov cx,cs:ry
+mov dl,cs:button
+sub dl,8
+and dl,0Fh
+clc
+ret
+
+
+;configure la rapidit‚ dans cl et dans ah,al sphŠre x et y
+Configmouse:
+mov cs:speed,cl
+mov cs:spherex,ah
+mov cs:spherey,al
+ret
+
+Button  db 0
+rx      dw 0
+ry      dw 0
+VX      db 0
+VY      db 0
+X       dw 0
+Y       dw 0
+speed   db 6
+spherex db 0
+spherey db 0
+count   db 0
+error   db 0
+xy      dw 0
+old     dw 0
 ;Gestionnaire de souris PS/2
 react:
         push ax bx cx dx di ds es
@@ -191,17 +212,50 @@ gest3:
         mov VY, al
         jmp endgest
 endgest:
-        mov bl,VY
-        xor bh,bh
-        add y,bx
-        mov bl,VX
-        xor bh,bh
-        add x,bx
+        cmp error,1
+        je errormouse
         push cs
         pop es
         mov di,offset infos
         mov ah,34
-        int 47h
+        int 47h              
+        mov cl,speed
+        movsx bx,VY
+        shl bx,cl
+        cmp spherey,0
+        jne nolimity
+        mov al,[di]
+        xor ah,ah
+        dec ax
+        cmp bx,0
+        jg decy
+        cmp ry,ax
+        jae noaddy
+        jmp nolimity
+decy:
+        cmp ry,0
+        je noaddy
+nolimity:
+        sub y,bx
+noaddy:
+        movsx bx,VX
+        shl bx,cl
+        cmp spherex,0
+        jne nolimitx
+        mov al,[di+1]
+        xor ah,ah
+        dec ax
+        cmp bx,0
+        jl decx
+        cmp rx,ax
+        jae noaddx
+        jmp nolimitx
+decx:
+        cmp rx,0
+        je noaddx
+nolimitx:
+        add x,bx
+noaddx:
         mov ax,x
         mov bx,0FFFFh
         xor ch,ch
@@ -230,6 +284,7 @@ endgest:
         mov al, 20h
         out 0a0h, al                         
         out 20h, al             
+errormouse:
         pop es ds di dx cx bx ax
         mov cs:isact,0
         pop bx

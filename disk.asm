@@ -75,6 +75,8 @@ lines:
      mov ah,13
      mov si,offset spaces
      int 47h
+    mov ah,5
+    int 47h
      mov al,16
      mov cl,7
      mov ah,21
@@ -105,10 +107,12 @@ doaline2:
      inc di
      dec al
      jnz doaline2
+       dec bh
+     je outes
      mov ah,6
      int 47h
-     dec bh
-     jnz lines
+     jmp lines
+outes:  
      mov ah,21
      mov cl,112
      int 47h
@@ -355,7 +359,7 @@ xxyy dw 3
 xxyy2 dw 3
 errordisk db 'An error has occured on drive A:, press a key to continu                   ',0
 menu db 'Bottom F1, Top F2, Sectors F3&F4, Load/Save F5&F6, Mode F7, Quit F8  MODE '
-pope  db 'VIEW     ',0         
+pope  db 'VIEW',0         
 spaces db  ' ³ ',0
 
 showbuffer db 35 dup (0FFh)
