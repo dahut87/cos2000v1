@@ -3,7 +3,7 @@
 smart
 .code
 
-org 0100h
+org 0h
 
 include ..\include\fat.h
 include ..\include\mem.h
@@ -21,7 +21,6 @@ start:
      mov ah,21
      mov cl,7
      int 47h
-
 	mov	ah,3
 	int	48h
 	mov	ax,0002
@@ -397,7 +396,7 @@ int 47h
 	ret
 errorrefreshing db 'Impossible de lire le support',0
 
-extcom db '.COM',0
+extcom db '.CE ',0
 
 Code_Mem:
 mov si,offset msgs
@@ -622,7 +621,7 @@ Help_Mem db 0
 derror        db 'Erreur de Syntaxe !',0
 Error_Syntax  db 'La commande ou l''executable n''existe pas ! F1 pour ',0
 prompt        db '>',0
-msg           db 'Interpreteur de commande COS V1.8',0
+msg           db 'Interpreteur de commande COS V1.9',0
 
         include str0.asm
 
