@@ -17,16 +17,16 @@ int 47h
 mov si,offset menu
 mov ah,13
 int 47h
-mov ah,18h
+mov ah,6
 int 47h
-
 xor cx,cx
 listmcb:
 mov ah,4
 int 49h
 jc fino
 inc cx
-inc bl
+mov ah,18h
+int 47h
 push gs
 pop ds
 mov bh,0
@@ -76,6 +76,8 @@ mov cx,16
 mov ah,11h
 int 47h
 pop cx
+mov ah,6h
+int 47h
 jmp listmcb
 fino:
 db 0CBh
