@@ -3,7 +3,7 @@
 smart
 .code
 
-org 0100h
+org 0h
 
 include ..\include\bmp.h
 
@@ -308,6 +308,7 @@ ShowTime:
 	call	showfixint
 	pop	edx cx ax
 	ret
+	db 'ICI'
 
 ;================SHOWNAME (Fonction 2Eh)==============
 ;Affiche le nom pointé par SI
@@ -522,7 +523,7 @@ initattribs:
 	mul 	ah
 	shl 	ax,1
   	cmp   cs:mode,5
-      setae cs:graphics
+      setae cs:graphic
       jb    istext
 	shl   ax,3
 istext:
@@ -534,7 +535,7 @@ istext:
       mov   al,cs:[di-36]
 	xor 	ah,ah
       shl   ax,2
-	mov   cl,cs:graphics
+	mov   cl,cs:graphic
 	shr   ax,cl
       mov   cs:linesize,ax
       mov   ax,cs:[di-43]
@@ -586,7 +587,7 @@ clearscreen:
 	mov 	cx,cs:pagesize
 	mov	di,cs:adress
 	shr 	cx,2
-        cmp   byte ptr cs:graphics,1
+        cmp   byte ptr cs:graphic,1
 	jne 	erasetext
 	mov  	ax,0A000h  
 	mov 	es,ax       
@@ -791,7 +792,7 @@ showline:
       	jne     scro
 	dec 	bl
 	mov	cx,1
-	cmp	byte ptr cs:graphics,0
+	cmp	byte ptr cs:graphic,0
 	je	okscro
 	mov	cx,8
 okscro:
@@ -846,7 +847,7 @@ showinteger:
       	pop   	esi edx cx bx eax 
 	ret   
     
-showbuffer 	db 35 dup (0FFh)
+showbuffer 	db 50 dup (0FFh)
 
 ;==========SHOWFIXINT (Fonction h)===========
 ;Affiche un entier EDX aprés le curseur de taille cx
@@ -1222,7 +1223,7 @@ scrolldown:
 	sub 	cx,si
 	mov 	di,cs:adress
 	cld
-	cmp   byte ptr cs:graphics,1
+	cmp   byte ptr cs:graphic,1
 	jne 	textp
 	mov  	ax,0A000h  
 	mov 	es,ax
@@ -1300,7 +1301,7 @@ setxy:
 	add 	di,ax
 	shl 	di,1
 	mov 	cs:xy,di
-	cmp	byte ptr cs:graphics,1
+	cmp	byte ptr cs:graphic,1
 	jne	oktext
 	mov	bl,cs:x
 	mov	cl,cs:y
@@ -1536,7 +1537,7 @@ getchar:
 ;Ecrit le caractère ASCII CL attribut CH aprés le curseur, en le mettant à jours
 charout:
 	push 	ax bx cx dx di es
-	cmp	byte ptr cs:graphics,1
+	cmp	byte ptr cs:graphic,1
 	jne	textaccess
         call    emulatechar
         jmp     adjusttext
