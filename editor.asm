@@ -53,6 +53,8 @@ lines:
      mov ah,13
      mov si,offset spaces
      int 47h
+     mov ah,5
+     int 47h
      mov al,16
      mov cl,7
      mov ah,21
@@ -91,10 +93,12 @@ doaline2:
      inc edi
      dec al
      jnz doaline2
+     dec bh
+     je outes
      mov ah,6
      int 47h
-     dec bh
-     jnz lines
+     jmp lines
+outes:     
      mov ah,21
      mov cl,112
      int 47h
@@ -284,7 +288,7 @@ calc1:
      shl ax,2
      shl dx,1
      add ax,dx
-     add ax,25
+     add ax,27
      mov bx,YY
      mov dx,yy
      shl bx,5
@@ -310,7 +314,7 @@ calc2:
      mov dx,xx
      shl dx,1
      add si,dx
-     add si,127
+     add si,129
      mov byte ptr es:[si],112
      mov bx,xxyy2
      mov byte ptr es:[bx],07

@@ -17,9 +17,10 @@ mov si,offset msg
 int 47h
 replay:
 mov ah,6
-int 47h   
-mov ah,6
 int 47h
+noret:
+mov ah,6
+int 47h    
 mov ah,13
 mov si,offset prompt
 int 47h
@@ -27,22 +28,24 @@ mov di,offset buffer
 waitchar:
 mov ax,0
 int 16h
-mov dl,al
-mov [di],al
 cmp al,0Dh
 je entere
+cmp di,offset buffer+256
+je waitchar
+mov [di],al
 inc di
+mov dl,al  
 mov ah,7
 int 47h
 jmp waitchar
 entere:
-mov ah,6
-int 47h
-mov ah,6
-int 47h  
 mov byte ptr [di],0
 mov si,offset buffer
-call uppercasestr0
+cmp si,di
+je noret
+mov ah,6
+int 47h     
+call uppercase0
 mov bx,offset commands
 tre:
 mov di,[bx]
@@ -60,11 +63,11 @@ error:
 push cs
 pop es   
 mov dl,'.'
-call searchcharstr0
+call searchchar0
 je noaddext
 mov di,offset buffer
 mov si,offset extcom
-call concatstr0
+call concat0
 noaddext:
 mov si,offset buffer
 push cs
@@ -113,96 +116,6 @@ mov si,offset Error_Syntax
 int 47h
 jmp replay
 
-;met en majuscule la string ds:si
-uppercasestr0: 
-push si ax
-uppercaser:
-mov al,ds:[si]
-inc si
-cmp al,0
-je enduppercase
-cmp al,'a'
-jb uppercaser
-cmp al,'z'
-ja uppercaser
-sub byte ptr [si-1],'a'-'A'
-jmp uppercaser
-enduppercase:
-clc
-pop ax si
-ret
-
-;Cherche dl dans la str ds:si -> di
-SearchCharStr0:
-push ax cx si di es
-mov di,si
-push ds
-pop es
-mov cx,0FFh
-mov al,0
-cld
-repne scasb
-neg cx
-dec cx
-xor ch,ch
-mov di,si
-mov al,dl
-repne scasb
-pop es di si cx ax
-ret
-
-;concatäne la chaine str ds:si avec es:di
-concatstr0:
-push ax cx dx si di
-push es di
-mov di,si
-push ds
-pop es
-mov al,0  
-mov cx,255
-cld      
-repne scasb
-neg cx
-dec cx
-xor ch,ch
-mov dx,cx
-pop di es
-mov cx,0FFh
-repne scasb
-dec di
-mov cx,dx
-rep movsb
-pop di si dx cx ax
-ret    
-
-;compare la chaine es:di avec ds:si
-cmpstr0:
-push cx dx si di 
-push di
-mov al,0
-mov cx,255
-cld
-repne scasb
-neg cx
-mov dx,cx
-pop di
-push es di
-mov di,si
-push ds
-pop es
-mov cx,255
-repne scasb
-neg cx
-cmp dx,cx
-pop di es
-jne notequal
-dec cx
-xor ch,ch
-rep cmpsb
-notequal:
-pop di si dx cx
-ret
-
 Code_Exit:
 pop ax
 db 0CBh
@@ -214,20 +127,139 @@ int 47h
 ret
 
 Version_Text db 'Cos 2000 version 1.1.1B by Nico',0
+
+Code_Cls:
+mov ah,2
+int 47h
+ret
+
+Code_Reboot:
+push 0FFFFh
+push 00000h
+db 0CBH
+
+Code_Command:
+mov bx,offset commands
+showalls:
+mov si,[bx]
+add bx,4
+cmp si,0
+je endoff
+mov ah,13
+int 47h
+mov ah,6
+int 47h
+jmp showalls
+endoff:
+ret
+
 extcom db '.EXE',0
 
-commands dw Str_Exit   ,Code_Exit
+commands dw Str_Exit   ,Code_Exit   
          dw Str_Version,Code_Version
+         dw Str_Cls    ,Code_Cls    
+         dw Str_Reboot ,Code_Reboot 
+         dw Str_Command,Code_Command
          dw 0
 
 
 Str_Exit     db 'EXIT',0
 Str_Version  db 'VERSION',0
-
-Error_Syntax db 'The command doesn''t exit !',0
+Str_Cls      db 'CLS',0
+Str_Reboot   db 'REBOOT',0
+Str_Command  db 'COMMAND',0
+                         
+Error_Syntax db 'Command or executable doesn''t exist !',0
 prompt db 'COS>',0
 msg db 'Cos command interpretor V1.0',0
 buffer db 255 dup (0)
+
+;Recherche un caractäre dl dans la chaåne ds:si
+SearchChar0:
+        push    ax cx di es
+        call    GetLength0
+        push    ds
+        pop     es
+        mov     di,si
+        mov     al,dl
+        repne   scasb
+        pop     es di cx ax
+        ret
+
+;Compares 2 chaines de caractäres DS:SI et ES:DI zerof si non equal
+cmpstr0:
+        push    cx dx si di
+        call    GetLength0
+        mov     dx,cx
+        push    ds si
+        push    es
+        pop     ds
+        mov     si,di
+        call    GetLength0       
+        pop     si ds
+        cmp     cx,dx
+        jne     NotEqual
+        repe    cmpsb
+NotEqual:
+        pop     di si dx cx
+        ret
+
+;met en majuscule la chaine ds:si
+UpperCase0: 
+        push    si ax
+UpperCase:
+        mov     al,ds:[si]
+        inc     si
+        cmp     al,0
+        je      EndUpperCase
+        cmp     al,'a'
+        jb      UpperCase
+        cmp     al,'z'
+        ja      UpperCase
+        sub     byte ptr [si-1],'a'-'A'
+        jmp     UpperCase
+EndUpperCase:
+        clc
+        pop ax si
+        ret
+
+;Concatäne le chaine ds:si avec es:di
+Concat0:
+        push    ax cx dx si di
+        call    GetLength0
+        mov     dx,cx
+        xchg    si,di
+        push    ds
+        push    es
+        pop     ds
+        call    GetLength0
+        pop     ds
+        xchg    si,di
+        add     di,cx
+        mov     cx,dx
+        cld
+        rep     movsb
+        mov     al,0
+        stosb
+        pop     di si dx cx ax
+        ret
+
+;renvoie la taille en octets CX de la chaine pointÇe en ds:si
+GetLength0:
+        push    ax di es
+        push    ds
+        pop     es
+        mov     di,si
+        mov     al,0
+        mov     cx,0FFFFh
+        cld
+        repne   scasb
+        neg     cx
+        dec     cx
+        dec     cx
+        pop     es di ax
+        ret
+
 
 vga db 0
 end start

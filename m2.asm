@@ -193,10 +193,28 @@ gest3:
 endgest:
         mov bl,VY
         xor bh,bh
+        mov al,button
+        shr al,5
+        and al,1
+        cmp al,0
+        je addy
         add y,bx
+        jmp hadsuby
+        addy:
+        sub y,bx
+        hadsuby:
         mov bl,VX
         xor bh,bh
+        mov al,button
+        shr al,8
+        and al,1
+        cmp al,0
+        je addx
+        sub x,bx
+        jmp hadsubx
+        addx:
         add x,bx
+        hadsubx:
         push cs
         pop es
         mov di,offset infos

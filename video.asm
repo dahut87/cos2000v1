@@ -280,12 +280,12 @@ mode6        DB 63H, 00H,  03H,01H,0FH,00H,0EH
              DB 00H,00H,00H,00H,00H,40H,05H,0FH,0FFH
              DB 00H,01H,02H,03H,04H,05H,06H,07H,08H,09H,0AH,0BH,0CH,0DH,0EH,0FH
              DB 41H,00H,0FH,00H,00H
-             db 00,00
+             db 00,00  
 
 ;320*400 256 couleurs chain4
-mode7        DB 63H, 00H,  03H,01H,0FH,00H,06H
+mode7        DB 63H, 00H,  03H,01H,0FH,00H,0EH
              DB 5FH,4FH,50H,82H,54H,80H,0BFH,1FH,00H,40H,00H,00H,00H,00H,00H,00H
-             DB 9CH,8EH,8FH,28H,00H,96H,0B9H,0E3H,0FFH
+             DB 9CH,8EH,8FH,28H,40H,96H,0B9H,0A3H,0FFH
              DB 00H,00H,00H,00H,00H,40H,05H,0FH,0FFH
              DB 00H,01H,02H,03H,04H,05H,06H,07H,08H,09H,0AH,0BH,0CH,0DH,0EH,0FH
              DB 41H,00H,0FH,00H,00H
@@ -311,6 +311,15 @@ mode9        DB 63H, 00H,  03H,01H,0FH,00H,0EH
 
 
 
+;====================================================
+;320*400 256 couleurs chain4
+mode7s        DB 63H, 00H,  03H,01H,0FH,00H,06H
+             DB 5FH,4FH,50H,82H,54H,80H,0BFH,1FH,00H,40H,00H,00H,00H,00H,00H,00H
+             DB 9CH,8EH,8FH,28H,00H,96H,0B9H,0E3H,0FFH
+             DB 00H,00H,00H,00H,00H,40H,05H,0FH,0FFH
+             DB 00H,01H,02H,03H,04H,05H,06H,07H,08H,09H,0AH,0BH,0CH,0DH,0EH,0FH
+             DB 41H,00H,0FH,00H,00H
+             db 00,00
 
 ;
 ;=============CLEAR=========
@@ -891,6 +900,7 @@ Showsigned:
 push ax ebx edx es
 xor ebx,ebx
 mov bl,cl
+dec bl
 bt edx,ebx
 jnc pos
 neg edx 
