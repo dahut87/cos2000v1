@@ -17,6 +17,10 @@ start:
      mov ah,43
      int 47h
      xor bp,bp 
+     push cs
+     push cs
+     pop es
+     pop ds
 Adres:
      mov di,offset infos
      mov ah,34
@@ -26,7 +30,7 @@ Adres:
      pop es
      mov cx,sect
      mov di,offset buffer
-     mov ax,0001h
+     mov ah,0h
      int 48h 
      jnc noerror
      errtr:
@@ -205,9 +209,9 @@ waitst:
      jne tre
      mov dword ptr [pope],'WEIV'
      push cs
-     pop es
+     pop ds
      mov cx,sect
-     mov bx,offset buffer
+     mov si,offset buffer
      mov ah,1
      int 48h
      jnc adres
@@ -296,7 +300,7 @@ calc1:
      shl ax,2
      shl dx,1
      add ax,dx
-     add ax,25
+     add ax,27
      mov bx,YY
      mov dx,yy
      shl bx,5
@@ -319,6 +323,7 @@ calc2:
      shl si,5
      shl dx,7
      add si,dx
+     add si,2
      mov dx,xx
      shl dx,1
      add si,dx
@@ -378,7 +383,7 @@ spaces db  ' ³ ',0
 showbuffer db 35 dup (0FFh)
 oldmode db 0 
 infos db 40 dup (0)                   
-buffer db 512 dup (0)
+buffer db 2048 dup (0)
 
 end start
 
