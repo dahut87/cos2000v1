@@ -30,7 +30,7 @@ VerifAll:
         mov ah,1
         int 16h
         jz nokey
-        cmp al,32
+        cmp al,' '
         je enend
 nokey:
         mov ax,cx
@@ -101,7 +101,9 @@ mov si,offset errore
 int 47h
 mov ah,0
 int 16h
-jmp replay
+  mov ah,29h
+    int 47H
+db 0CBH
 
 
 
