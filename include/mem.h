@@ -20,4 +20,4 @@ exe	ends
 
 
 Free        equ 0                 ;Reference quand libre
-memorystart equ 1000h             ;premier bloc de la mémoire
+memorystart equ 0052h             ;premier bloc de la mémoire
