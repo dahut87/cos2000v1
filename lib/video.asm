@@ -54,7 +54,7 @@ print PROC FAR
         ARG     pointer:word=taille
         push    bp
         mov     bp,sp
-        push    cx si di
+        push    ax bx cx si di
         xor     di,di
         mov     si,[pointer]
 @@strinaize0:
@@ -63,6 +63,8 @@ print PROC FAR
         je      @@no0
         cmp     cl,'%'
         je      @@special
+        cmp     cl,'\'
+        je      @@special2
 @@showit:
         call	charout	
         inc     si
@@ -215,19 +217,129 @@ print PROC FAR
         add     si,3
         push    cx
         retn
+        
+@@special2:
+        cmp     byte ptr [si+1],'\'
+        jne     @@notshowit2
+        inc     si
+        jmp     @@showit
+@@notshowit2:
+        mov     cl,byte ptr [si+1]
+        cmp     cl,'l'
+        je      @@showline
+        cmp     cl,'g'
+        je      @@goto
+        cmp     cl,'c'
+        je      @@color
+        cmp     cl,'m'
+        je      @@setvideomode
+        cmp     cl,'e'
+        je      @@clearscreen
+        cmp     cl,'s'
+        je      @@savestate
+        cmp     cl,'r'
+        je      @@restorestate
+        cmp     cl,'i'
+        je      @@enablescroll
+        cmp     cl,'j'
+        je      @@disablescroll
+        cmp     cl,'f'
+        je      @@setfont
+        clc
+        jmp     @@no0
+        
+@@color:
+        mov     cl,[si+2]
+        add     cl,[si+3]
+        sub     cl,'0'
+        sub     cl,'0'
+        mov     ah,21
+        int     47h
+        add     si,4
+        jmp     @@strinaize0
+        
+@@setvideomode:
+        mov     al,[si+2]
+        add     al,[si+3]
+        sub     al,'0'
+        sub     al,'0'
+        mov     ah,0
+        int     47h
+        add     si,4
+        jmp     @@strinaize0
+        
+@@setfont:
+        mov     cl,[si+2]
+        add     cl,[si+3]
+        sub     cl,'0'
+        sub     cl,'0'
+        mov     ah,3
+        int     47h
+        add     si,4
+        jmp     @@strinaize0
+        
+@@showline:
+        mov     ah,6
+        int     47h
+        add     si,2
+        jmp     @@strinaize0
+        
+@@clearscreen:
+        mov     ah,2
+        int     47h
+        add     si,2
+        jmp     @@strinaize0
+        
+@@savestate:
+        mov     ah,40
+        int     47h
+        add     si,2
+        jmp     @@strinaize0
+        
+@@restorestate:
+        mov     ah,41
+        int     47h
+        add     si,2
+        jmp     @@strinaize0
+        
+@@enablescroll:
+        mov     ah,42
+        int     47h
+        add     si,2
+        jmp     @@strinaize0
 
+@@disablescroll:
+        mov     ah,43
+        int     47h
+        add     si,2
+        jmp     @@strinaize0
+        
+@@goto:
+        mov     bh,[si+2]
+        add     bh,[si+3]
+        sub     bh,'0'
+        sub     bh,'0'
+          ;
+        mov     bl,[si+5]
+        add     bl,[si+6]
+        sub     bl,'0'
+        sub     bl,'0'
+        mov     ah,25
+        int     47h
+        add     si,7
+        jmp     @@strinaize0
 
 @@no0:
         add     di,bp
         add     di,2
-        mov     cx,ss:[bp+2]
-        mov     ss:[di+2],cx
-        mov     cx,ss:[bp+4]
+        mov     ax,ss:[bp]   ;BP
+        mov     bx,ss:[bp+2] ;IP
+        mov     cx,ss:[bp+4] ;CS
+        mov     ss:[di],ax
+        mov     ss:[di+2],bx
         mov     ss:[di+4],cx
-        mov     cx,ss:[bp]
-        mov     ss:[di],cx
         mov     bp,di
-        pop     di si cx
+        pop     di si cx bx ax
         mov     sp,bp
         pop     bp
         retf
@@ -831,20 +943,12 @@ showstring0 ENDP
 
 ;Envoie le caractère CL vers l'ecran
 charout PROC NEAR
-push ax bx cx
-         mov ah,0Eh
-         mov bl,7
-         mov al,cl
-         int 10h
-pop cx bx ax
-ret
-
-        ;push ax dx
-        ;mov  ah,7
-        ;mov  dl,cl
-        ;int  47h
-        ;pop  dx ax
-        ;ret
+        push ax dx
+        mov  ah,7
+        mov  dl,cl
+        int  47h
+        pop  dx ax
+        ret
 charout ENDP
 
 end start
