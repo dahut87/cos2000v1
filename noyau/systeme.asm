@@ -6,6 +6,7 @@ smart
 org 0100h
 
 include ..\include\fat.h
+include ..\include\mem.h
 
 start:
 push cs
@@ -16,39 +17,17 @@ pop ds
 pop es
 pop fs
 pop gs
-	;xor 	ax,ax
-	;mov 	ds,ax
-	;mov 	si,7C00h
-mov si,offset eepop
+	xor 	ax,ax
+	mov 	ds,ax
+	mov 	si,7C00h
 	mov 	di,offset myboot
 	mov 	cx,type bootsector
 	push 	cs
 	pop 	es
 	rep 	movsb
+	push    cs
+	pop     ds
 jmp noone
-
-eepop db 0,0,0
-bootdb  db     'COS2000A'                ;Fabricant + n°série Formatage
-sizec   dw      512                      ;octet/secteur
-        db      1                        ;secteur/cluster
-reserv  dw      1                        ;secteur reserv‚
-nbfat   db      2                        ;nb de copie de la FAT
-nbfit   dw      224                      ;taille rep racine
-allclu  dw      2880                     ;nb secteur du volume si < 32 még
-        db      0F0h                     ;Descripteur de média
-fatsize dw      9                        ;secteur/FAT
-nbtrack dw      18                       ;secteur/piste       
-head    dw      2                        ;nb de tˆteb de lecture/écriture
-hidden  dd      0                        ;nombre de secteur cach‚s
-        dd      0                        ;si nbsecteur = 0 nbsect                                       ; the number of sectors
-bootdrv db      0                        ;Lecteur de d‚marrage
-bootsig db      0                        ;NA
-        db      29h                      ;boot signature 29h
-bootsig2 dd     01020304h                ;no de serie
-pope    db      'COS2000    '            ;nom de volume
-        db      'FAT12   '               ;FAT
-
-
 	xor ax,ax
 	mov es,ax
 	mov di,1Eh*4
@@ -70,11 +49,17 @@ noone:
 	pop 	es
 	pop 	fs
 	pop 	gs
-
+	mov	si,offset present
+	mov	bl,4
+	call	showstr	
+	mov	si,offset premice2
+	mov	bl,7
+	call	showstr
+	call    MBinit
+	jc      nomem1
 	call 	InitDrive
-
 	mov	si,offset premice
-	mov	bx,7
+	mov	bl,7
 	call	showstr
 	mov	si,offset next
 	call	showstr
@@ -87,30 +72,19 @@ noone:
 	mov	di,offset loadinglist
 	call	loadfile
 	jc 	noconfread
-
 	mov	si,offset debut
-	mov	bx,7
+	mov	bl,7
 	call	showstr
-	mov	bx,500h
 	xor	cx,cx
 	mov  	si,offset loadinglist
 suiteloading:
 	call 	readline
 	jc	noconfload
-	push	bx si
 	mov	bl,7
+	push    si
 	mov	si,offset next
 	call	showstr
-	pop	si bx
-	call	showstr
-	mov	dx,bx
-	push	bx si
-	mov	bx,7
-	mov	si,offset address
-	call	showstr
-	mov	cx,16
-	call	showhex
-	mov	si,offset addressend
+	pop     si
 	call	showstr
 	xor	bp,bp
 	mov	dx,ax
@@ -129,14 +103,15 @@ noadder:
 	mov	bp,1
 	sub	dx,68h
 haveirq:
+        push    si
 	mov	si,offset irqs
 	call	showstr
 	mov	cx,4
 	call	showhex
 	mov	si,offset irqsend
 	call	showstr
+	pop     si
 noadd:
-	pop	si bx
 	cmp	bp,1
 	jne	install
 	call	replacehandler
@@ -145,11 +120,24 @@ install:
 	call 	installhandler
 suites:	
 	jc 	nohandlerload
-	add	bx,0F00h
+        mov	dx,es
+	mov	bl,7
+	push    si
+	mov	si,offset address
+	call	showstr
+	mov	cx,16
+	call	showhex
+	mov	si,offset addressend
+	call	showstr
 	inc	cx
+	pop     si
 	call 	nextline
 	jnz 	suiteloading
-
+	
+	;initialisation des MCBs
+	mov     ah,0
+	int     49h
+	
 	mov	si,offset fini
 	mov	bl,7
 	call	showstr
@@ -157,13 +145,10 @@ suites:
 	call	showstr
 	mov	si,offset prompt
 	call	showstr
-	mov     ax,6000h
-      	mov     es,ax
-        push    ax
-        mov     di,0100h
-        push    di
-	call 	loadfile
+	call 	projfile
 	jc	nopromptload
+        push    es
+        push    0100h
         push    7202h
         popf
 	push	es
@@ -191,6 +176,19 @@ noconfread:
 	mov	bl,4
 	call	showstr
 	jmp	erroron
+	
+nomem1:
+	mov	si,offset premice2e
+	mov	bl,4
+	call	showstr
+	jmp	erroron
+	
+nomem2:
+	mov	si,offset premice3e
+	mov	bl,4
+	call	showstr
+	jmp	erroron
+
 
 noconfload:
 	mov	di,si
@@ -235,28 +233,35 @@ confe db 0Dh,0Ah,'Erreur dans le fichier de configuration a la ligne ',0
 confee db 0Dh,0Ah,'Erreur de lecture du fichier de configuration',0
 confe2 db ' caractere ',0
 erreur 	db 0Dh,0Ah,'Pressez une touche pour redemarrer...',0
-
+present db 0Dh,0Ah,'COS2000 Version 1.2',0
+premice2 db 0Dh,0Ah,'Initialisation de la memoire',0
+premice2e db 0Dh,0Ah,'Erreur lors de l''initialisation memoire',0
+premice3e db 0Dh,0Ah,'Erreur lors de la reservation memoire',0
 ;==positionne si sur l'entrée suivante de la loading liste jusqu'a equal
 nextline:
 push ax cx di
+push cs
+pop es
 mov di,si
 mov al,0Ah
 mov cx,20
+cld
 repnz scasb
 mov si,di
 cmp byte ptr [di],0
 pop di cx ax
 ret
 
-;==Lit la loading list et initialise SI(Fichier) BX(adresse) AX(interruption)
+;==Lit la loading list et initialise SI(Fichier) AX(interruption)
 readline:
 push cx dx di es
-push ds
+push cs
 pop es
 ;Voir taille de la ligne -> DX
 mov di,si
 mov al,0Dh
 mov cx,20
+cld
 repne scasb
 sub cx,20
 neg cx
@@ -334,14 +339,23 @@ ShowHex:
         neg     cx
         shl     edx,cl
         shr     di,2
-        mov 	ah,0Eh
+        mov 	ah,09h
         and 	bx,1111b
 Hexaize:
         rol     edx,4
         mov     si,dx
 	and	si,1111b
 	mov	al,[si+offset tab]
-        int 	10h
+	push    cx
+	mov     cx,1
+        cmp     al,32
+        jb       control2
+        mov         ah,09h
+        int       10h
+control2:
+        mov    ah,0Eh
+        int    10h
+        pop     cx
         dec     di
         jnz     Hexaize
         pop     di si edx cx bx ax
@@ -350,29 +364,298 @@ Tab db '0123456789ABCDEF'
 
 ;==============================Affiche une chaine DS:SI de couleur BL==============
 showstr:
-        push ax bx si
+        push ax bx cx si
+        mov cx,1
 again:
         lodsb
         or al,al
         jz fin
+        and bx,0111b
+        cmp al,32
+        jb  control
+        mov ah,09h
+        int 10h
+control:
         mov ah,0Eh
-        and bx,1111b
         int 10h
         jmp again
         fin:
-        pop si bx ax
+        pop si cx bx ax
         ret
+        
+        
+;================================================
+;Routine de débogage
+;================================================
+regdata:
+eaxr dd 0
+ebxr dd 0
+ecxr dd 0
+edxr dd 0
+esir dd 0
+edir dd 0
+espr dd 0
+ebpr dd 0
+csr dw 0
+dsr dw 0
+esr dw 0
+fsr dw 0
+gsr dw 0
+ssr dw 0
+
+reg db 0Dh,0Ah,"eax : ",0
+    db 0Dh,0Ah,"ebx : ",0
+    db 0Dh,0Ah,"ecx : ",0
+    db 0Dh,0Ah,"edx : ",0
+    db 0Dh,0Ah,"esi : ",0
+    db 0Dh,0Ah,"edi : ",0
+    db 0Dh,0Ah,"esp : ",0
+    db 0Dh,0Ah,"ebp : ",0
+    db 0Dh,0Ah,"cs  : ",0
+    db 0Dh,0Ah,"ds  : ",0
+    db 0Dh,0Ah,"es  : ",0
+    db 0Dh,0Ah,"fs  : ",0
+    db 0Dh,0Ah,"gs  : ",0
+    db 0Dh,0Ah,"ss  : ",0
+
+showreg:
+pushad
+pushf
+push ds
+mov cs:[eaxr],eax
+mov cs:[ebxr],ebx
+mov cs:[ecxr],ecx
+mov cs:[edxr],edx
+mov cs:[esir],esi
+mov cs:[edir],edi
+mov cs:[espr],esp
+mov cs:[ebpr],ebp
+mov cs:[csr],cs
+mov cs:[dsr],ds
+mov cs:[esr],es
+mov cs:[fsr],fs
+mov cs:[gsr],gs
+mov cs:[ssr],ss
+push cs
+pop ds
+mov si,offset poppp
+call Showstr
+mov si,offset reg
+mov di,offset regdata
+mov bx,7
+showregs:
+cmp byte ptr cs:[si+6],":"
+jne endshowregs
+call Showstr
+cmp byte ptr cs:[si+4]," "
+je segsss
+mov edx,cs:[di]
+mov cx,32
+call Showhex
+add di,4
+jmp showmax
+segsss:
+mov dx,cs:[di]
+mov cx,16
+call Showhex
+add di,2
+showmax:
+add si,9
+mov bp,dx
+push si
+mov si,offset beginds
+call showstr
+mov si,bp
+mov cx,8
+mov al,0
+letshow:
+mov dl,ds:[si]
+inc si
+call showhex
+inc al
+cmp al,10
+jb letshow
+mov si,offset ende
+call showstr
+mov si,offset begines
+call showstr
+mov si,bp
+mov cx,8
+mov al,0
+letshow2:
+mov dl,es:[si]
+inc si
+call showhex
+inc al
+cmp al,10
+jb letshow2
+mov si,offset ende
+call showstr
+pop si
+jmp showregs
+endshowregs:
+mov si,offset poppp
+call Showstr
+xor ax,ax
+int 16h
+pop ds
+popf
+popad
+ret
+begines db ' es[',0
+beginds db ' ds[',0
+ende db '] ',0
+
+;vide ES  pour 200 octets (pour test)
+showmem:
+pushad
+pushf
+mov si,offset poppp
+mov bx,7
+call Showstr
+mov dx,es
+mov cx,16
+mov bx,7
+call ShowHex
+mov si,offset poppp
+mov bx,7
+call Showstr
+xor si,si
+loopererr:
+mov dx,es:[si]
+mov cx,8
+mov bx,7
+call ShowHex
+inc si
+cmp si,200
+jb loopererr
+mov si,offset poppp
+mov bx,7
+call Showstr
+xor ax,ax
+int 16h
+popf
+popad
+ret
+
+poppp db 0Ah,0Dh,'*********',0Ah,0Dh,0
+
+;================================================
+;Routine de gestion de la mémoire
+;================================================
+
+include ..\include\mem.h
+
+FirstMB dw 0
+
+
+;Initialise les blocs de mémoire en prenant GS pour segment de base
+MBinit:
+	push	ax cx es
+	mov	ax,memorystart
+	mov	cs:Firstmb,ax       	
+        mov	cx,0A000h
+	sub	cx,ax
+	dec	ax
+	dec	ax
+	mov	es,ax
+	mov     es:[MB.Reference],Free
+	mov     es:[MB.Sizes],cx
+	mov     es:[MB.Check],'NH'
+	mov	dword ptr es:[MB.Names],'eerF'	
+	mov	dword ptr es:[MB.Names+4],0
+	mov	es:[MB.IsNotLast],False
+	clc
+	pop	es cx ax
+	ret
+notforfree:
+	stc
+	pop	es cx ax
+	ret	
+
+;Creér un bloc de nom ds:si de taille cx (octets) -> n°segment dans GS
+MBCreate:
+	push	ax bx cx dx si di es	
+	shr	cx,4
+	inc	cx
+	mov	bx,cs:firstmb
+	dec	bx
+	dec	bx
+	mov     dl,1
+searchfree:
+	cmp	dl,False
+	je	wasntgood
+	mov   es,bx
+	cmp	es:[MB.Check],'NH'
+	jne	wasntgood
+	cmp	es:[MB.IsNotLast],True
+	sete  dl
+	cmp	es:[MB.Reference],Free
+	jne	notsogood
+	mov	ax,es:[MB.Sizes]
+	cmp	cx,ax
+	ja	notsogood
+        mov   word ptr es:[MB.Check],'NH'
+	mov	es:[MB.IsNotLast],True
+	mov	es:[MB.Reference],cs
+	mov	es:[MB.IsResident],True
+	mov	es:[MB.Sizes],cx
+	mov     di,MB.Names
+	push	ax cx
+	mov 	cx,32
+loops:
+	mov	dh,[si]
+	inc 	si
+	dec	cx
+	jz	endofloops
+	cmp	dh,0
+	je 	endofloops
+	mov	es:[di],dh
+	inc	di
+	jmp	loops
+endofloops:
+	inc	cx
+	mov	al,0
+	rep	stosb
+	pop	cx ax
+	sub	ax,cx
+	dec	ax
+	dec	ax
+	;js	nofree
+	inc     bx
+	inc     bx
+	mov	gs,bx
+	add	bx,cx
+	mov	es,bx	
+	mov	es:[MB.IsNotLast],dl
+	mov	es:[MB.IsResident],False
+	mov	es:[MB.Reference],Free
+	mov	es:[MB.Sizes],ax
+	mov	dword ptr es:[MB.Names],'eerF'
+	mov	dword ptr es:[MB.Names+4],0
+	mov	es:[MB.Check],'NH'
+nofree:
+	clc
+	pop	es di si dx cx bx ax
+	ret
+wasntgood:
+	stc
+	pop	es di si dx cx bx ax
+	ret
+notsogood:
+        inc     bx
+        inc     bx
+	add	bx,es:[MB.Sizes]
+	jmp	searchfree
 
 ;================================================
 ;Routine de gestion de handler
 ;================================================
 
-;remplace le handler pointer par ds:si en bx:100h interruption ax
+;remplace le handler pointer par ds:si en bloc:100h interruption ax
 replacehandler:
-push ax bx cx si di ds es
-mov es,bx
-mov di,0100h
-call loadfile
+push ax bx cx si di ds
+call projfile
 jc reph
 mov bx,ax
 call getint
@@ -380,36 +663,34 @@ mov es:[102h],si
 mov es:[104h],ds
 call setint
 reph:
-pop es ds di si cx bx ax
+pop ds di si cx bx ax
 ret
       
-;install le handler pointer par ds:si en bx:100h interruption ax
+;install le handler pointer par ds:si en bloc:100h interruption ax -> es
 installhandler:
-push bx cx di es
-mov es,bx
-mov di,100h
-call loadfile
+push bx cx
+call projfile
 jc insh
 mov bx,ax
 call setint
 insh:
-pop es di cx bx
+pop cx bx
 ret
                               
-;met es:di le handle de l'int bx
+;met es:100h le handle de l'int bx
 setint:
 push ax bx ds
 cli
 shl bx,2
 xor ax,ax
 mov ds,ax
-mov ds:[bx],di
+mov word ptr ds:[bx],0100h
 mov ds:[bx+2],es
 pop ds bx ax
 sti
 ret
 
-;met ds:si le handle de l'int bx
+;met dans ds:si le handle de l'int bx
 getint:
 push ax bx es
 shl bx,2
@@ -480,6 +761,41 @@ nocarry:
 	pop 	si dx bx ax
 	ret
 
+;============projfile (Fonction 17)===============
+;Charge le fichier ds:si sur un bloc mémoire -> ecx taille -> es bloc
+;-> AH=17
+;<- Flag Carry si erreur
+;=====================================================
+projfile:
+	push	eax bx di gs
+	push	cs
+	pop	es
+	call    uppercase
+	mov	di,offset tempfit
+	call	searchfile
+	jne   	errorload
+	jc	errorload
+	mov	eax,cs:tempfit.FileSize
+	mov     ecx,eax
+	add ecx,100h
+	call    MBCreate
+	jc      errorload
+	push    gs
+	pop     es
+	mov	cx,cs:tempfit.FileGroup
+	mov     di,100h
+	call	loadway
+	jc    	errorload
+	clc
+	mov	ecx,eax
+	pop   	gs di bx eax
+	ret
+errorload:
+	stc
+	mov	ecx,0
+	pop   	gs di bx eax
+	ret
+	
 ;============loadfile (Fonction 4)===============
 ;Charge le fichier ds:si en es:di ->ecx taille
 ;-> AH=4
@@ -498,12 +814,12 @@ loadfile:
 	mov	cx,cs:tempfit.FileGroup
 	mov	eax,cs:tempfit.FileSize
 	call	loadway
-	jc    	errorload
+	jc    	errorload2
 	clc
 	;mov	ecx,eax
 	pop   	di bx eax
 	ret
-errorload:
+errorload2:
 	stc
 	mov	ecx,0
 	pop   	di bx eax
@@ -652,7 +968,7 @@ zeroload:
 	ret
 noway:	
 	stc
-	pop	es ds ebp di si dx bx eax
+	pop	es ds ecx di si dx bx eax
 	ret
 
 ;=============INITDRIVE (Fonction 04H)===============

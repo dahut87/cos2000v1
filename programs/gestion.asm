@@ -161,6 +161,9 @@ tre3:
 tre4:
      cmp ah,67
      jne endof
+     mov ah,15h
+     mov cl,7
+     int 47h
       db      0CBh
 
 ;selectionne la ligne xx
@@ -184,11 +187,11 @@ ret
 xx dw 1
 xxold dw 0
 menu db '[F1] Lire disque [F9] Quitter                                                   ',0
-msg1 db '                       Gestionnaire de fichier Version 1.0                      ',0
+msg1 db '                       Gestionnaire de fichier Version 1.5                      ',0
 msg2 db 'Programme en cours de chargement',0   
 prompt db '--------------------------------------------------------------------------------',0
 infos  db 'Nom      Ext.  Date creation           Date modification      Taille   Attributs',0   
 
-bufferentry equ $
+bufferentry db 512 dup (0)
 
 end start

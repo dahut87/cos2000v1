@@ -2,15 +2,15 @@ lnk_boot = tlink /x
 asm= tasm /t/m5/zi
 lnk= tlink /x/t
 
-all: ex-tasm.exe ex-nasm.exe
+all: ex-tasm.com ex-nasm.com
 
-ex-tasm.exe: ex-tasm.asm
+ex-tasm.com: ex-tasm.asm
 	$(asm) ex-tasm
 	$(lnk) ex-tasm
-	ren ex-tasm.com ex-tasm.exe
+	ren ex-tasm.com ex-tasm.com
 
-ex-nasm.exe: ex-nasm.asm
-	nasm ex-nasm.asm -o ex-nasm.exe
+ex-nasm.com: ex-nasm.asm
+	nasm ex-nasm.asm -o ex-nasm.com
 
 clean:
   del *.obj

@@ -6,7 +6,7 @@ org 0100h
 
 
 start:
-mov ah,26
+mov ah,28h
 int 47h
 mov ax,0001
 int 47h
@@ -19,7 +19,6 @@ int 47h
 mov ah,6
 int 47h
 int 47h
-
 mov ah,21
 mov cl,3
 int 47h
@@ -38,7 +37,6 @@ mov ah,8
 int 47h
 mov ah,6
 int 47h
-
 mov ah,21
 mov cl,4
 int 47h
@@ -59,7 +57,6 @@ mov ah,9
 int 47h
 mov ah,6
 int 47h
-
 mov ah,21
 mov cl,5
 int 47h  
@@ -80,7 +77,6 @@ mov cx,32
 int 47h
 mov ah,6
 int 47h
-
 mov ah,21
 mov cl,6
 int 47h
@@ -101,7 +97,6 @@ mov cx,16
 int 47h
 mov ah,6
 int 47h
-
 mov ah,21
 mov cl,7
 int 47h
@@ -120,7 +115,6 @@ mov ah,7
 int 47h
 mov ah,6
 int 47h
-
 mov ah,21
 mov cl,8
 int 47h
@@ -139,7 +133,6 @@ mov ah,13
 int 47h 
 mov ah,6
 int 47h
-
 mov ah,21
 mov cl,9
 int 47h
@@ -158,7 +151,6 @@ mov ah,44
 int 47h
 mov ah,6
 int 47h
-
 mov ah,13
 mov si,offset text72
 int 47h
@@ -174,11 +166,10 @@ mov ah,45
 int 47h
 mov ah,6
 int 47h
-
-
-
 mov ax,0
 int 16h
+
+
 
 mov ah,2
 int 47h
@@ -186,7 +177,6 @@ mov ah,30
 int 47h
 mov ah,2
 int 47h
-
 mov ah,21
 mov cl,5
 int 47h  
@@ -294,14 +284,14 @@ mov ah,33
 int 47h
 dec bp
 jnz go4
-mov ah,27
-int 47h
+mov ah,14h
 xor bx,bx
 mov si,offset texte3
-mov ah,20
 int 47h
 mov ax,0
 int 16h
+mov ah,29h
+int 47h
 db 0CBh
 
 put:

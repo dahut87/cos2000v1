@@ -6,6 +6,8 @@ smart
 org 0100h
 
 include ..\include\fat.h
+include ..\include\mem.h
+include ..\include\divers.h
 
 start:
 	push    cs
@@ -16,9 +18,10 @@ start:
         pop     es
         pop     fs
         pop     gs
-	  mov ah,21
+     mov ah,21
      mov cl,7
      int 47h
+
 	mov	ah,3
 	int	48h
 	mov	ax,0002
@@ -55,6 +58,7 @@ noret:
 waitchar:
         mov     ax,0
         int     16h
+        call    convertfr
         cmp     ah,59
         jne     norr
         cmp     bp,0
@@ -69,8 +73,14 @@ waitchar:
         add     di,cx
         jmp     waitchar
 norr:
-        cmp     al,0Dh
+        cmp     al,0Dh  ;entrée
         je      entere
+        cmp     al,08h ;backspace
+        je      backspace
+        cmp     al,27 ;echap
+        je      escape
+        cmp     al,' '
+        jb      waitchar
         cmp     di,offset buffer+256
         je      waitchar
         mov     [di],al
@@ -79,6 +89,36 @@ norr:
         mov     ah,7
         int     47h
         jmp     waitchar
+escape:
+        cmp     di,offset buffer
+        je      waitchar
+        mov     ah,18h
+        int     47h
+        mov     dx,offset buffer
+        mov     cx,di
+        sub     cx,dx
+        js      waitchar
+        je      waitchar
+        sub     bh,cl
+        mov     ah,19h
+        int     47h
+        mov     di,offset buffer
+        mov     byte ptr [di],0
+backspace:
+        cmp     di,offset buffer
+        je      waitchar
+        mov     ah,18h
+        int     47h
+        dec     bh
+        mov     dl,' '
+        mov     ah,0Eh
+        int     47h
+        mov     ah,19h
+        int     47h
+        dec     di
+        mov     byte ptr [di],0
+        jmp     waitchar
+
 entere:
         mov     byte ptr [di],0
         mov     si,offset buffer
@@ -141,48 +181,12 @@ error:
         call    concat0
 noaddext:
         mov     si,offset buffer
-        push    cs
-        mov     ax,offset arrive
-        push    ax
-        mov     di,offset vga
-        mov     ah,40
-        int     47h
-        mov     ax,9000h
-        mov     es,ax
-        push    ax
-        mov     di,0100h
-        push    di
-        mov     ah,4
+        mov     ah,18
         int     48h
         jc      reallyerror
-        push    es
-        push    es
-        push    es
-        pop     ds
-        pop     fs
-        pop     gs
-        push    7202h
-        popf 
-        db      0CBh
-        arrive:
-        push    cs
-        push    cs
-        push    cs
-        push    cs
-        pop     ds
-        pop     es
-        pop     fs
-        pop     gs
-        mov     si,offset vga
-        mov     ah,41
-        int     47h
         xor     bp,bp
         jmp     replay
 reallyerror:
-        pop     ax
-        pop     ax
-        pop     ax
-        pop     ax
         mov     ah,13
         mov     si,offset Error_Syntax
         int     47h
@@ -206,7 +210,7 @@ Code_Version:
         int     47h
         ret
         
-Version_Text db 'Cos 2000 version 3.0.2Fr par Nico',0
+Version_Text db 'Cos 2000 version 1.2Fr par Nico',0
         
 Code_Cls:
         mov     ah,2
@@ -393,7 +397,185 @@ int 47h
 	ret
 errorrefreshing db 'Impossible de lire le support',0
 
-extcom db '.EXE',0
+extcom db '.COM',0
+
+Code_Mem:
+mov si,offset msgs
+mov ah,13
+int 47h
+mov ah,6
+int 47h
+mov ah,6
+int 47h
+mov si,offset menu
+mov ah,13
+int 47h
+mov ah,6
+int 47h
+mov ah,18h
+int 47h
+xor cx,cx
+listmcb:
+mov ah,4
+int 49h
+jc fino
+inc cx
+mov ah,18h
+int 47h
+push gs
+pop ds
+mov bh,0
+mov si,MB.Names
+mov ah,14h
+int 47h
+mov bh,15
+xor edx,edx
+mov dx,ds:[MB.Sizes]
+shl edx,4
+mov ah,0Fh
+int 47h
+mov bh,24
+cmp ds:[MB.IsResident],true
+push cs
+pop ds
+jne notresident
+mov si,offset resident
+mov ah,14h
+int 47h
+jmp suitelistmcb
+notresident:
+mov si,offset nonresident
+mov ah,14h
+int 47h
+suitelistmcb:
+mov bh,30
+cmp gs:[MB.Reference],0
+je next
+cmp gs:[MB.Reference],1000h
+jb next
+mov ax,gs:[MB.Reference]
+dec ax
+dec ax
+mov ds,ax
+mov si,MB.Names
+mov ah,14h
+int 47h
+next:
+mov bh,46
+xor edx,edx
+mov dx,gs
+inc dx
+inc dx
+push cx
+mov cx,16
+mov ah,11h
+int 47h
+mov ah,6h
+int 47h
+pop cx
+jmp listmcb
+fino:
+ret
+resident db 'oui',0
+nonresident db 'non',0
+msgs db 'Plan de la memoire',0
+menu db 'Nom            Taille   Res   Parent          Mem',0
+
+
+;converti le jeux scancode/ascii en fr ax->ax
+convertfr:
+            push        dx si
+            mov         si,offset fr
+searchtouch:
+            mov         dx,cs:[si]
+            cmp         dx,0
+            je          endofconv
+            add         si,4
+            cmp         dx,ax
+            jne         searchtouch
+            mov         ax,cs:[si-2]
+endofconv:
+            pop          dx si
+            ret
+
+fr:                     db   '1', 02, '&', 02
+                        db   '!', 02, '1', 02
+                        db   '2', 03, '‚', 03
+                        db   '@', 03, '2', 03
+                        db   '3', 04, '"', 04
+                        db   '#', 04, '3', 04
+                        db   '4', 05,  39, 05
+                        db   '$', 05, '4', 05
+                        db   '5', 06, '(', 06
+                        db   '%', 06, '5', 06
+                        db   '6', 07, '-', 07
+                        db   '^', 07, '6', 07
+                        db   '7', 08, 'Š', 08
+                        db   '&', 08, '7', 08
+                        db   '8', 09, '_', 09
+                        db   '*', 09, '8', 09
+                        db   '9', 10, '‡', 10
+                        db   '(', 10, '9', 10
+                        db   '0', 11, '…', 11
+                        db   ')', 11, '0', 11
+                        db   '-', 12, ')', 12
+                        db   '_', 12, 'ø', 12
+                        db   'Q', 16, 'A', 16
+                        db   'q', 16, 'a', 16
+                        db   'W', 17, 'Z', 17
+                        db   'w', 17, 'z', 17
+                        db   '{', 26, '‰', 26
+                        db   '[', 26, 'ˆ', 26
+                        db   ']', 27, '$', 27
+                        db   '}', 27, 'œ', 27
+                        db   'A', 30, 'Q', 30
+                        db   'a', 30, 'q', 30
+                        db   ':', 39, 'M', 39
+                        db   ';', 39, 'm', 39
+                        db    39, 40, '—', 40
+                        db   '"', 40, '%', 40
+                        db    00, 40, '%', 40
+                        db   '\', 43, '*', 43
+                        db   '|', 43, 'æ', 43
+                        db   'Z', 44, 'W', 44
+                        db   'z', 44, 'w', 44
+                        db   'm', 50, ',', 50
+                        db   'M', 50, '?', 50
+                        db   ',', 51, ';', 51
+                        db   '<', 51, '.', 51
+                        db   '.', 52, ':', 52
+                        db   '>', 52, '/', 52
+                        db   '?', 53, 'õ', 53
+                        db   '/', 53, '!', 53
+                        db   '\', 86, '<', 86
+                        db   '|', 86, '>', 86
+                        db   00, 79h, '~', 03
+                        db   00, 7Ah, '#', 04
+                        db   00, 7Bh, '{', 05
+                        db   00, 7Ch, '[', 06
+                        db   00, 7Dh, '|', 07
+                        db   00, 7Eh, '`', 08
+                        db   00, 7Fh, '\', 09
+                        db   00, 80h, '^', 10
+                        db   00, 81h, '@', 11
+                        db   00, 82h, ']', 12
+                        db   00, 83h, '}', 13
+                        db   00,  00,  00, 00
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         
 commands      dw Str_Exit   ,Code_Exit   ,Syn_Exit   ,Help_Exit
               dw Str_Version,Code_Version,Syn_Version,Help_Version
@@ -404,17 +586,19 @@ commands      dw Str_Exit   ,Code_Exit   ,Syn_Exit   ,Help_Exit
               dw Str_Dir   ,Code_Dir   ,Syn_Dir   ,Help_Dir
               dw Str_refresh   ,Code_refresh   ,Syn_refresh   ,Help_refresh
 	      dw Str_cd   ,Code_cd   ,Syn_cd   ,Help_cd
+	      dw Str_Mem   ,Code_Mem   ,Syn_Mem   ,Help_Mem
               dw 0
       
 Str_Exit      db 'QUIT',0
 Str_Version   db 'VERS',0
-Str_Cls       db 'EFFAC',0
-Str_Reboot    db 'REDEM',0
+Str_Cls       db 'CLEAR',0
+Str_Reboot    db 'REBOOT',0
 Str_Command   db 'CMDS',0
 Str_Mode      db 'MODE',0
-Str_Dir		db 'VOIR',0
-Str_refresh 	db 'LIRE',0
-Str_cd 		db 'CH',0
+Str_Dir		db 'DIR',0
+Str_refresh 	db 'DISK',0
+Str_cd 		db 'CD',0
+Str_Mem 	db 'MEM',0
 Syn_Exit      db 0
 Syn_Version   db 0
 Syn_Cls       db 0
@@ -424,6 +608,7 @@ Syn_Mode      db 'FFH',0
 Syn_Dir   db 0
 Syn_refresh   db 0
 Syn_cd   db '@',0
+Syn_Mem db 0
 Help_Exit     db 0
 Help_Version  db 0
 Help_Cls      db 0
@@ -432,18 +617,18 @@ Help_Command  db 0
 Help_Mode     db 0
 Help_Dir     db 0  
 Help_refresh     db 0   
-Help_cd     db 0                              
+Help_cd     db 0
+Help_Mem db 0
 derror        db 'Erreur de Syntaxe !',0
 Error_Syntax  db 'La commande ou l''executable n''existe pas ! F1 pour ',0
 prompt        db '>',0
-msg           db 'Interpreteur de commande COS V1.1',0
+msg           db 'Interpreteur de commande COS V1.8',0
 
         include str0.asm
 
-dir           equ $
-buffer        equ $+128
-buffer2       equ $+128+512
-vga           equ $+128+512+512
+dir           db 32 dup (0)
+buffer        db 256 dup (0)
+buffer2       db 256 dup (0)
 
 
 end start

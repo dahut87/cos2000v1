@@ -68,6 +68,8 @@ tables  dw readsector
 	dw readcluster
 	dw writecluster
 	dw getdir
+	dw projfile
+	dw execfile
 
 maxfunc equ 24
 
@@ -95,24 +97,30 @@ AdressDirectory		dw	0 ;En cluster
 firstsearch		dw	1 ;Premiere requete ?
 
 getfat:
-	push  	ax bx dx si
+	push  	ax bx dx si ds gs
+	mov     dx,cs
+        push    cs
+        pop     ds
+        mov     si,offset datafat
+        mov     ah,9
+        int     49h
 	mov	ax,cx
 	mov	bx,ax
 	and   	bx,0000000000000001b
 	shr   	ax,1
 	mov   	cx,3
 	mul   	cx
-	mov   	si,offset bufferfat
+	xor     si,si
 	add   	si,ax
 	cmp   	bx,0h
 	jnz   	evenfat
 oddfat:	
-	mov	dx,cs:[si]
+	mov	dx,gs:[si]
       	and   	dx,0FFFh
     	mov   	cx,dx
       	jmp   	endfat
 evenfat:
-      	mov   	dx,cs:[si+1]
+      	mov   	dx,gs:[si+1]
       	and   	dx,0FFF0h
       	shr   	dx,4
       	mov   	cx,dx
@@ -120,11 +128,11 @@ endfat:
 	cmp	dx,0FF0h
 	jbe	nocarry
 	stc
-	pop 	si dx bx ax
+	pop 	gs ds si dx bx ax
 	ret
 nocarry:
 	clc
-	pop 	si dx bx ax
+	pop 	gs ds si dx bx ax
 	ret
 
 ;============loadfile (Fonction 4)===============
@@ -155,6 +163,100 @@ errorload:
 	mov	ecx,0
 	pop   	di bx eax
 	ret
+	
+;============execfile (Fonction 18)===============
+;Execute le fichier ds:si
+;-> AH=18
+;<- Flag Carry si erreur
+;=====================================================
+execfile:
+	pushf
+        push    bp dx
+        mov     bp,sp
+        mov     dx,ss:[bp+10]
+	pushad
+        push    ds es fs gs
+        call    projfile
+        jc      reallyerror
+        push    es
+        pop     gs
+        mov     ah,6
+        int     49h
+        push    es
+        push    cs
+        mov     ax,offset arrive
+        push    ax
+        push    es
+        push    0100h
+        push    es
+        push    es
+        push    es
+        pop     ds
+        pop     fs
+        pop     gs
+        push    7202h
+        popf
+        sti
+        db      0CBh
+        arrive:
+        cli
+        pop     gs
+        mov     ah,01
+        int     49h
+        pop     gs fs es ds
+	popad
+        pop     dx bp
+        popf
+	ret
+reallyerror:
+        pop     gs fs es ds
+	popad
+	pop     dx bp
+        popf
+	stc
+	ret
+
+;============projfile (Fonction 17)===============
+;Charge le fichier ds:si sur un bloc mémoire -> ecx taille -> es bloc
+;-> AH=17
+;<- Flag Carry si erreur
+;=====================================================
+projfile:
+	push	eax bx di ds gs
+	push	cs
+	pop	es
+	call    uppercase
+        mov     ah,5
+	int     49h
+	jnc      errorload2
+	mov	di,offset tempfit
+	call	searchfile
+	jne   	errorload2
+	jc	errorload2
+	mov	eax,cs:tempfit.FileSize
+	mov     ecx,eax
+	add     ecx,100h
+	push    eax
+	mov     ah,2
+	int     49h
+	pop     eax
+	jc      errorload2
+	push    gs
+	pop     es
+	mov	cx,cs:tempfit.FileGroup
+	mov     di,100h
+	call	loadway
+	jc    	errorload2
+	clc
+	mov	ecx,eax
+	pop   	gs ds di bx eax
+	ret
+errorload2:
+	stc
+	mov	ecx,0
+	pop   	gs ds di bx eax
+	ret
+	
 
 tempfit db 32 dup (0)
 
@@ -211,7 +313,6 @@ errorsearch:
 ;Transforme la chaine ds:si en maj
 uppercase: 
 	push 	si ax
-	mov 	di,si
 uppercaser:
 	mov 	al,ds:[si]
 	cmp 	al,0
@@ -292,6 +393,7 @@ AdjustLast:
 	mov	cx,dx
 	push	cs
 	pop	ds
+	cld
 	rep	movsb
 zeroload:
 	clc
@@ -308,7 +410,7 @@ noway:
 ;<- Flag Carry si erreur
 ;=====================================================
 InitDrive:
-	push 	eax bx cx edx di ds es
+	push 	eax bx cx edx di ds es gs
 	push 	cs
 	pop 	ds
 	push	cs
@@ -327,9 +429,9 @@ againtry:
 	dec	di
 	jnz	againtry
 oknoagaintry:
-	mov	cs:lastseg,0
-	mov	cs:lastoff,0
-	mov 	cs:LastRead,0
+	mov	lastseg,0
+	mov	lastoff,0
+	mov 	LastRead,0
 	mov	ax,myboot.sectorsize
 	mov	bl,myboot.SectorsPerCluster
 	xor	bh,bh
@@ -370,9 +472,28 @@ oknoagaintry:
 	mov	adressdirectory,0
 	mov	firstsearch,1
 	mov	currentdirstr,0
-	mov	di,offset bufferfat
+        xor     eax,eax
+        mov     ax,myboot.SectorsPerFat
+       	mul	myboot.SectorSize
+	shl   	edx,16
+	add   	edx,eax
+        mov     ecx,edx
+       	mov     dx,cs
+        mov     si,offset datafat
+        mov     ah,9
+        int     49h
+        jnc     hadafatbloc
+        mov     si,offset datafat
+        mov     ah,2
+        int     49h
+        mov     ah,3
+        int     49h
+hadafatbloc:
+        xor     di,di
 	mov	dx,myboot.SectorsPerFat
 	mov	cx,AdressFat
+	push    gs
+	pop     es
 SeeFat:
 	call	readsector
 	jc	ErrorInit
@@ -381,12 +502,14 @@ SeeFat:
 	dec	dx
 	jnz	seefat
 	clc
-	pop 	es ds di edx cx bx eax
+	pop 	gs es ds di edx cx bx eax
 	ret
 ErrorInit:
 	stc
-	pop 	es ds di edx cx bx eax
+	pop 	gs es ds di edx cx bx eax
 	ret
+	
+datafat db '/fat',0	
 
 ;=============FindFirstFile (Fonction 7)==============
 ;Renvois dans ES:DI un bloc d'info
@@ -648,10 +771,9 @@ lastoff  dw 0
 ;=====================================================
 WriteSector:
 	push 	ax bx cx dx si es
-	cmp 	cs:Lastread,cx
- 	jne 	nodestruct
-  	mov 	cs:Lastread,0ffffh
-nodestruct:
+	mov	cs:lastseg,0
+	mov	cs:lastoff,0
+	mov 	cs:LastRead,0FFFFh
 	push 	ds
   	pop 	es
 	mov	ax,cx
@@ -667,7 +789,7 @@ nodestruct:
 	xchg 	cl,ch             
 	shl 	cl,6                
 	or 	cl, bl         
-	mov 	bx,si                         
+	mov 	bx,si
 	mov 	SI, 4
 	mov 	AL,1
 TryAgains:
@@ -716,25 +838,30 @@ getserial:
 ;<- Flag Carry si erreur, Flag Equal si secteurs égaux
 ;=====================================================
 VerifySector:
-	push 	bx cx si di ds es
+	push 	ecx si di ds es
 	push 	cs
 	pop 	es
 	push 	cs
 	pop 	ds
-	mov 	bx,offset bufferread
-	call 	ReadSector        
-	jc 	errorverify
+	mov 	di,offset bufferread
+	call 	ReadSector
+	mov 	si,offset bufferread
 	call 	inverse
 	call 	WriteSector
 	jc 	errorverify
-	mov 	bx,offset bufferwrite
-	call 	ReadSector        
+
+	mov 	di,offset bufferwrite
+	call 	ReadSector
+	mov 	si,offset bufferwrite	
 	call 	inverse
 	jc 	errorverify
-	mov 	bx,offset bufferread
+	
+	mov 	si,offset bufferread
 	call 	inverse
 	call 	WriteSector
 	jc 	errorverify
+	
+	xor     ecx,ecx
 	mov 	cx,cs:myboot.SectorSize
 	shr	cx,2
 	mov 	si,offset bufferread
@@ -742,18 +869,19 @@ VerifySector:
 	cld
 	rep 	cmpsd
 errorverify:
-	pop 	es ds di si cx bx
+	pop 	es ds di si ecx
 	ret
 
 Inverse:
-	mov 	si,cs:myboot.sectorsize
-	shr	si,2
+        push    si cx
+	xor     cx,cx
 invert:
-	shl 	si,2
-	not 	dword ptr [bx+si-4]
-	shr 	si,2
-	dec 	si
-	jnz 	invert
+	not 	dword ptr [si]
+	add 	si,4
+	add     cx,4
+	cmp     cx,cs:myboot.sectorsize
+	jb 	invert
+	pop     cx si
 	ret
 
 VerifySector2:
@@ -788,6 +916,7 @@ decompression:
 	mov 	cl,ah
 	xor 	ah,ah
 	xor 	ch,ch
+	cld
 	rep 	stosb
 	add 	si,5
 	sub 	dx,5
@@ -954,11 +1083,9 @@ getdir:
 	pop	es ds di si cx ax
 	clc
 	ret
-
-
-bufferread  	equ $
-bufferwrite 	equ $+2048
-bufferentry	equ $+2048+2048
-bufferFat 	equ $+2048+2048+2048
+	
+bufferread  	db 512 dup (0)
+bufferwrite 	db 512 dup (0)
+bufferentry	db 512 dup (0)
 
 end start

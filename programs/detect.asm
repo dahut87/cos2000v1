@@ -157,15 +157,13 @@ xor cl,cl
 inc al
 cmp al,16
 jbe search
-xor ax,ax
-int 16h
 db 0CBh
 
 msg3 db ' Classe :',0
 msg1 db 'Peripherique :',0
 msg2 db ' Constructeur :',0 
 msg4 db ' iD :',0
-msg db 'COS2000 hardware detecteur V1.1',0
+msg db 'COS2000 hardware detecteur V1.6',0
 pcivers  db 'BIOS PCI version ',0
 pcivers2 db ' a ete detecte !',0
 nbbuses db 'Nombre de bus : ',0
