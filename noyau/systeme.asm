@@ -17,39 +17,17 @@ pop ds
 pop es
 pop fs
 pop gs
-	;xor 	ax,ax
-	;mov 	ds,ax
-	;mov 	si,7C00h
-mov si,offset eepop
+	xor 	ax,ax
+	mov 	ds,ax
+	mov 	si,7C00h
 	mov 	di,offset myboot
 	mov 	cx,type bootsector
 	push 	cs
 	pop 	es
 	rep 	movsb
+	push    cs
+	pop     ds
 jmp noone
-
-eepop db 0,0,0
-bootdb  db     'COS2000A'                ;Fabricant + n°série Formatage
-sizec   dw      512                      ;octet/secteur
-        db      1                        ;secteur/cluster
-reserv  dw      1                        ;secteur reserv‚
-nbfat   db      2                        ;nb de copie de la FAT
-nbfit   dw      224                      ;taille rep racine
-allclu  dw      2880                     ;nb secteur du volume si < 32 még
-        db      0F0h                     ;Descripteur de média
-fatsize dw      9                        ;secteur/FAT
-nbtrack dw      18                       ;secteur/piste       
-head    dw      2                        ;nb de tˆteb de lecture/écriture
-hidden  dd      0                        ;nombre de secteur cach‚s
-        dd      0                        ;si nbsecteur = 0 nbsect                                       ; the number of sectors
-bootdrv db      0                        ;Lecteur de d‚marrage
-bootsig db      0                        ;NA
-        db      29h                      ;boot signature 29h
-bootsig2 dd     01020304h                ;no de serie
-pope    db      'COS2000    '            ;nom de volume
-        db      'FAT12   '               ;FAT
-
-
 	xor ax,ax
 	mov es,ax
 	mov di,1Eh*4
@@ -71,6 +49,9 @@ noone:
 	pop 	es
 	pop 	fs
 	pop 	gs
+	mov	si,offset present
+	mov	bl,4
+	call	showstr	
 	mov	si,offset premice2
 	mov	bl,7
 	call	showstr
@@ -252,6 +233,7 @@ confe db 0Dh,0Ah,'Erreur dans le fichier de configuration a la ligne ',0
 confee db 0Dh,0Ah,'Erreur de lecture du fichier de configuration',0
 confe2 db ' caractere ',0
 erreur 	db 0Dh,0Ah,'Pressez une touche pour redemarrer...',0
+present db 0Dh,0Ah,'COS2000 Version 1.2',0
 premice2 db 0Dh,0Ah,'Initialisation de la memoire',0
 premice2e db 0Dh,0Ah,'Erreur lors de l''initialisation memoire',0
 premice3e db 0Dh,0Ah,'Erreur lors de la reservation memoire',0
