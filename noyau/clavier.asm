@@ -5,6 +5,8 @@ smart
 
 org 0h
 
+include ..\include\mem.h
+
 start:
 
 jmp tsr
@@ -15,7 +17,6 @@ tsr:
  db  2eh,0ffh,1eh
  dw  offsets
         cli
-        add dword ptr cs:popes,1
         cmp cs:isstate,1
         je endofforce
         mov cs:isstate,1
@@ -43,12 +44,22 @@ F10:
         mov     si,offset com
         mov     ah,5
         int     49h
-        mov     cs:isstate,0
+        pop     ax
+        pop     ax
+        pop     ax
         push    gs
-        push    0100h
-        db      0CBh
+        push    gs
+        push    gs
+        pop     ds
+        pop     es
+        pop     fs
+        push    gs
+        push    size exe
+        sti
+        mov     cs:[isstate],0
+        retf
         
-com db 'COMMANDE.EXE',0
+com db 'COMMANDE.CE',0
 
 F11:
      push ax di es
@@ -70,17 +81,10 @@ notabove:
 
 
 f12:
-
-showreg:
-pushf
 pushad
-mov  bp,sp
-mov ax,ss:[bp+28h]
-mov cs:[csr],ax
-mov ax,ss:[bp+26h]
-mov cs:[ipr],ax
-mov ax,ss:[bp+2Ah]
-mov cs:[flr],ax
+pushf
+push ds
+mov cs:[eaxr],eax
 mov cs:[ebxr],ebx
 mov cs:[ecxr],ecx
 mov cs:[edxr],edx
@@ -88,169 +92,139 @@ mov cs:[esir],esi
 mov cs:[edir],edi
 mov cs:[espr],esp
 mov cs:[ebpr],ebp
+mov cs:[csr],cs
 mov cs:[dsr],ds
 mov cs:[esr],es
 mov cs:[fsr],fs
 mov cs:[gsr],gs
 mov cs:[ssr],ss
-push ds
-pop fs
 push cs
 pop ds
-mov ah,28h
-int 47h
-mov ax,0002
-int 47H
-mov ah,2
-int 47h
-mov si,offset etat
-mov ah,13
-int 47h
-mov ah,6
-int 47h
-mov ah,6
-int 47h
+mov si,offset sep
+call Showstr
 mov si,offset reg
 mov di,offset regdata
 mov bx,7
 showregs:
-cmp byte ptr cs:[si+4],":"
+cmp byte ptr cs:[si+6],":"
 jne endshowregs
-mov ah,13
-int 47h
-cmp byte ptr cs:[si+3],"g"
-je segsss
-cmp byte ptr cs:[si+2]," "
+call Showstr
+cmp byte ptr cs:[si+4]," "
 je segsss
 mov edx,cs:[di]
 mov cx,32
-mov ah,0Ah
-int 47h
+call Showhex
 add di,4
 jmp showmax
 segsss:
-xor edx,edx
 mov dx,cs:[di]
 mov cx,16
-mov ah,0Ah
-int 47h
-push si
-mov ah,13
-mov si,offset blank
-int 47h
-pop si
+call Showhex
 add di,2
 showmax:
-add si,7
-mov ebp,edx
+add si,9
+mov bp,dx
 push si
 mov si,offset beginds
-mov ah,13
-int 47h
-pop si
+call showstr
+mov si,bp
 mov cx,8
 mov al,0
-mov bx,bp
 letshow:
-mov dl,fs:[bx]
-inc bx
-mov ah,0Ah
-int 47h
+mov dl,ds:[si]
+inc si
+call showhex
 inc al
 cmp al,10
 jb letshow
-push si
 mov si,offset ende
-mov ah,13
-int 47h
+call showstr
 mov si,offset begines
-mov ah,13
-int 47h
-pop si
-mov bx,bp
+call showstr
+mov si,bp
 mov cx,8
 mov al,0
 letshow2:
-mov dl,es:[bx]
-inc bx
-mov ah,0Ah
-int 47h
+mov dl,es:[si]
+inc si
+call showhex
 inc al
 cmp al,10
 jb letshow2
-push si
 mov si,offset ende
-mov ah,13
-int 47h
-mov si,offset beginint
-mov ah,13
-int 47h
+call showstr
 pop si
-mov edx,ebp
-mov ah,8
-int 47h
-push si
-mov si,offset endint
-mov ah,13
-int 47h
-pop si
-mov ah,6
-int 47h
 jmp showregs
 endshowregs:
-mov ah,6
-int 47h
-mov si,offset pile
-mov ah,13
-int 47h
-mov ah,6
-int 47h
-mov bp,sp
-mov di,0ffffh
-sub di,bp
-xor si,si
-showstack:
-mov dl,'+'
-mov ah,07h
-int 47h
-mov ah,0Ah
-mov cx,8
-mov dx,si
-int 47h
-mov dl,':'
-mov ah,07h
-int 47h
-mov dx,ss:[bp+si]
-mov ah,0Ah
-mov cx,16
-int 47h
-mov ah,06
-int 47h
-inc si
-inc si
-cmp si,di
-jb showstack
-
-mov ah,0ah
-mov edx,cs:popes
-mov cx,32
-int 47h
-
-
-
-
-
-
+mov si,offset sep
+call Showstr
 xor ax,ax
 int 16h
-mov ah,29h
-int 47h
-popad
+pop ds
 popf
+popad
 jmp endof
+begines db ' es[',0
+beginds db ' ds[',0
+ende db '] ',0
 
-popes dd 0
 
+;==============================Affiche le nombre nb hexa en EDX de taille CX et couleur BL==============
+ShowHex:
+        push    ax bx cx edx si di
+        mov     di,cx
+        sub     cx,32
+        neg     cx
+        shl     edx,cl
+        shr     di,2
+        mov 	ah,09h
+        and 	bx,1111b
+Hexaize:
+        rol     edx,4
+        mov     si,dx
+	and	si,1111b
+	mov	al,[si+offset tab]
+	push    cx
+	mov     cx,1
+        cmp     al,32
+        jb       control2
+        mov         ah,09h
+        int       10h
+control2:
+        mov    ah,0Eh
+        int    10h
+        pop     cx
+        dec     di
+        jnz     Hexaize
+        pop     di si edx cx bx ax
+        ret
+Tab db '0123456789ABCDEF'
+
+;==============================Affiche une chaine DS:SI de couleur BL==============
+showstr:
+        push ax bx cx si
+        mov cx,1
+again:
+        lodsb
+        or al,al
+        jz fin
+        and bx,0111b
+        cmp al,32
+        jb  control
+        mov ah,09h
+        int 10h
+control:
+        mov ah,0Eh
+        int 10h
+        jmp again
+        fin:
+        pop si cx bx ax
+        ret
+
+
+;================================================
+;Routine de débogage
+;================================================
 regdata:
 eaxr dd 0
 ebxr dd 0
@@ -260,40 +234,28 @@ esir dd 0
 edir dd 0
 espr dd 0
 ebpr dd 0
-ipr  dw 0
 csr dw 0
 dsr dw 0
 esr dw 0
 fsr dw 0
 gsr dw 0
 ssr dw 0
-flr dw 0
 
-etat db ' Etat des registres processeurs',0
+reg db 0Dh,0Ah,"eax : ",0
+    db 0Dh,0Ah,"ebx : ",0
+    db 0Dh,0Ah,"ecx : ",0
+    db 0Dh,0Ah,"edx : ",0
+    db 0Dh,0Ah,"esi : ",0
+    db 0Dh,0Ah,"edi : ",0
+    db 0Dh,0Ah,"esp : ",0
+    db 0Dh,0Ah,"ebp : ",0
+    db 0Dh,0Ah,"cs  : ",0
+    db 0Dh,0Ah,"ds  : ",0
+    db 0Dh,0Ah,"es  : ",0
+    db 0Dh,0Ah,"fs  : ",0
+    db 0Dh,0Ah,"gs  : ",0
+    db 0Dh,0Ah,"ss  : ",0
 
-reg db "eax : ",0
-    db "ebx : ",0
-    db "ecx : ",0
-    db "edx : ",0
-    db "esi : ",0
-    db "edi : ",0
-    db "esp : ",0
-    db "ebp : ",0
-    db "ip  : ",0
-    db "cs  : ",0
-    db "ds  : ",0
-    db "es  : ",0
-    db "fs  : ",0
-    db "gs  : ",0
-    db "ss  : ",0
-    db "flag: ",0
-    
-pile db 'Stack :',0
+sep db 0Ah,0Dh,'********************',0Ah,0Dh,0
 
-blank db '    ',0
-beginint db ' (',0
-endint db ') ',0
-begines db ' es[',0
-beginds db ' ds[',0
-ende db '] ',0
 end start
