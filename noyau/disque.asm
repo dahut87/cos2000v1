@@ -6,10 +6,10 @@ smart
 org 0h
 
 include ..\include\fat.h
+include ..\include\mem.h
 
 start:
 	jmp	tsr			;Saute à la routine résidente
-names db 'DRIVE'			;Nom drivers
 id    dw 1234h                ;Identifiant drivers
 Tsr:
 	cli				;Désactive interruptions logiciellement
@@ -182,12 +182,21 @@ execfile:
         pop     gs
         mov     ah,6
         int     49h
+        mov     ah,12
+        int     49h
+        jc      reallyerror
         push    es
         push    cs
         mov     ax,offset arrive
         push    ax
         push    es
+        cmp     word ptr gs:[0h],'EC'
+        jne     noce
+        push    size exe
+        jmp     wasce
+ noce:
         push    0000h
+ wasce:
         push    es
         push    es
         push    es
