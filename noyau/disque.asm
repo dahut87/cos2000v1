@@ -166,9 +166,8 @@ errorload:
 execfile:
 	pushad
 	pushf
-        push    ds es fs gs	
-        mov     ah,17
-        int     48h
+        push    ds es fs gs
+        call    projfile
         jc      reallyerror
         push    cs
         mov     ax,offset arrive
@@ -195,6 +194,7 @@ reallyerror:
         pop     gs fs es ds
         popf
 	popad
+	stc
 	ret
 
 ;============projfile (Fonction 17)===============
@@ -208,8 +208,8 @@ projfile:
 	pop	es
 	mov	di,offset tempfit
 	call	searchfile
-	jne   	errorload
-	jc	errorload
+	jne   	errorload2
+	jc	errorload2
 	mov	eax,cs:tempfit.FileSize
 	mov     ecx,eax
 	add     ecx,19000
