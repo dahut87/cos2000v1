@@ -6,7 +6,8 @@ smart
 org 0100h
 
 start:
-
+jmp tsr
+db 'VIDEO'
 Tsr:
 cli
 cmp ax,1234h
@@ -185,14 +186,14 @@ mode1        DB 67H,00H,  03H,00H,03H,00H,02H
              db 80,25
 
 ;80*50 16 couleurs
-mode2        DB 67H, 00H, 03H,00H,03H,01H,02H
+mode1b        DB 63H, 00H, 03H,01H,03H,01H,02H
              DB 5FH,4FH,50H,82H,55H,81H,0BFH,1FH,00H,47H,06H,07H,00H,00H,00H
              DB 00H,9CH,8EH,8FH,28H,1FH,96H,0B9H,0A3H,0FFH
              DB 00H,00H,00H,00H,00H,10H,0EH,00H,0FFH
              DB 00H,01H,02H,03H,04H,05H,14H,07H,10H,11H,3AH,3BH,3CH,3DH,3EH,3FH
              DB 0CH,00H,0FH,00H,00H
-             db 80,50
-
+             db 80,50        
+                             
 ;100*50 16 couleurs
 mode3        DB 067H,00H,03H,01H,03H,01H,02H
              DB 70H,63H,64H,85H,68H,84H,0BFH,1FH,00H,47H,06H,07H,00H,00H,00H
@@ -200,8 +201,7 @@ mode3        DB 067H,00H,03H,01H,03H,01H,02H
              DB 00H,00H,00H,00H,00H,10H,0EH,00H,0FFH
              DB 00H,01H,02H,03H,04H,05H,14H,07H,10H,11H,3AH,3BH,3CH,3DH,3EH,3FH
              DB 0CH,00H,0FH,00H,00H
-             db 100,50
-
+             db 100,50        
 
 ;100*60 16 couleurs
 mode4b        DB 067H,00H,03H,01H,03H,01H,02H

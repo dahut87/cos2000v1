@@ -24,7 +24,8 @@ Adres:
      pop es
      mov cx,sect
      mov bx,offset buffer
-     call readsector
+     mov ax,0001h
+     int 48h 
      jnc noerror
      errtr:
      mov ah,25
@@ -153,7 +154,8 @@ doaline2:
      jne suit6
      mov cx,sect
      mov bx,offset buffer
-     call writesector
+     mov ah,1
+     int 48h
      jnc waitkey
      jmp errtr
      suit6:
@@ -189,7 +191,8 @@ waitst:
      pop es
      mov cx,sect
      mov bx,offset buffer
-     call writesector
+     mov ah,1
+     int 48h
      jnc adres
      jmp errtr
 tre:
@@ -356,88 +359,9 @@ pope  db 'VIEW     ',0
 spaces db  ' ³ ',0
 
 showbuffer db 35 dup (0FFh)
-Lastread dw 0FFFFh
-
-ReadSector:
-push ax cx dx si
-  cmp cx,cs:lastread
-  je done
-  mov cs:LastRead,cx
-  mov AX, CX     
-  xor DX, DX
-  div cs:DiskSectorsPerTrack
-  mov CL, DL                    ;{ Set the sector                            }
-  and CL, 63                    ;{ Top two bits are bits 8&9 of the cylinder }
-  xor DX, DX
-  div cs:DiskTracksPerHead
-  mov CH, DL                    ;{ Set the track bits 0-7                    }
-  mov AL, DH
-  ror AL, 1
-  ror AL, 1
-  and AL, 11000000b
-  or CL, AL                     ;{ Set bits 8&9 of track                     }
-  xor dX, DX
-  div cs:DiskHeads
-  mov DH, DL                    ;{ Set the head                              }
-  inc CL
-  mov SI, 4
-TryAgain:
-  mov AL, 1
-  mov DL, 0
-  mov AH, 2
-  int 13h
-  jnc Done
-  dec SI
-  jnz TryAgain
-mov word ptr cs:lastread,0ffffh
-Done:
-  pop si dx cx ax
-ret  
-
-WriteSector:
-push ax cx dx si
-  cmp cs:Lastread,cx
-  jne nodestruct
-  mov cs:Lastread,0ffffh
-  nodestruct:
-  mov AX, CX
-  xor DX, DX
-  div cs:DiskSectorsPerTrack
-  mov CL, DL                    ;{ Set the sector                            }
-  and CL, 63                    ;{ Top two bits are bits 8&9 of the cylinder }
-  xor DX, DX
-  div cs:DiskTracksPerHead
-  mov CH, DL                    ;{ Set the track bits 0-7                    }
-  mov AL, DH
-  ror AL, 1
-  ror AL, 1
-  and AL, 11000000b
-  or CL, AL                     ;{ Set bits 8&9 of track                     }
-  xor DX, DX
-  div cs:DiskHeads
-  mov DH, DL                    ;{ Set the head                              }
-  inc CL
-  mov SI, 4
-TryAgain2:
-  mov AL, 1
-  mov DL, 0
-  mov AH, 3
-  int 13h
-  jnc Done2
-  dec SI
-  jnz TryAgain2
-Done2:
-  pop si dx cx ax
-ret
 oldmode db 0 
-DiskSectorsPerTrack dw 18   
-DiskTracksPerHead dw 80
-DiskHeads dw 2
-
-infos db 10 dup (0)
-                 
-buffer equ $+4000
-
+infos db 10 dup (0)                   
+buffer equ $
 
 end start
 

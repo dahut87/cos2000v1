@@ -6,174 +6,48 @@ smart
 org 0100h
 
 start:
-mov si,offset video
-mov bx,8400h
-mov ax,47h
-call installhandler
-mov si,offset lpt
-mov bx,7400h
-mov ax,49h
-call installhandler
-mov si,offset keyboard
-mov bx,7000h
-mov ax,9h
-call replacehandler
-mov si,offset timer
-mov bx,7800h
-mov ax,8h
-call replacehandler
-mov si,offset drive
-mov bx,9000h
-mov ax,48h
-call installhandler
-start2:
-push cs
-push cs
-pop ds
-pop es
-mov ah,21
-mov cl,7
-int 47h
-mov ax,0002
-int 47h   
-mov ah,2
-int 47h
-mov ah,25
-mov bx,0
-int 47h
-mov ah,13
-mov si,offset msg1
-int 47h
-mov ah,6
-int 47h
-int 47h
-mov ah,13
-mov si,offset prompt
-int 47h
-mov ah,6
-int 47h
-xor di,di
-mov ax,0001h
-mov bx,offset buffer
-mov cx,13  
-int 48h       
-xor bp,bp
-showall:
-cmp byte ptr [bx+di],0
-je endof2
-mov al,[bx+di+12]
-mov byte ptr [bx+di+12],0
-mov si,bx
-add si,di
-mov ah,13
-int 47h
-mov si,offset spaces
-int 47h
-mov [bx+di+12],al
-mov byte ptr [bx+di+12+5],0
-mov si,bx
-add si,di
-add si,12
-int 47h
-mov ah,6
-int 47h
-add di,32
-inc bp
-jmp showall
-endof2:
-mov ah,21
-mov cl,112
-int 47h
-mov ah,13
-mov si,offset menu
-int 47h  
-mov xx,1
-mov xxold,2
-call Select
-endof:
-mov ax,0
-int 16h
-     cmp ah,50h
-     jne tre1
-     cmp xx,bp
-     je endof
-     inc xx
-     call select
-     jmp endof
-tre1:
-     cmp ah,48h
-     jne tre2
-     cmp xx,1
-     je endof
-     dec xx
-     call select
-     jmp endof
-tre2:
-     cmp al,0Dh
-     jne tre3 
-     mov di,xx
-     dec di
-     shl di,5
-     mov dx,[di+bx+26]
-     mov ah,6
-     int 47h
-     int 47h
-     mov ah,21
-     mov cl,7
-     int 47h
-     mov ah,13
-     mov si,offset msg2
-     int 47h
-     mov cx,dx
-     call executefatway
-tre3:
-     cmp ah,59
-     jne tre4
-     mov lastread,0FFFFh
-     jmp start2
-tre4:
-     cmp ah,67
-     jne endof
-     mov ax,0001
-     int 47h
-     mov ah,2
-     int 47h
-     mov ah,21
-     mov cl,4
-     int 47h
-     mov ah,13
-     mov si,offset msg3
-     int 47h
-     mov ax,0
-     int 16h
-     mov ax,40h
-     mov ds,ax
-     mov bx,1234h
-     mov ds:[072h],bx
-     push 0FFFFh  
-     push 0000h
-     db 0CBh
+jmp tsr
+db 'DRIVE'
+Tsr:
+cli
+cmp ax,1234h
+jne nomore
+mov ax,4321h
+jmp itsok
+nomore:
+push bx
+mov bl,ah
+xor bh,bh
+shl bx,1
+mov bx,cs:[bx].tables
+mov cs:current,bx
+pop bx
+call cs:current
+itsok:
+jnc noerror
+push bp
+mov bp,sp
+or byte ptr [bp+6],1b
+pop bp
+mov ax,cs
+shl eax,16
+mov ax,cs:current
+jmp endofint
+noerror:
+push bp
+mov bp,sp
+and byte ptr [bp+6],0FEh
+pop bp
+endofint:
+sti
+iret
+current dw 0
+tables   dw readsector
+         dw writesector
+         dw verifysector2  
+         dw loadfatway
+         dw loadfile
 
-executefatway:
-     push cs
-     mov bx,offset start2
-     push bx     
-     mov bx,03000h
-     mov es,bx
-     push bx
-     mov bx,0100h
-     push bx
-     call loadfatway
-     push es
-     push es
-     push es
-     pop ds
-     pop fs
-     pop gs
-     push 7202h
-     popf
-     db 0CBh
-               
 ;cx entr‚e -> fatway chemin
 getfatway:
 push bx cx es
@@ -189,21 +63,20 @@ finishload:
 pop es cx bx
 ret
 
+;Charge le fichier de chemin cx
 loadfatway:
 push ax bx cx di
 call getfatway
 jc endload
 mov di,offset fatway
-mov si,offset dot
-mov ah,13
 loadagain:
 mov cx,cs:[di]
 cmp cx,0FFF0h
 jae endload
 add di,2
+xor al,al
 call readsector
 jc endload
-int 47h
 add bx,cs:sizec
 jmp loadagain
 endload:
@@ -233,39 +106,13 @@ errorgetfat:
 pop dx bx ax es
 ret
 
-;selectionne la ligne xx
-Select:
-push ax di
-mov di,xxold
-mov al,7
-add di,2
-mov ah,32
-int 47h
-mov ax,xx
-mov xxold,ax
-mov di,xx
-mov ah,32
-mov al,112
-add di,2
-int 47h
-pop di ax
-ret      
-
-xx dw 1
-xxold dw 0
-menu db 'F1 Read disk F2 Read file F9 Quit F11 Change video F12 Debug                   ',0
-msg1 db '  Cos 2000 menu loader release 1.0',0
-msg2 db 'The program is loading',0
-msg3 db ' Cos will restart your computer, eject the floppy disk and press a key',0                                                      
-prompt db '>',0
-spaces db '   ',0
-dot db '.',0
-
-
 ReadSector:
 push ax cx dx si
+  cmp al,1
+  je pr
   cmp cx,cs:lastread
   je done
+  pr:
   mov cs:LastRead,cx
   mov AX, CX     
   xor DX, DX
@@ -336,31 +183,51 @@ ret
 
 Lastread dw 0FFFFh
 
-;remplace le handler pointer par ds:si en bx:100h interruption ax
-replacehandler:
-push ax bx si di ds es
-mov es,bx
-mov di,0100h
-call loadfile
-mov bx,ax
-call getint
-mov es:[102h],si
-mov es:[104h],ds
-call setint
-pop es ds di si bx ax
-ret
-      
-;install le handler pointer par ds:si en bx:100h interruption ax
-installhandler:
-push bx di es
-mov es,bx
-mov di,100h
-call loadfile
-mov bx,ax
-call setint
-pop es di bx
+Inverse:
+mov si,512/4
+invert:
+shl si,2
+not dword ptr [bx+si-4]
+shr si,2
+dec si
+jnz invert
 ret
 
+VerifySector:
+push bx cx si di ds es
+push cs
+pop es
+push cs
+pop ds
+mov bx,offset buffer
+call ReadSector        
+jc errorverify
+call inverse
+call WriteSector
+jc errorverify
+mov bx,offset buffer2
+call ReadSector        
+call inverse
+jc errorverify
+mov bx,offset buffer
+call inverse
+call WriteSector
+jc errorverify
+mov cx,512/4
+mov si,offset buffer
+mov di,offset buffer2
+cld
+rep cmpsd
+errorverify:
+pop es ds di si cx bx
+ret
+
+VerifySector2:
+call verifysector
+jne nook
+or byte ptr [bp+6],10b
+nook:
+ret
 
 ;Charge le fichier Ds:si en es:di
 loadfile:
@@ -370,39 +237,17 @@ mov bx,di
 call loadfatway
 pop cx bx
 ret
-                              
-;met es:di le handle de l'int bx
-setint:
-push ax bx ds
-cli
-shl bx,2
-xor ax,ax
-mov ds,ax
-mov ds:[bx],di
-mov ds:[bx+2],es
-pop ds bx ax
-sti
-ret
 
-;met ds:si le handle de l'int bx
-getint:
-push ax bx es
-shl bx,2
-xor ax,ax
-mov es,ax
-mov si,es:[bx]
-mov ds,es:[bx+2]
-pop es bx ax
-ret 
-
-;Recherchele fichier et retourne sont path et en cx sont debut
+;Recherche le fichier et retourne sont path et en cx sont debut
 Searchfile:
 push bx dx si di ds es
 push cs
 pop es
 mov di,offset temp
-mov bx,offset buffer
 call asciiztofit
+mov bx,offset buffer
+push cs
+pop ds
 mov cx,13
 check:
 call readsector
@@ -500,10 +345,10 @@ isSystchar:
 push di
 mov di,offset exeptchar
 isexcept:
-cmp al,cs:[di]
+cmp al,[di]
 je nogood
 inc di
-cmp byte ptr cs:[di],0
+cmp byte ptr [di],0
 jne isexcept
 endanal:
 pop di
@@ -535,16 +380,11 @@ clc
 pop ax cx di si
 ret
 
+nbfit equ 255 
 namesize equ 12
 extsize equ 5
 
 
-nbfit equ 255
-drive db 'drive.sys',0
-timer db 'timer.sys',0
-lpt db 'lpt.sys',0
-video db 'video.sys',0
-keyboard db 'keyboard.sys',0
 temp db 12+5+1 dup (0)
 
 DiskSectorsPerTrack dw 18   
@@ -554,4 +394,5 @@ DiskHeads dw 2
 fatway equ $
 
 buffer equ $+3000
+buffer2 equ $+512 
 end start

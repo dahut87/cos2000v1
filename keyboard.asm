@@ -2,83 +2,178 @@
 .486
 smart
 .code
+
 org 0100h
 
 start:
-mov al,0D0h
-call keybcmd
-in al,60h
-ret
- 
 
-;============= PPI port A (Programmable Peripheral interface) ================
-;8048 (old XT) 8042 (old AT) 8741 8742 (with PS2 mouse)
-; R/W
-;Port 60h : Scancode & keyboarddata
-overrun  equ 000h ;Error too many keys pressed
-BATend   equ 0AAh ;End of the test BAT (basic test assurance)
-MF2code  equ 0ABh ;Code send by MF2 keyboard
-MF2code2 equ 041h ;Code send by MF2 keyboard
-echo     equ 0EEh ;Send by echo command
-Ack      equ 0FAh ;Send by every comman exept EEh et FEh (Aknoledge)
-BATerror equ 0FCh ;BAT failed
-Resend   equ 0FEh ;Resend data please
-Error    equ 0FFh ;Error of keyboard
+jmp tsr
+offsets dd 0
+db 'KEYBOARD'
+tsr:
+ pushf
+ db  2eh,0ffh,1eh
+ dw  offsets
+        cli
+        pusha
+        in al,60h
+        cmp cs:isstate,1
+        jne nostate
+        cmp al,57
+        jne nof12
+        mov cs:isstate,0
+        jmp noF12
+        nostate:
+        cmp al,87
+        jne NoF11
+        push es
+        push cs
+        pop es
+        mov di,offset infos
+        mov ah,34
+        int 47h
+        mov al,cs:infos+7
+        inc al
+        and ax,111b
+        int 47h
+        pop es
+        nof11:
+        cmp al,88
+        jne NoF12 
+        mov ah,26
+        int 47h
+        call showstate
+        mov cs:isstate,1
+        sti
+        waitt:
+        cmp cs:isstate,0
+        jne waitt
+        mov ah,27
+        int 47h 
+        noF12:
+        popa
+        sti
+        iret
+        isstate db 0
+        infos db 10 dup (0)
 
-;Port 60h : command data
-led    equ 0EDh ;set the led like you want
-echo   equ 0EEh ;Echo byte for diagnostic
-Set    equ 0F0h ;Choose the Set of scancode
-Id     equ 0F2h ;Identify the keyboard
-rate   equ 0F3h ;Set the specified typematic rate
-enable equ 0F4h ;clear buffer and scan
-reset  equ 0F5h ;Reset and no scan
-reset2 equ 0F6h ;Reset and scan
+ showstate:
+     push ds es       
+     push ss
+     push gs
+     push fs
+     push es
+     push ds
+     push cs  
+     pushad
+     pushfd
 
-;============= PPI port A (Programmable Peripheral interface) ================
-;8048 (old XT) 8042 (old AT) 8741 8742 (with PS2 mouse)
-; R/W
-;Port 61h
+     push cs
+     push cs
+     pop es
+     pop ds
+     mov ah,2
+     int 47h
+     mov ah,21
+     mov cl,4
+     int 47h
+     mov ah,13
+     mov si,offset reg
+     int 47h
+     mov ah,6
+     int 47h
+     mov ah,21
+     mov cl,7
+     int 47h
+     mov ah,13
+     mov si,offset fla
+     int 47h
+     pop edx
+     mov cx,32
+     mov ah,11
+     int 47h
+     mov ah,5
+     int 47h
+     mov ah,10
+     int 47h
+     mov si,offset regs
+     mov bx,8+6
+     mov ah,21
+     mov cl,6
+     int 47h
+showallREG:
+     mov ah,6
+     int 47h
+     cmp bx,7
+     jb nodr
+     pop edx
+     jmp popo
+     nodr:
+     mov ah,21
+     mov cl,1
+     int 47h
+     xor edx,edx
+     pop dx
+     popo:
+     mov ah,13
+     int 47h
+     mov ah,10
+     mov cx,32
+     int 47h
+     mov ah,5
+     int 47h
+     push si
+     mov si,offset gr
+     mov ah,13
+     int 47h
+     mov ah,8
+     int 47h
+     mov si,offset dr
+     mov ah,13
+     int 47h
+     pop si
+     add si,5
+     dec bx
+     jnz showallreg
+     mov ah,34
+     mov di,offset infos
+     int 47h
+     mov ah,25
+     mov bl,cs:infos
+     xor bh,bh
+     dec bl
+     int 47h
+     mov si,offset app
+     mov ah,13
+     int 47h
+     mov ah,32
+     mov bl,cs:infos
+     xor bh,bh
+     mov di,ax
+     dec di
+     mov cl,116
+     int 47h
+     pop es ds
+     ret
 
-;==================== Data and control keyboard registers ===================
-;8042 (old AT) 8741 8742 (with PS2 mouse)
-; R/W
-;Port 64h
-
-
-
-;Envoie la commande AL aux clavier et si besoin est la donn‚e DL
-Keybcmd:
-push ax
-xchg al,ah
-xor cx,cx
-clearbuffer:
-in al,64h
-test al,02h
-loopnz clearbuffer
-jnz errorkb
-xchg al,ah
-out 64h,al
-clearbuffer2:
-in al,64h
-test al,02h
-loopnz clearbuffer2
-jnz errorkb  
-cmp dl,0
-je endkeyb
-mov al,dl
-out 60h,al
-endkeyb:
-clc
-pop ax
-ret
-errorkb:
-stc
-pop ax
-ret
-
-
-
-
+reg db 'State of registers',0
+fla db 'Flags:',0 
+regs db 'EDI:',0
+     db 'ESI:',0
+     db 'EBP:',0
+     db 'ESP:',0
+     db 'EBX:',0
+     db 'EDX:',0
+     db 'ECX:',0
+     db 'EAX:',0
+     db ' CS:',0
+     db ' DS:',0
+     db ' ES:',0
+     db ' FS:',0
+     db ' GS:',0
+     db ' SS:',0
+gr db '(',0
+dr db ')',0
+app db 'Press space to quit...',0
 
 end start

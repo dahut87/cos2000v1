@@ -58,7 +58,8 @@ VerifAll:
         mov si,offset Msg3
         int 47h 
     call gauge
-    call verifysector
+    mov ah,2
+    int 48h
     jc errors
     je noprob
     inc di
@@ -147,116 +148,4 @@ max dw 2880
 sizes dw 50
 xy dw 0A12h
 gaugetxt db 'ллллллллллллллллллллллллллллллллллллллллллллллллллллллллл',0
-
-Inverse:
-mov si,512/4
-invert:
-shl si,2
-not dword ptr [bx+si-4]
-shr si,2
-dec si
-jnz invert
-ret
-
-VerifySector:
-push bx cx si di ds es
-push cs
-pop es
-push cs
-pop ds
-mov bx,offset buffer
-call ReadSector        
-jc errorverify
-call inverse
-call WriteSector
-jc errorverify
-mov bx,offset buffer2
-call ReadSector        
-call inverse
-jc errorverify
-mov bx,offset buffer
-call inverse
-call WriteSector
-jc errorverify
-mov cx,512/4
-mov si,offset buffer
-mov di,offset buffer2
-cld
-rep cmpsd
-errorverify:
-pop es ds di si cx bx
-ret    
-      
-ReadSector:
-push ax cx dx si
-  mov AX, CX     
-  xor DX, DX
-  div cs:DiskSectorsPerTrack
-  mov CL, DL                    ;{ Set the sector                            }
-  and CL, 63                    ;{ Top two bits are bits 8&9 of the cylinder }
-  xor DX, DX
-  div cs:DiskTracksPerHead
-  mov CH, DL                    ;{ Set the track bits 0-7                    }
-  mov AL, DH
-  ror AL, 1
-  ror AL, 1
-  and AL, 11000000b
-  or CL, AL                     ;{ Set bits 8&9 of track                     }
-  xor dX, DX
-  div cs:DiskHeads
-  mov DH, DL                    ;{ Set the head                              }
-  inc CL
-  mov SI, 4
-TryAgain:
-  mov AL, 1
-  mov DL, 0
-  mov AH, 2
-  int 13h
-  jnc Done
-  dec SI
-  jnz TryAgain
-Done:
-  pop si dx cx ax
-ret  
-
-WriteSector:
-push ax cx dx si
-  mov AX, CX
-  xor DX, DX
-  div cs:DiskSectorsPerTrack
-  mov CL, DL                    ;{ Set the sector                            }
-  and CL, 63                    ;{ Top two bits are bits 8&9 of the cylinder }
-  xor DX, DX
-  div cs:DiskTracksPerHead
-  mov CH, DL                    ;{ Set the track bits 0-7                    }
-  mov AL, DH
-  ror AL, 1
-  ror AL, 1
-  and AL, 11000000b
-  or CL, AL                     ;{ Set bits 8&9 of track                     }
-  xor DX, DX
-  div cs:DiskHeads
-  mov DH, DL                    ;{ Set the head                              }
-  inc CL
-  mov SI, 4
-TryAgain2:
-  mov AL, 1
-  mov DL, 0
-  mov AH, 3
-  int 13h
-  jnc Done2
-  dec SI
-  jnz TryAgain2
-Done2:
-  pop si dx cx ax
-ret
-
-DiskSectorsPerTrack dw 18
-DiskTracksPerHead dw 80
-DiskHeads dw 2
-
-Buffer equ $
-Buffer2 equ $+512
-
-
 End Start

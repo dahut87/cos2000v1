@@ -9,6 +9,10 @@ util\tlink %1.obj /x/t
 if errorlevel 1 goto end
 echo Copying file %1...  
 if "%1"=="video" goto video
+if "%1"=="lpt" goto system
+if "%1"=="keyboard" goto system
+if "%1"=="timer" goto system
+if "%1"=="drive" goto system 
 if "%1"=="system" goto system
 if "%1"=="setup" goto setup 
 copy %1.com ..\data\%1.exe>nul
