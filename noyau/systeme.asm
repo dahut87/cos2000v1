@@ -140,6 +140,8 @@ suites:
 	;initialisation des MCBs
 	mov     ah,0
 	int     49h
+	mov     ah,3
+	int     48h
 	push    memorystart
 	pop     gs
 	mov     ah,10
@@ -154,19 +156,9 @@ suites:
 	call	showstr
 	mov	si,offset prompt
 	call	showstr
-	call 	projfile
+	mov     ah,18
+	int     48h
 	jc	nopromptload
-        push    es
-        push    0000h
-        push    7202h
-        popf
-	push	es
-	push	es
-	push	es
-	pop	ds
-	pop	fs
-	pop	gs
-        db      0CBh
 
 nopromptload:
 	mov	si,offset prompte
