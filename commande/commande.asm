@@ -147,14 +147,11 @@ noaddext:
         mov     di,offset vga
         mov     ah,40
         int     47h
-        mov     ax,9000h
-        mov     es,ax
-        push    ax
-        mov     di,0100h
-        push    di
-        mov     ah,4
+        mov     ah,17
         int     48h
         jc      reallyerror
+        push    es
+        push    0100h
         push    es
         push    es
         push    es
