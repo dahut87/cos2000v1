@@ -8,6 +8,8 @@ start:
      mov ax,0305h
      mov bx,0008h
      int 16h
+     mov ah,28h
+     int 47h
      mov ax,0002
      int 47H   
      mov ah,2
@@ -285,7 +287,7 @@ cursor:
      suit7:
      cmp ax,4200h
      jne adres
-     mov ah,27
+     mov ah,29h
      int 47h
      db 0CBH     ; +++++++
      ret
