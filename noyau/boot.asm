@@ -1,7 +1,6 @@
 boots segment
 .386
 org 7C00h
-;org 100h
 assume cs:boots,ds:boots
 
 start:
@@ -28,9 +27,9 @@ pope    db      'COS2000    '            ;nom de volume
         db      'FAT12   '               ;FAT
 specialboot:
 
-errorloading  db ' Erreur !!',0dh,0ah,0
-okloading db 'Recherche noyau',0Dh,0ah,'   - system.sys',0
-syst db ' Ok',0dh,0ah,'Chargement',0
+errorloading  db ' [Erreur]',0dh,0ah,0
+okloading db 'Recherche noyau ',0Dh,0ah,'   - system.sys',0
+syst db ' [  Ok  ]',0dh,0ah,'Chargement',0
 dot db '.',0
 Sys db 'SYSTEME SYS'
 
@@ -120,7 +119,7 @@ oksystem:
 	  mov  ax,0900h
 	  mov  es,ax
 	  push es
-	  mov  di,100h
+	  mov  di,000h
 	  push di
 	  mov  si,offset dot
 	  xor	 ax,ax
@@ -212,6 +211,8 @@ again:
         fin:
         pop si bx ax
         ret
+        
+db 055h,0AAh
 
 Buffer equ $
 BufferFat equ $+2048
