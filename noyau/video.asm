@@ -5,7 +5,6 @@ smart
 
 org 0h
 
-include ..\include\bmp.h
 
 start:
 	jmp	tsr			;Saute à la routine résidente
@@ -56,22 +55,22 @@ tables dw setvideomode		;Table qui contient les adresses de toutes les fonctions
          dw clearscreen
          dw setfont
          dw loadfont
-         dw showspace
+         dw nothings
          dw showline
          dw showchar
-         dw showint
-         dw showsigned
-         dw showhex
-         dw showbin
-         dw showstring
-         dw showstring0
-         dw showcharat
-         dw showintat
-         dw showsignedat
-         dw showhexat
-         dw showbinat
-         dw showstringat
-         dw showstring0at
+         dw showpixel
+         dw getpixel
+         dw setxyg
+         dw nothings
+         dw nothings
+         dw nothings
+         dw nothings
+         dw nothings
+         dw nothings
+         dw nothings
+         dw nothings
+         dw nothings
+         dw nothings
          dw setcolor
          dw getcolor
          dw scrolldown
@@ -83,23 +82,23 @@ tables dw setvideomode		;Table qui contient les adresses de toutes les fonctions
          dw page1to2
          dw xchgPages
          dw savepage1
-         dw changelineattr
+         dw nothings
          dw waitretrace
          dw getvgainfos
-         dw loadbmppalet
-         dw showbmp
-         dw viewbmp
+         dw nothings
+         dw nothings
+         dw nothings
          dw savedac
          dw restoredac
          dw savestate
          dw restorestate
          dw enablescroll
          dw disablescroll
-	 dw showdate
-	 dw showtime
-	 dw showname
-	 dw showattr
-	 dw showsize
+	 dw nothings
+	 dw nothings
+	 dw nothings
+	 dw nothings
+	 dw nothings
 	 dw getchar
 
 ;================================Table des modes videos (64 BYTES) ============================================
@@ -232,6 +231,24 @@ maxmode	equ 9
 planesize	equ 64000
 ;============================================Fonctions de l'int VIDEO===========================================
 
+;message d'erreur specifiant que les interruptions n'existent plus
+nothings:
+         push    cx si
+         mov     si,offset msg
+         mov     ch,04
+showit:
+         mov     cl,cs:[si]
+         cmp     cl,0
+         je      endshowit
+         inc     si
+         call    charout
+         jmp     showit
+endshowit:
+          pop    si cx
+          ret
+
+msg db 'ERREUR: int 47h fonction inexistante !!!',0
+
 ;=============ENABLESCROLLING (Fonction 02AH)=========
 ;Autorise le d‚filement
 ;-> AH=42
@@ -249,192 +266,19 @@ planesize	equ 64000
 DisableScroll:
         mov     cs:scrolling,0
         ret
-
-;================SHOWDATE (Fonction 2Ch)==============
-;Affiche la date contenu en DX
-;-> AH=44
-;<- 
-;=====================================================
-ShowDate:
-	push	ax cx edx
-	mov	ax,dx
-	mov	cx,2
-	xor	edx,edx
-	mov	dx,ax
-	and	dx,11111b
-	call	showfixint
-	mov	dl,'/'
-	call	showchar
-	mov	dx,ax
-	shr	dx,5
-	and	dx,111b
-	call	showfixint
-	mov	dl,'/'
-	call	showchar
-	mov	dx,ax
-	shr	dx,8
-	and	dx,11111111b
-	add	dx,1956
-	mov	cx,4
-	call	showfixint
-	pop	edx cx ax
+        
+;==========SHOWCHAR (Fonction 07h)===========
+;met un caractère de code ASCII DL aprés le curseur
+;-> AH=7, DL code ASCII du caractère
+;<-
+;============================================
+showchar:
+	push 	cx
+	mov	cl,dl
+	mov 	ch,cs:colors
+	call	charout
+	pop 	cx
 	ret
-
-;================SHOWTIME (Fonction 2Dh)==============
-;Affiche l'heure contenu en DX
-;-> AH=45
-;<- 
-;=====================================================
-ShowTime:
-	push 	ax cx edx
-	mov	ax,dx
-	mov	cx,2
-	xor 	edx,edx
-	mov	dx,ax
-	shr	dx,11
-	and	dx,11111b
-	call	showfixint
-	mov	dl,':'
-	call	showchar
-	mov	dx,ax
-	shr	dx,5
-	and	dx,111111b
-	call	showfixint
-	mov	dl,':'
-	call	showchar
-	mov	dx,ax
-	and	dx,11111b
-	shl	dx,1
-	call	showfixint
-	pop	edx cx ax
-	ret
-	db 'ICI'
-
-;================SHOWNAME (Fonction 2Eh)==============
-;Affiche le nom pointé par SI
-;-> AH=46
-;<- 
-;=====================================================
-ShowName:
-	push	cx dx si
-	xor	cx,cx
-showthename:
-	mov	dl,ds:[si]
-	call	showchar
-	inc	si
-	inc	cx
-	cmp	cx,8
-	jne	suiteaname
-	mov	dl,' '
-	call	showchar
-suiteaname:
-	cmp	cx,8+3
-	jb	showthename
-	pop	si dx cx
-	ret
-
-;================SHOWATTR (Fonction 2Fh)==============
-;Affiche les attributs spécifié par DL
-;-> AH=47
-;<- 
-;=====================================================
-ShowAttr:
-	push	dx
-	mov	al,dl	
-
-	test 	al,00000001b
-	je	noreadonly
-	mov	dl,'L'	
-	jmp	readonly
-noreadonly:
-	mov	dl,'-'
-readonly:
-	call	showchar
-
-	test 	al,00000010b
-	je	nohidden
-	mov	dl,'C'	
-	jmp	hidden
-nohidden:
-	mov	dl,'-'
-hidden:
-	call	showchar
-
-	test 	al,00000100b
-	je	nosystem
-	mov	dl,'S'	
-	jmp	system
-nosystem:
-	mov	dl,'-'
-system:
-	call	showchar
-
-	test 	al,00100000b
-	je	noarchive
-	mov	dl,'A'	
-	jmp	archive
-noarchive:
-	mov	dl,'-'
-archive:
-	call	showchar
-
-	test 	al,00010000b
-	je	nodirectory
-	mov	dl,'R'	
-	jmp	directory
-nodirectory:
-	mov	dl,'-'
-directory:
-	call	showchar
-
-	pop	dx
-	ret
-
-;================SHOWSIZE (Fonction 30h)==============
-;Affiche le nom pointé par DI
-;-> AH=48
-;<- 
-;=====================================================
-ShowSize:
-	push 	cx edx si ds
-	push	cs
-	pop	ds
-	mov	cx,4
-	cmp	edx,1073741824
-	ja	giga
-	cmp	edx,1048576*9
-	ja	mega
-	cmp	edx,1024*9
-	ja	kilo
-	call	showintR
-	mov	si,offset unit
-	call	showstring0
-	jmp	finsize
-kilo:
-	shr	edx,10
-	call	showintR
-	mov	si,offset unitkilo
-	call	showstring0
-	jmp	finsize
-mega:
-	shr	edx,20
-	call	showintR
-	mov	si,offset unitmega
-	call	showstring0
-	jmp	finsize
-giga:
-	shr	edx,30
-	call	showintR
-	mov	si,offset unitgiga
-	call	showstring0
-finsize:
-	pop	ds si edx cx
-	ret
-
-unit db ' o ',0
-unitkilo db ' ko',0
-unitmega db ' mo',0
-unitgiga db ' go',0
 
 ;=============SetVideoMode (Fonction 00h)=========
 ;Fixe le mode vidéo courant a AL
@@ -763,20 +607,6 @@ reg2 	dw 0100h, 0302h, 0304h, 0300h
 reg1 	dw 0100h, 0402h, 0704h, 0300h
      	dw 0204h, 0005h, 0406h                
 
-;==========SHOWSPACE (Fonction 05h)===========
-;met un espace aprés le curseur
-;-> AH=5
-;<- 
-;=============================================
-showspace:
-	push 	cx
-	mov   	cl,' '
-        mov   	ch,cs:colors
-        call  	charout
-        clc
-        pop   	cx
-	ret
-
 ;==========SHOWLINE (Fonction 06h)===============
 ;remet le curseur text a la ligne avec un retour chariot
 ;-> AH=6
@@ -801,374 +631,6 @@ scro:
 	inc 	bl
         call    setxy2
         pop     cx bx
-	ret
-
-;==========SHOWCHAR (Fonction 07h)===========
-;met un caractère de code ASCII DL aprés le curseur
-;-> AH=7, DL code ASCII du caractère
-;<- 
-;============================================
-showchar:
-	push 	cx
-	mov	cl,dl
-	mov 	ch,cs:colors
-	call	charout
-	pop 	cx
-	ret
-
-;==========SHOWINT (Fonction 08h)===========
-;Affiche un entier EDX aprés le curseur
-;-> AH=8, EDX un entier
-;<- 
-;===========================================
-ShowInt:
-	push	eax bx cx edx esi
-      	xor	cx,cx
-	mov   	eax,edx
-      	mov   	esi,10
-      	mov   	bx,offset showbuffer+27
-decint:
-      	xor   	edx,edx
-      	div   	esi
-      	add   	dl,'0'
-      	inc   	cx
-      	mov   	cs:[bx],dl
-	dec   	bx
-      	cmp   	ax,0
-      	jne   	decint
-	mov	ax,cx
-	mov	ch,cs:colors
-showinteger:
-	inc	bx
-	mov	cl,cs:[bx]
-	call	charout
-	dec	ax
-	jnz	showinteger
-      	pop   	esi edx cx bx eax 
-	ret   
-    
-showbuffer 	db 50 dup (0FFh)
-
-;==========SHOWFIXINT (Fonction h)===========
-;Affiche un entier EDX aprés le curseur de taille cx
-;-> AH=8, EDX un entier et al="cara"
-;<- 
-;===========================================
-ShowfixInt:
-	push	eax bx cx edx esi di
-	mov	di,cx
-      	xor	cx,cx
-	mov   	eax,edx
-      	mov   	esi,10
-      	mov   	bx,offset showbuffer+27
-decint2:
-      	xor   	edx,edx
-      	div   	esi
-      	add   	dl,'0'
-      	inc   	cx
-      	mov   	cs:[bx],dl
-	dec   	bx
-	cmp 	cx,di
-	jae 	nomuch
-      	cmp   	ax,0
-      	jne   	decint2
-	mov 	ax,di
-  	xchg 	cx,di
-	sub 	cx,di
-rego:
-	mov 	byte ptr cs:[bx],'0'
-	dec    	bx
-	dec    	cx
-	jnz	rego
-	jmp 	finishim
-nomuch:
-	mov	ax,di
-finishim:
-	mov	ch,cs:colors
-showinteger2:
-	inc	bx
-	mov	cl,cs:[bx]
-	call	charout
-	dec	ax
-	jnz	showinteger2
-      	pop  	di esi edx cx bx eax 
-	ret   
-
-;==========SHOWINTR (Fonction h)===========
-;Affiche un entier EDX aprés le curseur de taille cx
-;-> AH=8, EDX un entier
-;<- 
-;===========================================
-ShowIntR:
-	push	eax bx cx edx esi di
-	mov	di,cx
-      	xor	cx,cx
-	mov   	eax,edx
-      	mov   	esi,10
-      	mov   	bx,offset showbuffer+27
-decint3:
-      	xor   	edx,edx
-      	div   	esi
-      	add   	dl,'0'
-      	inc   	cx
-      	mov   	cs:[bx],dl
-	dec   	bx
-	cmp 	cx,di
-	jae 	nomuch
-      	cmp   	ax,0
-      	jne   	decint3
-	mov 	ax,di
-  	xchg 	cx,di
-	sub 	cx,di
-rego2:
-	mov 	byte ptr cs:[bx],' '
-	dec    	bx
-	dec    	cx
-	jnz	rego2
-	jmp 	finishim2
-nomuch2:
-	mov	ax,di
-finishim2:
-	mov	ch,cs:colors
-showinteger3:
-	inc	bx
-	mov	cl,cs:[bx]
-	call	charout
-	dec	ax
-	jnz	showinteger3
-      	pop  	di esi edx cx bx eax 
-	ret   
-
-;==========SHOWSIGNED (Fonction 09h)===========
-;Affiche un entier EDX de taille CX aprés le curseur
-;-> AH=9, EDX un entier, CX la taille
-;<- 
-;==============================================
-Showsigned:
-	push 	ebx edx
-	mov	ebx,edx
-	xor	edx,edx
-	cmp     cx,8
-	ja 	signed16
-	mov	dl,bl
-	cmp	dl,7Fh
-	jbe	notsigned
-	neg 	dl
-	jmp	showminus
-signed16:
-	cmp     cx,16
-	ja 	signed32
-	mov 	dx,bx
-	cmp	dx,7FFFh
-	jbe	notsigned
-	neg	dx
-	jmp	showminus
-signed32:	
-	mov	edx,ebx
-	cmp	edx,7FFFFFFFh
-	jbe	notsigned
-	neg 	edx
-showminus:
-	push  	dx
-	mov 	dl,'-'
-	call 	showchar
-      	pop   	dx
-notsigned:
-	call 	showint 
-	pop 	edx ebx
-	ret
-
-;==========SHOWHEX (Fonction 0Ah)===========
-;Affiche un nombre hexadécimal EDX de taille CX aprés le curseur
-;-> AH=10, EDX un entier, CX la taille
-;<- 
-;===========================================
-ShowHex:
-       	push  	ax bx cx edx
-       	mov   	ax,cx
-	shr   	ax,2
-       	sub   	cx,32
-       	neg   	cx
-       	shl   	edx,cl
-       	mov   	ch,cs:colors
-Hexaize:
-       	rol   	edx,4
-       	mov   	bx,dx
-       	and   	bx,0fh
-       	mov   	cl,cs:[bx+offset Tab]
-       	call	charout
-       	dec   	al
-       	jnz   	Hexaize
-       	pop   	edx cx bx ax
-       	ret
-
-Tab 	db '0123456789ABCDEF'
-
-;==========SHOWBIN (Fonction 0Bh)===========
-;Affiche un nombre binaire EDX de taille CX aprés le curseur
-;-> AH=11, EDX un entier, CX la taille
-;<- 
-;===========================================
-Showbin:
-       	push   	ax cx edx
-       	mov    	ax,cx
-       	sub    cx,32
-       	neg    cx
-       	shl    edx,cl
-       	mov    ch,cs:colors
-binaize:
-       rol    edx,1
-       mov    cl,'0'
-       adc    cl,0  
-	 call	  charout
-       dec    al
-       jnz    binaize
-       pop    edx cx ax
-       ret
-
-;==========SHOWBCD (Fonction 0xh)===========
-;Affiche un nombre en BCD EDX de taille CX aprés le curseur
-;-> AH=x, EDX un entier, CX la taille
-;<- 
-;===========================================
-ShowBCD:
-       push   ax cx edx
-       mov    ax,cx
-	 shr    ax,2
-       sub    cx,32
-       neg    cx
-       shl    edx,cl
-       mov    ch,cs:colors
-BCDaize:
-       rol    edx,4
-       mov    cl,dl
-       and    cl,0fh
-       add    cl,'0'
-	 call	  charout
-       dec    al
-       jnz    BCDaize
-       pop    edx cx ax
-       ret
-
-;==========SHOWSTRING (Fonction 0Ch)===========
-;Affiche une chaine de caractère pointée par DS:SI aprés le curseur
-;-> AH=12, DS:SI pointeur chaine type pascal
-;<- 
-;==============================================
-showstring:
-       push   bx cx si
-       mov    bl,[si]
-       mov    ch,cs:colors
-strinaize:
-       inc    si
-       mov    cl,[si]
-	 call	  charout
-       dec    bl
-       jnz    strinaize
-       pop    si cx bx
-       ret
-
-;==========SHOWSTRING0 (Fonction 0Dh)===========
-;Affiche une chaine de caractère pointée par DS:SI aprés le curseur
-;-> AH=13, DS:SI pointeur chaine type zéro terminal
-;<- 
-;===============================================
-showstring0:
-       push   cx si	
-       mov    ch,cs:colors
-strinaize0:
-       mov    cl,[si]
-       cmp    cl,0
-       je     no0
-	 call	  charout	
-	 inc    si
-       jmp    strinaize0
-no0:
-       pop    si cx
-       ret
-
-;==========SHOWCHARAT (Fonction 0Eh)===========
-;met un caractère de code ASCII DL en (x;y) (BH;BL)
-;-> AH=14, DL code ASCII du caractère, BH coordonnées x, BL coordonnées y
-;<- 
-;==============================================
-showcharat:
-	 push  es di
-	 call  setxy
-	 call  showchar
-	 pop 	 di es
-	 ret
-
-;==========SHOWINTAT (Fonction 0Fh)===========
-;Affiche un entier EDX en (x;y) (BH;BL)
-;-> AH=15, EDX entier, BH coordonnées x, BL coordonnées y
-;<- 
-;==============================================
-showintat:
-	 push  es di
-	 call  setxy
-	 call  showint
-	 pop 	 di es
-	 ret
-
-;==========SHOWSIGNEDAT (Fonction 10h)===========
-;Affiche un entier EDX de taille CX aprés le curseur en (x;y) (BH;BL)
-;-> AH=16, EDX entier, BH coordonnées x, BL coordonnées y
-;<- 
-;==============================================
-showsignedat:
-	 push  es di
-	 call  setxy
-	 call  showsigned
-	 pop 	 di es
-	 ret
-
-;==========SHOWHEXAT (Fonction 11h)===========
-;Affiche un nombre hexadécimal EDX de taille CX en (x;y) (BH;BL)
-;-> AH=17, EDX un entier, CX la taille, BH coordonnées x, BL coordonnées y
-;<- 
-;==============================================
-showhexat:
-	 push  es di
-	 call  setxy
-	 call  showhex
-	 pop 	 di es
-	 ret
-
-;==========SHOWBINAT (Fonction 012h)===========
-;Affiche un nombre binaire EDX de taille CX en (x;y) (BH;BL)
-;-> AH=18, EDX un entier, CX la taille, BH coordonnées x, BL coordonnées y
-;<- 
-;=============================================
-showbinat:
-	 push  es di
-	 call  setxy
-	 call  showbin
-	 pop 	 di es
-	 ret
-
-;==========SHOWSTRINGAT (Fonction 13h)===========
-;Affiche une chaine de caractère pointée par DS:SI en (x;y) (BH;BL)
-;-> AH=19, DS:SI pointeur chaine type pascal, BH coordonnées x, BL coordonnées y
-;<- 
-;================================================
-showstringat:
-	 push   es di
-	 call   setxy
-	 call   showstring
-	 pop 	  di es
-	 ret
- 
-;==========SHOWSTRING0AT (Fonction 14h)===========
-;Affiche une chaine de caractère pointée par DS:SI en (x;y) (BH;BL)
-;-> AH=20, DS:SI pointeur chaine type zéro terminal, BH coordonnées x, BL coordonnées y
-;<- 
-;=================================================
-showstring0at:
-	push 	 es di
-	call	 setxy
-	call 	 showstring0
-	pop 	 di es
 	ret
 
 ;==========SETCOLOR (Fonction 15h)=========
@@ -1325,7 +787,7 @@ setxy2:
 	pop 	di es
 	ret
 
-;==========SETXYG (Fonction 0xh)=========
+;==========SETXYG (Fonction 0Ah)=========
 ;Change les coordonnées du curseur graphique a X:BX,Y:CX
 ;-> AH=x, BX coordonnées x, CX coordonnées y
 ;<- ES:DI pointeur sur pixel avec plan de bit ajusté
@@ -1353,7 +815,7 @@ setxyg:
 	pop 	dx cx bx ax
 	ret
 
-;==========SHOWPIXEL (Fonction 0xh)=========
+;==========SHOWPIXEL (Fonction 08h)=========
 ;Affiche un pixel de couleur AL en X:BX,Y:CX
 ;-> AH=x, BX coordonnées x, CX coordonnées y, AL couleur
 ;<- 
@@ -1381,7 +843,7 @@ showpixel:
 	pop	es bp di dx cx bx ax
 	ret
 
-;==========SHOWPIXEL (Fonction 0xh)=========
+;==========SHOWPIXEL (Fonction 09h)=========
 ;Récupère en al la couleur du pixel de coordonnées X:BX,Y:CX
 ;-> AH=x, BX coordonnées x, CX coordonnées y, AL couleur
 ;<- 
@@ -1408,90 +870,6 @@ getpixel:
 	mov	al,es:[di] 	
 	pop	es bp di dx cx bx ax
 	ret
-
-;==========LOADBMPPALET (Fonction 0xh)=========
-;Charge la palette du BMP pointée par DS:SI
-;-> AH=x, DS:SI BMP
-;<- 
-;=============================================
-loadbmppalet:
-	push 	ax bx cx dx
-	mov 	bx,0400h+36h-4
-	mov 	cx,100h
-	mov 	dx, 3c8h
-paletteload:
-	mov 	al, cl
-	dec 	al
-	out 	dx, al
-	inc 	dx
-	mov 	al,[bx+si+2]
-	shr 	al,2
-	out 	dx, al
-	mov 	al,[bx+si+1]
-	shr 	al,2
-	out 	dx, al
-	mov 	al,[bx+si]
-	shr 	al,2
-	out 	dx, al
-	sub 	bx,4
-	dec 	dx
-	dec 	cl
-	jnz 	paletteload
-	pop 	dx cx bx ax
-	ret
-
-;==========VIEWBMP (Fonction 0xh)=========
-;Affiche le BMP pointée par DS:SI en X:BX, Y:CX avec la préparation de la palette
-;<- AH=x, DS:SI BMP, BX coordonnées X, CX coordonnées Y
-;->
-;=========================================
-viewbmp:
-	call	loadbmppalet
-	call	showbmp
-	ret
-
-;==========SHOWBMP (Fonction 0xh)=========
-;Affiche le BMP pointée par DS:SI en X:BX, Y:CX
-;<- AH=x, DS:SI BMP, BX coordonnées X, CX coordonnées Y
-;->
-;=========================================
-showbmp:
-	push 	ax bx cx dx
-	cmp	word ptr ds:[si+BMP_file.BMP_FileType],"MB"
-	jne     errorshowing
-	mov 	cs:xc,bx
-	mov 	cs:yc,cx
-	xor 	cx,cx
-	xor 	bx,bx
-	xor 	dx,dx
-bouclette:
-	mov 	al,[si+bx+436h]
-	push 	bx cx
-	sub 	cx,cs:yc
-	neg 	cx
-	mov 	bx,dx
-	add 	bx,cs:xc
-	call 	showpixel
-	pop 	cx bx
-	inc 	bx
-	inc 	dx
-	cmp 	dx,[si+offset BMP_File.BMP_width]
-	jb 	bouclette
-	xor 	dx,dx
-	inc 	cx
-	cmp 	cx,[si+offset BMP_File.BMP_height]
-	jb 	bouclette
-	clc
-	pop 	dx cx bx ax
-	ret
-	
-errorshowing:
-        stc
-        pop  dx cx bx ax
-        ret
-        
-xc dw 0
-yc dw 0
 
 ;==========GETVGAINFO (Fonction 0xh)=========
 ;Renvoie un bloc de donnée en ES:DI sur l'état de la carte graphique
@@ -1969,25 +1347,6 @@ jne save2
 pop si dx cx ax
 ret
 
-;couleur al pour ligne di  A SUPPRIMER
-changelineattr:
-push ax bx di es
-mov bx,ax
-mov ax,0B800h
-mov es,ax
-mov ax,di
-mul cs:columns
-mov di,ax
-shl di,1
-mov al,cs:columns
-inc di
-popep:
-mov es:[di],bl
-add di,2
-dec al
-jnz popep
-pop es di bx ax
-ret   
 
 font8x8:
 include ..\include\pol8x8.inc
