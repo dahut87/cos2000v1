@@ -32,6 +32,15 @@ dat2 db '..',0
 dta db 43 dup (0)
 
 copycos:
+        mov     ah,4ah
+        mov     bx,1000h
+        int     21h
+        jc      error
+        mov     ah,48h
+        mov     bx,65536/16
+        int     21h
+        jc      error
+        mov     fs,ax 
 mov ah,3Bh
 mov dx,offset dat
 int 21h
@@ -139,7 +148,7 @@ int 21h
 ret
 
 addfile:
-push ax bx dx si di bp
+push ax bx dx si di bp ds es
 mov cx,1
 mov bx,offset fat
 call readsector
@@ -166,14 +175,20 @@ xor cx,cx
 xor dx,dx
 int 21h
 jc error2
+push fs
+pop ds
+push fs
+pop es
 mov ah,3fh
-mov cx,07FFFh
-mov dx,offset buffer
+mov cx,0FFFFh
+xor dx,dx
 int 21h
+push cs
+pop ds 
 jc error2
 mov si,-2
 mov di,0
-mov bx,offset buffer
+xor bx,bx
 fats:
 add si,2
 cmp si,512
@@ -199,10 +214,12 @@ jnz fats
 mov word ptr [offset fat+di],0FFFFh
 mov bx,offset fat
 mov cx,1
+push cs
+pop es
 call writesector
 mov cx,entrie
 end1:
-pop bp di si dx bx ax
+pop es ds bp di si dx bx ax
 ret
 entrie dw 0
 error2:

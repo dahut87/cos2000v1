@@ -17,6 +17,7 @@ call loadfatway
 mov di,bx
 mov bx,47h
 call setint
+ret
 mov bx,9
 call getint
 mov cs:int9seg,ds

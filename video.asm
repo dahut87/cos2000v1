@@ -167,7 +167,7 @@ reg1 dw 0100h, 0402h, 0704h, 0300h
      dw 0204h, 0005h, 0406h                   
 
 ;40*25 16 couleurs
-mode0        DB 63H,00H,  03H,09H,03H,00H,02H
+mode0        DB 67H,00H,  03H,08H,03H,00H,02H
              DB 2DH,27H,28H,90H,2BH,0A0H,0BFH,01FH,00H,4FH,0DH,0EH,00H,00H,00H,00H
              DB 9CH,8EH,8FH,14H,1FH,96H,0B9H,0A3H,0FFH
              DB 00H,00H,00H,00H,00H,10H,0EH,00H,0FFH
@@ -178,14 +178,14 @@ mode0        DB 63H,00H,  03H,09H,03H,00H,02H
 ;80*25 16 couleurs
 mode1        DB 67H,00H,  03H,00H,03H,00H,02H
              DB 5FH,4FH,50H,82H,55H,81H,0BFH,1FH,00H,4FH,0DH,0EH,00H,00H,00H,00H
-             DB 9CH,0EH,8FH,28H,1FH,96H,0B9H,0A3H,0FFH
+             DB 9CH,0EH,8FH,28H,1FH,96H,0B9H,0A3h,0FFH
              DB 00H,00H,00H,00H,00H,10H,0EH,00H,0FFH
              DB 00H,01H,02H,03H,04H,05H,14H,07H,38H,39H,3AH,3BH,3CH,3DH,3EH,3FH
              DB 0CH,00H,0FH,08H,00H
              db 80,25
 
 ;80*50 16 couleurs
-mode2        DB 63H, 00H, 03H,01H,03H,01H,02H
+mode2        DB 67H, 00H, 03H,00H,03H,01H,02H
              DB 5FH,4FH,50H,82H,55H,81H,0BFH,1FH,00H,47H,06H,07H,00H,00H,00H
              DB 00H,9CH,8EH,8FH,28H,1FH,96H,0B9H,0A3H,0FFH
              DB 00H,00H,00H,00H,00H,10H,0EH,00H,0FFH
@@ -193,8 +193,28 @@ mode2        DB 63H, 00H, 03H,01H,03H,01H,02H
              DB 0CH,00H,0FH,00H,00H
              db 80,50
 
+;100*50 16 couleurs
+mode3        DB 067H,00H,03H,01H,03H,01H,02H
+             DB 70H,63H,64H,85H,68H,84H,0BFH,1FH,00H,47H,06H,07H,00H,00H,00H
+             DB 00H,9Ch,08EH,8FH,32H,1FH,96H,0B9H,0A3H,0FFH
+             DB 00H,00H,00H,00H,00H,10H,0EH,00H,0FFH
+             DB 00H,01H,02H,03H,04H,05H,14H,07H,10H,11H,3AH,3BH,3CH,3DH,3EH,3FH
+             DB 0CH,00H,0FH,00H,00H
+             db 100,50
+
+
+;100*60 16 couleurs
+mode4b        DB 067H,00H,03H,01H,03H,01H,02H
+             DB 70H,63H,64H,85H,68H,84H,0FFH,1FH,00H,47H,06H,07H,00H,00H,00H
+             DB 00H,0E7H,8EH,0DFH,32H,1FH,0DFH,0E5H,0A3H,0FFH
+             DB 00H,00H,00H,00H,00H,10H,0EH,00H,0FFH
+             DB 00H,01H,02H,03H,04H,05H,14H,07H,10H,11H,3AH,3BH,3CH,3DH,3EH,3FH
+             DB 0CH,00H,0FH,00H,00H
+             db 100,60
+
+
 ;320*200 16 couleurs
-mode3      DB 63H,00H,  03H,09H,0FH,00H,06H
+mode4      DB 63H,00H,  03H,09H,0FH,00H,06H
              DB 2DH,27H,28H,90H,2BH,080H,0BFH,01FH,00H,0C0H,00H,00H,00H,00H,00H,00H
              DB 9CH,8EH,8FH,14H,00H,96H,0B9H,0E3H,0FFH
              DB 00H,00H,00H,00H,00H,00H,05H,0FH,0FFH
@@ -203,7 +223,7 @@ mode3      DB 63H,00H,  03H,09H,0FH,00H,06H
              db 40,25
 
 ;320*200 256 couleurs
-mode4        DB 63H, 00H,  03H,01H,0FH,00H,0EH
+mode5        DB 63H, 00H,  03H,01H,0FH,00H,0EH
              DB 5FH,4FH,50H,82H,54H,80H,0BFH,1FH,00H,41H,00H,00H,00H,00H,00H,00H
              DB 9CH,0EH,8FH,28H,40H,96H,0B9H,0A3H,0FFH
              DB 00H,00H,00H,00H,00H,40H,05H,0FH,0FFH
@@ -212,7 +232,7 @@ mode4        DB 63H, 00H,  03H,01H,0FH,00H,0EH
              db 00,00
 
 ;640*400 16 couleurs
-mode5        DB 63H, 00H,  03H,01H,0FH,00H,0EH
+mode6        DB 63H, 00H,  03H,01H,0FH,00H,0EH
              DB 5FH,4FH,50H,82H,54H,80H,0BFH,1FH,00H,41H,00H,00H,00H,00H,00H,00H
              DB 9CH,0EH,8FH,28H,40H,96H,0B9H,0A3H,0FFH
              DB 00H,00H,00H,00H,00H,10H,05H,0FH,0FFH
@@ -220,8 +240,8 @@ mode5        DB 63H, 00H,  03H,01H,0FH,00H,0EH
              DB 41H,00H,0FH,00H,00H 
              db 00,00
 
-;640*400 16 couleurs
-mode6        DB 63H, 00H,  03H,01H,0FH,00H,0EH
+;640*400 256 couleurs
+mode7        DB 63H, 00H,  03H,01H,0FH,00H,0EH
              DB 2DH,27H,27H,91H,2AH,9FH,0BFH,1FH,00H,0C0H,00H,00H,00H,00H,00H,00H
              DB 9CH,0EH,8FH,50H,00H,8FH,0C0H,0E3H,0FFH
              DB 00H,00H,00H,00H,00H,40H,05H,0FH,0FFH
@@ -229,14 +249,8 @@ mode6        DB 63H, 00H,  03H,01H,0FH,00H,0EH
              DB 41H,00H,0FH,00H,00H 
              db 00,00
 
-;640*400 16 couleurs
-mode6        DB 63H, 00H,  03H,01H,0FH,00H,0EH
-             DB 2DH,27H,27H,91H,2AH,9FH,0BFH,1FH,00H,0C0H,00H,00H,00H,00H,00H,00H
-             DB 9CH,0EH,8FH,50H,00H,8FH,0C0H,0E3H,0FFH
-             DB 00H,00H,00H,00H,00H,40H,05H,0FH,0FFH
-             DB 00H,01H,02H,03H,04H,05H,06H,07H,08H,09H,0AH,0BH,0CH,0DH,0EH,0FH
-             DB 41H,00H,0FH,00H,00H 
-             db 00,00
+
+
 
 ;
 ;=============CLEAR=========
@@ -287,11 +301,14 @@ statut equ 3DAh
 
 initmode:
 push bx cx si ds
-mov bl,1
-mov cl,8
+;xor bx,bx
+;mov ds,bx
+;lds si,ds:[43h*4]
 push cs
 pop ds
-mov si,offset special
+mov si,offset font
+mov cl,8
+mov bl,1
 call loadfont
 pop ds si cx bx
 ret
@@ -524,8 +541,8 @@ mov bl,bh
 xor bh,bh
 mov di,bx
 mul cs:columns
-shl ax,1
 add di,ax
+shl di,1
 mov cs:xy,di
 mov ax,0B800h
 mov es,ax
@@ -586,8 +603,6 @@ RestoreScreen:
         rep     movsd
         pop     es ds di si cx 
         ret
-copy2 db 4000 dup (0)
-copy db 4000 dup (0)
 
 ;===============================Page2to1============================
 Page2to1:
@@ -905,7 +920,10 @@ xy dw 0
 colors db 7
 mode db 0FFh
 pagesize dw 0
-special equ $
-endofme equ $ +4096
+font equ $
+copy equ $+4000
+copy2 equ $+8000
+
+endofme equ $ +12000
 
 end start

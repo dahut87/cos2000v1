@@ -7,10 +7,18 @@ org 0100h
 start:
 mov si,offset logo
 call searchfile
-mov bx,7000h
+mov bx,6000h
 mov es,bx
 mov bx,0h
 call loadfatway
+push es
+pop ds
+mov bx,5000h
+mov es,bx
+xor si,si
+xor di,di
+xor bx,bx
+call DecompressRle
 push es
 pop ds
 call loadbmp
@@ -19,12 +27,11 @@ xor bx,bx
 call showbmp
 mov ax,0
 int 16h
-ret
 db 0CBH
 
 loadbmp:
 push ax bx cx dx bp ds
-mov ax,4
+mov ax,6
 int 47h      
 mov ax,ds:[18]
 mov si,ax
@@ -309,11 +316,50 @@ Done:
   pop si dx cx ax
 ret
 
+DecompressRle:
+push cx dx si di
+mov dx,cx
+mov bp,di
+decompression:
+mov eax,[si]
+cmp al,'/'
+jne nocomp
+cmp si,07FFFh-6
+jae thenen
+mov ecx,eax
+ror ecx,16
+cmp cl,'*'
+jne nocomp
+cmp byte ptr [si+4],'/'
+jne nocomp
+mov al,ch
+mov cl,ah
+xor ah,ah
+xor ch,ch
+rep stosb
+add si,5
+sub dx,5
+jnz decompression
+jmp thenen
+nocomp:
+mov es:[di],al
+inc si
+inc di
+dec dx
+jnz decompression
+thenen:
+mov ax,dx
+sub bp,di
+neg bp
+pop di si dx cx
+ret
+
+
 
 dot db '.',0
 
 loadfatway:
-push bx cx di
+push bx di
 call getfatway
 jc endload
 mov di,offset fatway
@@ -330,7 +376,8 @@ int 47h
 add bx,cs:sizec
 jmp loadagain
 endload:
-pop di cx bx
+mov cx,bx
+pop di bx
 ret        
 
 sizec dw 512
@@ -356,7 +403,7 @@ errorgetfat:
 pop dx bx ax es
 ret
 
-logo db 'cos.bmp',0
+logo db 'cos.rip',0
 temp db 12+5+1 dup (0)
 
 DiskSectorsPerTrack dw 18   
@@ -365,5 +412,5 @@ DiskHeads dw 2
 
 fatway equ $
 
-buffer equ $+1000 
+buffer equ $+5000 
 end start

@@ -22,6 +22,13 @@ Adres:
      mov ah,34
      int 47h
      dec infos
+     mov al,[di+7]
+     cmp al,oldmode
+     je noinit
+     mov ah,2
+     int 47h
+     mov oldmode,al
+     noinit:
      mov bx,0
      mov ah,25
      int 47h
@@ -437,7 +444,7 @@ ret
 DiskSectorsPerTrack dw 18   
 DiskTracksPerHead dw 80
 DiskHeads dw 2
-
+oldmode db 0
 infos db 10 dup (0)
 end start
 

@@ -44,6 +44,13 @@ Adres:
      mov di,offset infos
      mov ah,34
      int 47h
+     mov al,[di+7]
+     cmp al,oldmode
+     je noinit
+     mov ah,2
+     int 47h
+     mov oldmode,al
+     noinit:
      dec infos
      mov bx,0
      mov ah,25
@@ -422,7 +429,7 @@ TryAgain2:
 Done2:
   pop si dx cx ax
 ret
-
+oldmode db 0 
 DiskSectorsPerTrack dw 18   
 DiskTracksPerHead dw 80
 DiskHeads dw 2
