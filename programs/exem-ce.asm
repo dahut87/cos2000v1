@@ -10,19 +10,19 @@ start:
 header exe <,1,0,,,offset imports,offset exports,>
 
 realstart:
+push offset message
 call [affiche]
 call [waitkey]
-call [bye]
 retf
+
+message db 'Appel de la librairie video !',0
 
 
 imports:
-        db "EXEM-LIB.LIB::affiche",0
-affiche  dd 0
+        db "VIDEO.LIB::print",0
+affiche dd 0
         db "EXEM-LIB.LIB::waitkey",0
-waitkey  dd 0
-        db "EXEM-LIB.LIB::bye",0
-bye  dd 0
+waitkey dd 0
         dw 0
 exports:
 
