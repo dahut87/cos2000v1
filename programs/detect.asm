@@ -8,42 +8,52 @@ org 0100h
 include ..\include\pci.h
 
 start:
-call cleartext
-
 call getpciinfos
 mov pciversion,bx
 mov nbbus,cl
 mov pcitype,al
 
 mov si,offset msg
-call showstring0
-call line
+mov ah,13
+int 47h
+mov ah,6
+int 47h
 
 mov si,offset pcivers
-call showstring0
+mov ah,13
+int 47h
 xor edx,edx
 mov dx,bx
 xchg dl,dh
 mov cx,8
-call showhex
+mov ah,0Ah
+int 47h
 mov si,offset poin
-call showstring0
+mov ah,13
+int 47h
 shr dx,8
-call showhex
+mov ah,0Ah
+int 47h
 mov si,offset pcivers2
-call showstring0
-call line
+mov ah,13
+int 47h
+mov ah,6
+int 47h
 
 mov si,offset nbbuses
-call showstring0
+mov ah,13
+int 47h
 xor edx,edx
 mov dl,nbbus
 inc dl
-call showint
-call line
+mov ah,08
+int 47h
+mov ah,06
+int 47h
 
 mov si,offset typesof
-call showstring0
+mov ah,13
+int 47h
 mov di,offset types
 mov bx,7
 mov al,pcitype
@@ -52,14 +62,17 @@ bt ax,bx
 jnc nowas
 shl bx,1
 mov si,[di+bx]
-call showstring0
+mov ah,13
+int 47h
 mov si,offset spac
-call showstring0
+mov ah,13
+int 47h
 shr bx,1
 nowas:
 dec bx
 jns vote
-call line
+mov ah,6
+int 47h
 
 xor ax,ax
 xor cx,cx
@@ -70,34 +83,41 @@ jc stopthis
 
 push cx di
 mov si,offset msg1
-call showstring0
+mov ah,13
+int 47h
 mov cx,16
 xor edx,edx
 mov dx,[di+pci.device]
-call showhex
+mov ah,0Ah
+int 47h
 mov si,offset msg2
-call showstring0
+mov ah,13
+int 47h
 mov dx,[di+pci.vendor]
-call showhex
+mov ah,0Ah
+int 47h
 mov si,offset msg3
-call showstring0
+mov ah,13
+int 47h
 mov cl,[di+pci.class]
 mov ch,[di+pci.subclass]
 mov di,offset temp
 call getpciclass
 mov si,di
-call showstring0
+mov ah,13
+int 47h
 mov si,offset poin
-call showstring0
+mov ah,13
+int 47h
 mov di,offset temp
 call getpcisubclass
 mov si,di
-call showstring0
-call line
+mov ah,13
+int 47h
+mov ah,06
+int 47h
 pop di cx
 
-jmp noerror
-noerror:
 inc ch
 cmp ch,7
 jbe search
@@ -110,7 +130,9 @@ xor cl,cl
 inc al
 cmp al,16
 jbe search
-ret
+xor ax,ax
+int 16h
+db 0CBh
 
 msg3 db ' Classe:',0
 msg1 db 'Peripherique :',0
@@ -427,180 +449,5 @@ notexist:
     stc
     pop di dx bx ax
     ret
-
-;=============CLEAR=========
-;Efface l'ecran texte
-;-> 
-;<- 
-;=============================
-cleartext:
-push es eax cx di
-xor di,di
-mov ax,0b800h
-mov es,ax
-mov eax,07200720h
-mov cx,cs:pagesize
-shr cx,2
-cld
-rep stosd
-mov cs:xy,0
-mov cs:x,0
-mov cs:y,0
-pop di cx eax es
-ret
-
-
-;==========LINE=========
-;remet le curseur a la ligne
-;-> 
-;<- 
-;=============================
-line:
-push bx cx di es
-mov bh,cs:x
-mov bl,cs:y
-xor bh,bh
-mov cl,cs:lines
-dec cl
-dec cl
-cmp bl,cl
-jne scro
-dec bl
-mov cl,1
-call scrolldown
-scro:
-inc bl
-call setxy
-pop es di cx bx
-ret
-
-;==========SETXY=========
-;Change les coordonnées du curseur a X:AH,Y:AL
-;-> AX
-;<- es di
-;=============================
-setxy:
-push ax bx dx
-mov cs:x,bh
-mov cs:y,bl
-mov al,bl
-mov bl,bh
-xor bh,bh
-mov di,bx
-mul cs:columns
-add di,ax
-shl di,1
-mov cs:xy,di
-mov ax,0B800h
-mov es,ax
-pop dx bx ax
-ret
-
-;==========SCROLLDOWN=========
-;defile de cx lines vers le bas
-;-> CX
-;<- 
-;=============================
-scrolldown:
-push ax cx dx si di ds es
-mov si,0B800h
-mov es,si
-mov ds,si
-mov ax,cx
-mul cs:columns
-shl ax,1
-mov si,ax
-mov cx,cs:pagesize
-sub cx,si
-xor di,di
-cld
-rep movsb
-pop es ds di si dx cx ax
-ret
-
-
-;===================================Afficher un int EDX a l'‚cran en ah,al================
-ShowInt:
-        push    eax bx cx edx esi di es ds
-        mov     di,cs:xy
-        mov     cx,0B800h
-        mov     es,cx
-        xor     cx,cx
-        mov     eax,edx
-        mov     esi,10
-        mov     bx,offset showbuffer+27
-decint3:
-        xor     edx,edx
-        div     esi
-        add     dl,'0'
-        mov     dh,7
-        sub     bx,2
-        add     cx,2
-        mov     cs:[bx],dx
-        cmp     ax,0
-        jne     decint3
-        mov     si,bx
-        push    cs
-        pop     ds
-        cld
-        rep     movsb
-	  mov	    cs:xy,di
-        pop     ds es di esi edx cx bx eax 
-ret       
-
-;================Affiche la chaine 0 de caractŠre contenue dans ds:si
-showstring0:
-        push    es cx si di
-        mov     di,cs:xy
-        mov     cx,0B800h
-        mov     es,cx
-        mov     ch,cs:colors
-strinaize0:
-        mov     cl,[si]
-        cmp     cl,0
-        je      no0
-        mov     es:[di],cx
-        add     di,2
-        inc     si
-        jmp     strinaize0
-        no0:
-        mov     cs:xy,di
-        pop     di si cx es
-        ret
-
-;==============================Affiche le nombre nb hexa en EDX==============
-ShowHex:
-        push    es ax bx cx edx di
-        mov     di,cs:xy
-        mov     bx,0B800h
-        mov     es,bx
-        mov     ax,cx
-        sub     cx,32
-        neg     cx
-        shl     edx,cl
-        mov     ch,cs:colors
-        shr     ax,2
-Hexaize:
-        rol     edx,4
-        mov     bx,dx
-        and     bx,0fh
-        mov     cl,cs:[bx+offset Tab]
-        mov     es:[di],cx
-        add     di,2
-        dec     al
-        jnz     Hexaize
-        mov     cs:xy,di
-        pop     di edx cx bx ax es
-        ret
-
-Tab db '0123456789ABCDEF'
-x db 0
-y db 0
-xy dw 0
-pagesize dw 80*25*2
-lines db 25
-columns db 80
-colors db 7
-showbuffer db 35 dup (0FFh)
 
 end start
