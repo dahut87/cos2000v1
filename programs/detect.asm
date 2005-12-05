@@ -201,19 +201,30 @@ dw offset class9
 dw offset class10 
 dw offset class11 
 dw offset class12
-class0 db 'Ancien',0
-class1 db 'Stockage',0
-class2 db 'Reseau',0
-class3 db 'Affichage',0
-class4 db 'Multimedia',0
-class5 db 'Memoire',0
-class6 db 'Pont',0
-class7 db 'Communication',0
-class8 db 'Systeme',0
-class9 db 'Acquisition',0
-class10 db 'Dock',0
-class11 db 'Processeur',0
-class12 db 'Bus serie',0
+dw offset class13
+dw offset class14
+dw offset class15
+dw offset class16
+dw offset class17
+class0 db 'ancien',0
+class1 db 'stockage',0
+class2 db 'reseau',0
+class3 db 'affichage',0
+class4 db 'multimedia',0
+class5 db 'memoire',0
+class6 db 'pont',0
+class7 db 'communication',0
+class8 db 'systeme',0
+class9 db 'acquisition',0
+class10 db 'dock',0
+class11 db 'processeur',0
+class12 db 'bus serie',0
+class13 db 'sans fil',0
+class14 db 'intelligent',0
+class15 db 'satellite',0
+class16 db 'cryptage',0
+class17 db 'traitement signal',0
+
 
 ;Classes et sous classes
 classesd:
@@ -230,6 +241,11 @@ dw offset class9d
 dw offset class10d
 dw offset class11d 
 dw offset class12d  
+dw offset class13d
+dw offset class14d
+dw offset class15d
+dw offset class16d
+dw offset class17d
 
 class0d:
 dw offset subclass00
@@ -242,30 +258,40 @@ dw offset subclass10
 dw offset subclass11
 dw offset subclass12
 dw offset subclass13
+dw offset subclass14
 subclass10 db 'scsi',0
 subclass11 db 'ide',0
 subclass12 db 'disquette',0
 subclass13 db 'ipi',0
+subclass14 db 'raid',0
 
 class2d:
 dw offset subclass20
 dw offset subclass21
 dw offset subclass22
+dw offset subclass23
+dw offset subclass24
 subclass20 db 'ethernet',0
 subclass21 db 'token ring',0
 subclass22 db 'fddi',0
+subclass23 db 'atm',0
+subclass24 db 'isdn',0
 
 class3d:
 dw offset subclass30
 dw offset subclass31
+dw offset subclass32
 subclass30 db 'vga',0
 subclass31 db 'xga',0
+subclass32 db '3D',0
 
 class4d:
 dw offset subclass40
 dw offset subclass41
+dw offset subclass42
 subclass40 db 'video',0
 subclass41 db 'audio',0
+subclass42 db 'telephonie',0
 
 class5d:
 dw offset subclass50
@@ -282,6 +308,7 @@ dw offset subclass64
 dw offset subclass65
 dw offset subclass66
 dw offset subclass67
+dw offset subclass68
 subclass60 db 'hote',0
 subclass61 db 'isa',0
 subclass62 db 'eisa',0
@@ -290,28 +317,41 @@ subclass64 db 'pci',0
 subclass65 db 'pcmcia',0
 subclass66 db 'nubus',0
 subclass67 db 'cardbus',0
+subclass68 db 'RACEway',0
 
 class7d:
 dw offset subclass70
 dw offset subclass71
+dw offset subclass72
+dw offset subclass73
 subclass70 db 'serie',0
 subclass71 db 'parallele',0
+subclass72 db 'serie multiport',0
+subclass73 db 'modem',0
 
 class8d:
 dw offset subclass80
 dw offset subclass81
 dw offset subclass82
+dw offset subclass83
+dw offset subclass84
 subclass80 db 'pic',0
 subclass81 db 'dma',0
 subclass82 db 'timer',0
+subclass83 db 'rtc',0
+subclass84 db 'hotplug',0
 
 class9d:
 dw offset subclass90
 dw offset subclass91
 dw offset subclass92
+dw offset subclass93
+dw offset subclass94
 subclass90 db 'clavier',0
 subclass91 db 'stylo',0
 subclass92 db 'souris',0
+subclass93 db 'scanner',0
+subclass94 db 'joystick',0
 
 class10d:
 dw offset subclass100
@@ -335,11 +375,46 @@ dw offset subclass121
 dw offset subclass122
 dw offset subclass123
 dw offset subclass124
+dw offset subclass125
 subclass120 db 'firewire',0
 subclass121 db 'access',0
 subclass122 db 'ssa',0
 subclass123 db 'usb',0
-subclass124 db 'smbus',0
+subclass124 db 'fibre',0
+subclass125 db 'smbus',0
+
+class13d:
+dw offset subclass130
+dw offset subclass131
+dw offset subclass132
+subclass130 db 'irda',0
+subclass131 db 'ir',0
+subclass132 db 'rf',0
+
+class14d:
+dw offset subclass140
+subclass140 db 'IO arch',0
+
+class15d:
+dw offset subclass150
+dw offset subclass151
+dw offset subclass152
+dw offset subclass153
+subclass150 db 'tv',0
+subclass151 db 'audio',0
+subclass152 db 'voix',0
+subclass153 db 'donnees',0
+
+class16d:
+dw offset subclass160
+dw offset subclass161
+subclass160 db 'reseau',0
+subclass161 db 'jeux',0
+
+class17d:
+dw offset subclass170
+subclass170 db 'dpio',0
+
 
 ;bx pci version, cl nbbus, al pci type
 getPciInfos:
