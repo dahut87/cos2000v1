@@ -55,16 +55,16 @@ tables dw setvideomode		;Table qui contient les adresses de toutes les fonctions
          dw clearscreen
          dw setfont
          dw loadfont
-         dw nothings
+         dw getfont
          dw showline
          dw showchar
          dw showpixel
          dw getpixel
-         dw setxyg
          dw nothings
-         dw nothings
-         dw nothings
-         dw nothings
+         dw setstyle
+         dw getstyle
+         dw enablecursor
+         dw disablecursor
          dw nothings
          dw nothings
          dw nothings
@@ -75,14 +75,14 @@ tables dw setvideomode		;Table qui contient les adresses de toutes les fonctions
          dw getcolor
          dw scrolldown
          dw getxy
-         dw setxy2
+         dw setxy
          dw savescreen
          dw restorescreen
          dw page2to1
          dw page1to2
          dw xchgPages
-         dw savepage1
          dw nothings
+         dw waithretrace
          dw waitretrace
          dw getvgainfos
          dw nothings
@@ -191,29 +191,48 @@ mode9 DB 0E7H, 00H,  03H,01H,0FH,00H,06H
              DB 00H,01H,02H,03H,04h,05H,06H,07H,08H,09H,0AH,0BH,0CH,0DH,0EH,0FH
              DB 41H,00H,0FH,00H,00H
              DB 50,75
+             
+;640*480 16 couleurs
+mode10        DB 0E3H
+             DB 00H
+             DB 03H,01H,0FH,00H,06H
+             DB 5FH,4FH,50H,82H,53H,9FH,0BH,3EH,00H,40H,00H,00H,00H,00H,00H,00H,0E9H,8BH,0DFH,28H,00H,0E7H,04H,0E3H,0FFH
+             DB 00H,00H,00H,00H,00H,00H,05H,0FH,0FFH
+             DB 00H,01H,02H,03H,04H,05H,06H,07H,10H,11H,3AH,3BH,3CH,3DH,3EH,3FH,01H,00H,0FH,00H,00H
+             DB 80,60
+
+;800*600 16 couleurs
+mode11        DB 0E7H
+             DB 00H
+             DB 03H,01H,0FH,00H,06H
+             DB 70H,63H,64H,92H,65H,82H,70H,0F0H,00H,60H,00H,00H,00H,00H,00H,00H,5BH,8CH,57H,32H,00H,58H,70H,0E3H,0FFH
+             DB 00H,00H,00H,00H,00H,00H,05H,0FH,0FFH
+             DB 00H,01H,02H,03H,04H,05H,06H,07H,10H,11H,3AH,3BH,3CH,3DH,3EH,3FH,01H,00H,0FH,00H,00H
+             DB 100,75
+
 
 DATABLOCKSIZE equ 40
 DATABLOCK 	  equ $
 ;============================================DATABLOCK=========================================================
-lines 	db 0
+lines 	        db 0
 columns 	db 0
-x           db 0
+x               db 0
 y 		db 0
 xy		dw 0
-colors 	db 7
+colors 	        db 7
 mode 		db 0FFh
 pagesize 	dw 0
-pages       db 0
+style           db 0
 font		db 0
 graphic 	db 0
-xg		dw 0
-yg		dw 0
-style		dw 0
+reserved1	dw 0
+reserved2	dw 0
+reserved3	dw 0
 nbpage    	db 0
-pagesshowed db 0
-plane       db 0
-xyg		dw 0
-linesize    dw 0
+color           db 0
+cursor          db 0
+segments        dw 0
+linesize        dw 0
 adress     	dw 0
 base 		dw 0
 scrolling       db 1
@@ -227,8 +246,8 @@ graphics    	equ 03CEh
 statut 		equ 03DAh
 
 maxfunc equ 39h
-maxmode	equ 9
-planesize	equ 64000
+maxmode	equ 11
+planesize	equ 65000
 ;============================================Fonctions de l'int VIDEO===========================================
 
 ;message d'erreur specifiant que les interruptions n'existent plus
@@ -267,6 +286,69 @@ DisableScroll:
         mov     cs:scrolling,0
         ret
         
+;=============ENABLECURSOR (Fonction 013)=========
+;Autorise le d‚filement
+;-> AH=42
+;<-
+;=====================================================
+ EnableCursor:
+        push    ax dx
+        mov     cs:cursor,1
+       	mov 	dx,CCRT
+	mov 	al,0Ah
+	out     dx,al
+	inc     dx
+	in      al,dx
+	and     al,11011111b
+	mov     ah,al
+	dec     dx
+	mov     al,0Ah
+	out     dx,ax
+	mov     bh,cs:x
+	mov     bl,cs:y
+	call    setxy
+        pop     dx ax
+        ret
+
+;=============DISABLECURSOR (Fonction 14)=========
+;D‚sactive le d‚filement
+;-> AH=43
+;<-
+;=====================================================
+DisableCursor:
+        push    ax dx
+        mov     cs:cursor,0
+       	mov 	dx,CCRT
+	mov 	al,0Ah
+	out     dx,al
+	inc     dx
+	in      al,dx
+	or      al,00100000b
+	mov     ah,al
+	dec     dx
+	mov     al,0Ah
+	out     dx,ax
+        pop     dx ax
+        ret
+        
+;==========SETSTYLE (Fonction 11)=========
+;Change le style du texte a CL
+;-> AH=x ,CX style
+;<-
+;=========================================
+setstyle:
+	mov 	cs:style,cl
+	ret
+
+;==========GETSTYLE (Fonction 12)=========
+;Récupère le style du texte dans CL
+;-> AH=x
+;<- CX style
+;=========================================
+getstyle:
+	mov 	cl,cs:style
+	ret
+        
 ;==========SHOWCHAR (Fonction 07h)===========
 ;met un caractère de code ASCII DL aprés le curseur
 ;-> AH=7, DL code ASCII du caractère
@@ -287,16 +369,16 @@ showchar:
 ;=================================================
 setvideomode:
 	push 	ax cx dx di
-      cmp   al,maxmode
+        cmp     al,maxmode
 	ja	errorsetvideomode
-	cmp    cs:mode,5h
+	cmp     cs:mode,5h
 	jb	nographic
 	cmp	al,5h
 	jae	nographic
 	call	initvideo
 nographic:
-        cmp    cs:mode,0FFh
-        jne    noinit
+        cmp     cs:mode,0FFh
+        jne     noinit
 	call	initvideo
 noinit:
 	mov 	cs:mode,al
@@ -310,7 +392,7 @@ noinit:
 	inc 	di              
 	mov 	dx,statut
 	mov 	al,cs:[di]
-	out 	dx,al 
+	out 	dx,al
 	inc 	di              
 	mov 	dx,sequencer
 	xor 	ax,ax
@@ -323,7 +405,7 @@ initsequencer:
 	jbe 	initsequencer    
 	mov 	ax,0E11h
 	mov 	dx,ccrt
-	out 	dx,ax           
+	out 	dx,ax
 	xor 	ax,ax
 initcrt:
 	mov 	ah,cs:[di]
@@ -332,7 +414,7 @@ initcrt:
 	inc 	di
 	cmp 	al,24
 	jbe 	initcrt          
-      mov   dx,graphics
+        mov     dx,graphics
 	xor 	ax,ax
 initgraphic:
 	mov 	ah,cs:[di]
@@ -342,7 +424,7 @@ initgraphic:
 	cmp 	al,8
 	jbe 	initgraphic
 	mov 	dx,statut
-	in 	al,dx                          
+	in 	al,dx
 	mov 	dx,attribs
 	xor 	ax,ax
 initattribs:
@@ -365,27 +447,43 @@ initattribs:
 	mov 	ah,cs:[di+1]
 	mov 	cs:lines,ah
 	mul 	ah
-	shl 	ax,1
-  	cmp   cs:mode,5
-      setae cs:graphic
-      jb    istext
-	shl   ax,3
+	mov     cl,cs:[di-5]
+	and     cl,01000000b
+	cmp     cl,0
+	je      colors16
+	mov     cs:color,8
+	mov     cl,4
+	jmp     colors256
+colors16:
+        mov     cs:color,4
+        mov     cl,3
+colors256:
+  	cmp     cs:mode,5
+        setae   cs:graphic
+        jb      istext
+	shl     ax,cl
+        mov     cs:segments,0A000h
+	jmp     wasgraph
 istext:
+        mov     cs:segments,0B800h
+        shl     ax,1
+wasgraph:
 	mov 	cs:pagesize,ax
 	mov	ax,planesize
 	xor	dx,dx
 	div	cs:pagesize
 	mov	cs:nbpage,al
-      mov   al,cs:[di-36]
+        mov     al,cs:[di-36]
 	xor 	ah,ah
-      shl   ax,2
-	mov   cl,cs:graphic
-	shr   ax,cl
-      mov   cs:linesize,ax
-      mov   ax,cs:[di-43]
-      mov   cs:adress,ax
+        shl     ax,2
+	mov     cl,cs:graphic
+	shr     ax,cl
+        mov     cs:linesize,ax
+        mov     ax,cs:[di-43]
+        mov     cs:adress,ax
 	mov	cs:base,ax
-      mov   cs:pages,0
+        mov     cs:cursor,1
+        mov     cs:style,0
 	pop 	di dx cx ax
 	ret
 errorsetvideomode:
@@ -394,9 +492,7 @@ errorsetvideomode:
 
 initvideo:
 	push 	bx cx si ds
-;xor bx,bx
-;mov ds,bx
-;lds si,ds:[43h*4]
+	call    clearscreen
 	push 	cs
 	pop 	ds
 	mov 	si,offset font8x8
@@ -407,8 +503,6 @@ initvideo:
 	mov 	cl,16	
       	mov 	bl,0
 	call 	loadfont
-	mov 	cs:pagesize,64000
-	call 	clearscreen
 	pop 	ds si cx bx
 	ret
 
@@ -424,52 +518,55 @@ getvideomode:
 ;=============CLEARSCREEN (Fonction 02h)=========
 ;Efface l'ecran graphique ou texte
 ;-> AH=2
-;<- 
+;<-
 ;================================================
 clearscreen:
 	push 	eax cx dx di es
-	mov 	cx,cs:pagesize
+	mov 	cx,planesize
 	mov	di,cs:adress
 	shr 	cx,2
-        cmp   byte ptr cs:graphic,1
+        cmp     cs:graphic,1
 	jne 	erasetext
-	mov  	ax,0A000h  
-	mov 	es,ax       
+	mov  	ax,0A000h
+	mov 	es,ax
 erasegraph:
-	mov	ah,0
-gogot:
-	push  ax cx
-	mov   cl,ah
-	mov   ah,1
-	shl   ah,cl
-	mov   al,2
-        mov   dx,sequencer
-	out   dx,ax
-	pop   cx ax
-	push 	si di cx eax
+	mov     ax,0F02h
+        mov     dx,sequencer
+	out     dx,ax
+	mov     ax,0205h
+        mov     dx,graphics
+	out     dx,ax
+	mov     ax,0003h
+	out     dx,ax
+	mov     ax,0FF08h
+	out     dx,ax	
 	mov	eax,00000000h
+	cld
 	rep 	stosd
-	pop 	eax cx di si
-        inc   ah
-	cmp	ah,3
-        jbe   gogot
-	jmp 	enderase
+	mov     ax,0005h
+	cmp     cs:color,4
+	je      not256
+	mov     ax,4005h	
+not256:
+        mov     dx,graphics
+	out     dx,ax
+	mov     ax,0003h
+	out     dx,ax
+        jmp     endoferase
+
+
 erasetext:
 	mov 	ax,0B800h
 	mov 	es,ax
 	mov 	eax,07200720h
 	cld
 	rep 	stosd
-enderase:
-        mov     cs:x,0
-        mov     cs:y,0
-        mov     cs:xg,0
-        mov     cs:yg,0
-        mov     cs:xy,0
-        mov     cs:xyg,0
-        mov     cs:plane,0
+	
+endoferase:	
+        xor     bx,bx
+        call    setxy
         pop 	es di dx cx eax
-	ret             
+	ret
 
 
 ;=============SetFont (Fonction 03h)=========
@@ -496,7 +593,7 @@ errorsetfont:
 	pop 	dx cx ax
 	ret    
 
-;=============GetFont (Fonction 0xh)=========
+;=============GetFont (Fonction 05h)=========
 ;Récupère le n° de la font active
 ;-> AH=x
 ;<- CL n° font, Carry if error
@@ -587,7 +684,7 @@ doseqs:
 	inc 	di
 	cmp 	di,6
 	jbe 	doseqs
-        	mov     	dx,graphics 
+	mov     	dx,graphics
 doseqs2:   
 	mov 	ax,cs:[di+offset reg2]
 	out 	dx,ax
@@ -622,14 +719,14 @@ showline:
       	jne     scro
 	dec 	bl
 	mov	cx,1
-	cmp	byte ptr cs:graphic,0
+	cmp	cs:graphic,0
 	je	okscro
 	mov	cx,8
 okscro:
 	call	scrolldown
 scro:
 	inc 	bl
-        call    setxy2
+        call    setxy
         pop     cx bx
 	ret
 
@@ -650,30 +747,12 @@ setcolor:
 getcolor:
 	mov 	cl,cs:colors
 	ret
-
-;==========SETSTYLE (Fonction xh)=========
-;Change le style du texte a CL
-;-> AH=x ,CX style
-;<- 
-;=========================================
-setstyle:
-	mov 	cs:style,CX
-	ret
-
-;==========GETSTYLE (Fonction xh)=========
-;Récupère le style du texte dans CL
-;-> AH=x
-;<- CX style
-;=========================================
-getstyle:
-	mov 	cx,cs:style
-	ret
-
+	
 ;==========SCROLLDOWN (Fonction 17h)=========
 ;defile de cx lines vers le bas
 ;-> AH=23, CX lines à défiler vers le bas
-;<- 
-;=============================
+;<-
+;=============================	
 scrolldown:
 	push 	ax cx dx si di ds es
         cmp     cs:scrolling,0
@@ -685,33 +764,30 @@ scrolldown:
 	sub 	cx,si
 	mov 	di,cs:adress
 	cld
-	cmp   byte ptr cs:graphic,1
+	cmp     byte ptr cs:graphic,1
 	jne 	textp
-	mov  	ax,0A000h  
+	mov  	ax,0A000h
 	mov 	es,ax
-	mov 	ds,ax           
-	shr   cx,2    
-transfert:
-	mov	ah,0
-gogo:
-	push  ax cx
-	mov   cl,ah
-	mov   ah,1
-	shl   ah,cl
-	mov   al,2
-      mov   dx,sequencer
-	out   dx,ax
-	pop   cx ax
-	mov   al,4
-      mov   dx,graphics
-	out   dx,ax
-	push 	si di cx
-	rep 	movsd
-	pop 	cx di si
-      inc   ah
-	cmp	ah,3
-	jbe   gogo
-	jmp   graphp
+	mov 	ds,ax
+	mov     ax,0F02h
+        mov     dx,sequencer
+	out     dx,ax
+	mov     ax,0105h
+        mov     dx,graphics
+	out     dx,ax
+	cld
+	rep 	movsb
+	mov     ax,0005h
+	cmp     cs:color,4
+	je      not256ok
+	mov     ax,4005h	
+not256ok:
+        mov     dx,graphics
+	out     dx,ax
+	mov     ax,0003h
+	out     dx,ax
+        jmp     graphp
+        
 textp:
 	mov 	ax,0B800h
 	mov 	es,ax
@@ -719,7 +795,7 @@ textp:
 	rep 	movsb
 graphp:
 	pop 	es ds di si dx cx ax
-	ret
+	ret	
 
 ;==========GETXY (Fonction 18h)=========
 ;Change les coordonnées du curseur a X:BH,Y:BL
@@ -737,21 +813,7 @@ getxy:
 ;<- 
 ;=====================================
 setxy:
-	push 	ax bx cx dx
-;         	xor ax,ax
-;	int 16h
-;        mov     cl,cs:lines
-;        dec     cl
-;	sub     cl,bl
-;	neg     cl
-;	js      zero
-;	xor     ch,ch
-;	inc     cl
-;       jmp     nozero
-;zero:
-;        mov     cx,0
-;nozero:
-;	call    scrolldown
+	push 	ax bx dx di
 	mov 	cs:x,bh
 	mov 	cs:y,bl
 	mov 	al,bl
@@ -763,56 +825,8 @@ setxy:
 	add 	di,ax
 	shl 	di,1
 	mov 	cs:xy,di
-	cmp	byte ptr cs:graphic,1
-	jne	oktext
-	mov	bl,cs:x
-	mov	cl,cs:y
-	xor	bh,bh
-	xor	ch,ch
-	shl	bx,3
-	shl	cx,3
-	call	setxyg
-	jmp   endofsetxy
-oktext:
-	mov 	ax,0B800h
-	mov 	es,ax
-	call   setcursor
-endofsetxy:
-	pop 	dx cx bx ax
-	ret
-
-setxy2:
-	push	es di
-	call 	setxy
-	pop 	di es
-	ret
-
-;==========SETXYG (Fonction 0Ah)=========
-;Change les coordonnées du curseur graphique a X:BX,Y:CX
-;-> AH=x, BX coordonnées x, CX coordonnées y
-;<- ES:DI pointeur sur pixel avec plan de bit ajusté
-;======================================
-setxyg:
-     	push 	ax bx cx dx
-	mov	cs:xg,bx
-	mov	cs:yg,cx
-      mov   ax,cx
-      mov	cl,bl   
-      mul  	cs:linesize                           
-      shr   bx,2
-      add  	ax,bx
-      mov   di,ax
-      and   cl,3                    
-      mov   ah,1                        
-      shl   ah,cl
-      mov   al,2                   
-      mov   dx, 3c4h       
-      out   dx,ax       
-	mov	cs:plane,cl
-	mov	cs:xyg,di       
-      mov   ax,0A000h      
-      mov  	es,ax                  
-	pop 	dx cx bx ax
+	call    setcursor
+	pop 	di dx bx ax
 	ret
 
 ;==========SHOWPIXEL (Fonction 08h)=========
@@ -821,52 +835,82 @@ setxyg:
 ;<- 
 ;=========================================
 showpixel:
-     	push 	ax bx cx dx di bp es
-      mov   bp,ax
-	mov   ax,cx
-      mov	cl,bl   
-      mul  	cs:linesize                           
-      shr   bx,2
-      add  	ax,bx
-      mov   di,ax
-	add   di,cs:adress
-      and   cl,3                    
-      mov   ah,1                        
-      shl   ah,cl
-      mov   al,2                   
-      mov   dx,sequencer
-      out   dx,ax       
-      mov   bx,0A000h      
-      mov  	es,bx
-	mov	ax,bp              
-	mov	es:[di],al	 	
-	pop	es bp di dx cx bx ax
+     	push 	ax bx cx dx si di es
+     	cmp     cs:color,4
+     	je      showpixel4
+        mov     si,ax
+	mov     ax,cx
+        mov	cl,bl
+        mul  	cs:linesize
+        shr     bx,2
+        add  	ax,bx
+        mov     di,ax
+	add     di,cs:adress
+        and     cl,3
+        mov     ah,1
+        shl     ah,cl
+        mov     al,2
+        mov     dx,sequencer
+        out     dx,ax
+        mov     bx,0A000h
+        mov  	es,bx
+	mov	ax,si
+	mov	es:[di],al	
+        jmp     endofshow
+        
+showpixel4:
+        mov     dx,ax
+        mov     ax,cx
+        mov     ch,dl
+        mov	cl,bl
+        mul  	cs:linesize
+        shr     bx,3
+        add  	ax,bx
+        mov     di,ax
+        add     di,cs:adress
+        and     cl,111b
+        xor     cl,111b
+        mov     ah,1
+        shl     ah,cl
+        mov     al,8
+        mov     dx,graphics           ;masque
+        out     dx,ax
+        mov     ax,0205h
+        out     dx,ax
+        mov     ax,0003h
+        out     dx,ax
+        mov     bx,0A000h
+        mov  	es,bx
+        mov	al,es:[di]
+        mov	es:[di],ch	 	
+
+endofshow:        	
+	pop	es di si dx cx bx ax
 	ret
 
-;==========SHOWPIXEL (Fonction 09h)=========
+;==========GETPIXEL (Fonction 09h)=========
 ;Récupère en al la couleur du pixel de coordonnées X:BX,Y:CX
 ;-> AH=x, BX coordonnées x, CX coordonnées y, AL couleur
 ;<- 
 ;=========================================
 getpixel:
      	push 	ax bx cx dx di bp es
-      mov   bp,ax
-	mov   ax,cx
-      mov	cl,bl   
-      mul  	cs:linesize                           
-      shr   bx,2
-      add  	ax,bx
-      mov   di,ax
-	add   di,cs:adress
-      and   cl,3 
+        mov     bp,ax
+	mov     ax,cx
+        mov	cl,bl
+        mul  	cs:linesize
+        shr     bx,2
+        add  	ax,bx
+        mov     di,ax
+	add     di,cs:adress
+        and     cl,3
 	mov	ah,cl                                      
-      mov   al,4                   
-      mov   dx,graphics
-      out   dx,ax       
-      mov   bx,0A000h      
-      mov  	es,bx
+        mov     al,4
+        mov     dx,graphics
+        out     dx,ax
+        mov     bx,0A000h
+        mov  	es,bx
 	mov	ax,bp
-           
 	mov	al,es:[di] 	
 	pop	es bp di dx cx bx ax
 	ret
@@ -901,6 +945,21 @@ waitr:
 	jz 	waitr
 	pop 	dx ax
 	ret
+	
+;==========WAITHRETRACE (Fonction 0xh)=========
+;Synchronisation avec la retrace horizontale
+;<- AH=x
+;->
+;=============================================
+waithretrace:
+	push 	ax dx
+	mov 	dx,3DAh
+waitr2:
+	in 	al,dx
+	test 	al,1
+	jz 	waitr2
+	pop 	dx ax
+	ret
 
 ;Renvoie le caractère sur le curseur en dl	
 getchar:
@@ -915,7 +974,7 @@ getchar:
 ;Ecrit le caractère ASCII CL attribut CH aprés le curseur, en le mettant à jours
 charout:
 	push 	ax bx cx dx di es
-	cmp	byte ptr cs:graphic,1
+	cmp	cs:graphic,1
 	jne	textaccess
         call    emulatechar
         jmp     adjusttext
@@ -927,9 +986,9 @@ textaccess:
 	add	cs:xy,2
 adjusttext:
         inc     cs:x
-	mov	  cl,cs:columns
-	cmp	  cs:x,cl
-	jb	  noadjusted
+	mov	cl,cs:columns
+	cmp	cs:x,cl
+	jb	noadjusted
         call    showline
 noadjusted:
         call    setcursor
@@ -937,7 +996,9 @@ noadjusted:
 	ret
 
 setcursor:
-          push ax cx dx
+        push    ax cx dx
+        cmp     cs:cursor,1
+        jne     notshow
 	mov 	dx,CCRT
 	mov 	al,0Eh
 	mov 	cx,cs:xy
@@ -947,52 +1008,51 @@ setcursor:
 	mov 	ah,cl
 	inc	al
 	out 	dx,ax
-	pop dx cx ax
+notshow:
+	pop     dx cx ax
 	ret
 
 
 ;Ecrit le caractère ASCII CL attribut CH aprés le curseur graphique, en le mettant à jours en mode graphique
 emulatechar:
         push    ax bx cx dx di
-        mov	dx,cx
-	mov	di,dx
+        mov     al,ch
+	mov	di,cx
 	and 	di,11111111b
 	shl 	di,3
 	add 	di,offset font8x8
-	xor 	bx,bx
-	xor 	cx,cx
+	mov     bl,cs:x
+	mov     cl,cs:y
+        xor     bh,bh
+        xor     ch,ch	
+	shl     bx,3
+	shl     cx,3
 	mov 	ah,cs:[di]
+	xor     dx,dx
 bouclet:
-	mov 	al,dh
-	rol	ah,1
-	jc 	colored
+        rol	ah,1
+	push    ax
+        jc 	colored
 	shr	al,4
-	bt    word ptr cs:style,0
-	jc    transparent
+	cmp     cs:style,0
+	jnz     transparent
 colored:
-	and	al,1111b
-	push 	bx cx
-	add   cx,cs:yg
-	add 	bx,cs:xg
+        and     al,1111b
 	call 	showpixel
-	pop 	cx bx
 transparent:
+        pop     ax
 	inc 	bx
-	cmp 	bx,8
+	inc     dl
+	cmp 	dl,8
 	jb 	bouclet
-	xor 	bx,bx
 	inc 	di
 	mov	ah,cs:[di]
+	xor     dl,dl
+	sub	bx,8
 	inc 	cx
-	cmp 	cx,8
+	inc     dh
+	cmp 	dh,8
 	jb 	bouclet
-	add 	cs:xg,8
-	mov	cx,cs:linesize
-	shl	cx,2
-	cmp	cs:xg,cx
-	jb	ended
-	mov	cs:xg,0
-	add	cs:yg,8
 ended:
         pop     di dx cx bx ax
         ret
@@ -1061,43 +1121,7 @@ Restoreparamfrom:
         rep     movsb
         pop     es di si ecx
         ret
-        
-;sauve la page1 dans un bloc de mémoire
-Savepage1:
-push    ax cx dx si di bp ds es gs
-mov     bp,sp
-mov     dx,ss:[bp+22]
-mov     ah,2
-mov     cx,cs:pagesize
-push    cs
-pop     ds
-mov     si,offset data4
-int     49h
-mov     ah,6
-int     49h
-push    gs
-pop     es
-xor     di,di
-call    Savepage1to
-pop     gs es ds bp di si dx cx ax
-ret
 
-data4 db '/vgapage1',0
-
-;===================================sauve l'ecran rapidement================
-Savepage1to:
-        push    ecx si di ds
-        mov     cx,0B800H
-        mov     ds,cx
-        xor     ecx,ecx
-        mov     cx,cs:pagesize
-        shr     cx,2
-        mov     si,cs:pagesize
-        cld
-        rep     movsd
-        pop     ds di si ecx
-        ret
-        
 ;R‚cupŠre l'ecran de la carte depuis son bloc mémoire
 RestoreScreen:
 push    ax dx si bp ds gs
@@ -1198,6 +1222,8 @@ mov     ah,01h
 int     49h
 pop     gs es ds bp di si dx cx ax
 ret
+
+data4 db '/vgatemp',0
 
 
 ;Sauve l'‚tat de la carte dans un bloc mémoire
