@@ -1,6 +1,7 @@
 ![logo](https://github.com/dahut87/cos2000v1/raw/master/Graphisme/logo.png)
 
 ## Copies d'écran de COS2000
+![screen](https://github.com/dahut87/cos2000v1/raw/develop/Graphisme/screenshots/bootnew.jpg)
 ![screen](https://github.com/dahut87/cos2000v1/raw/develop/Graphisme/screenshots/chargement.jpg)
 ![screen](https://github.com/dahut87/cos2000v1/raw/develop/Graphisme/screenshots/dir.jpg)
 ![screen](https://github.com/dahut87/cos2000v1/raw/develop/Graphisme/screenshots/editeur.jpg)
