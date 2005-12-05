@@ -21,13 +21,13 @@ all:
 
 copy:
 	make all
-	copy commande\*.exe ..\data
-	copy programs\*.exe ..\data
-	copy programs\*.rip ..\data
-	copy noyau\*.sys ..\data
-	rem copy noyau\*.bin ..\data
-	copy contribs\*.exe ..\data
-	copy install\*.com ..\
+	copy commande\*.exe ..\binaires\data
+	copy programs\*.com ..\binaires\data
+	copy programs\*.rip ..\binaires\data
+	copy noyau\*.sys ..\binaires\data
+	copy noyau\*.bin ..\binaires\data
+	copy contribs\*.com ..\binaires\data
+	copy install\*.com ..\binaires
 	make clean
 
 clean:
