@@ -70,3 +70,4 @@ clean:
   del *.com
   del *.sys
   del *.err
+  del *.bin
