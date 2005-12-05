@@ -28,15 +28,22 @@ showbmp PROC FAR
         ARG     pointer:word, x:word, y:word=taille
         push    bp
         mov     bp,sp
-	push 	ax bx cx si di
+	push 	ax bx cx dx si di
 	mov     si,[pointer]
 	cmp	word ptr [si+BMP_file.BMP_FileType],"MB"
 	jne     @@errorshowing
-	mov     di,si
-	add     di,436h
+	mov     edi,[si+BMP_BitMapOffset]
+	add     di,si
         mov     ah,8
-       	xor 	bx,bx
-        mov     cx,[si+offset BMP_File.BMP_height]
+       	xor 	ebx,ebx
+        mov     ecx,[si+offset BMP_File.BMP_height]
+       	mov 	edx,[si+offset BMP_File.BMP_width]
+        and     dx,11111100b
+       	cmp     edx,[si+offset BMP_File.BMP_width]
+       	jae     @@noadjust
+       	add     dx,4
+@@noadjust:
+        sub     dx,[si+offset BMP_File.BMP_width]
 @@bouclette:
 	mov 	al,[di]	
 	push 	bx cx
@@ -46,14 +53,15 @@ showbmp PROC FAR
 	pop 	cx bx
 	inc 	bx
 	inc     di
-	cmp 	bx,[si+offset BMP_File.BMP_width]
+	cmp 	ebx,[si+offset BMP_File.BMP_width]
 	jb 	@@bouclette
 	xor 	bx,bx
+	add     di,dx
 	dec 	cx
 	cmp 	cx,0
 	jne 	@@bouclette
 	clc
-	pop 	di si cx bx ax
+	pop 	di si dx cx bx ax
 	pop     bp
 	retf    taille
 	
@@ -63,8 +71,6 @@ showbmp PROC FAR
        	pop     bp
        	retf    taille
         
-xc dw 0
-yc dw 0
 showbmp ENDP
 
 
