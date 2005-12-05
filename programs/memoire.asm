@@ -73,6 +73,7 @@ nonresident    db "non",0
 line           db "%0P\h15%w\h24%0\h30%0P\h46%hW\l",0
 msg            db "Memory manager V1.5\lNom            Taille   Res   Parent          Mem\l",0
 none           db ".",0
+
 imports:
         db "VIDEO.LIB::print",0
 print   dd 0
