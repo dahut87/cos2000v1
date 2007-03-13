@@ -7,52 +7,43 @@ all: detect.com editeur.com gestion.com logo.com pmode.com souris.com test.com v
 memoire.com: memoire.asm
 	$(asm) memoire
 	$(lnk) memoire
-	ren memoire.com memoire.com
 
 detect.com: detect.asm
 	$(asm) detect
 	$(lnk) detect
-	ren detect.com detect.com
 
 editeur.com: editeur.asm
 	$(asm) editeur
 	$(lnk) editeur
-	ren editeur.com editeur.com
 
 gestion.com: gestion.asm
 	$(asm) gestion
 	$(lnk) gestion
-	ren gestion.com gestion.com
 
 logo.com: logo.asm
 	$(asm) logo
 	$(lnk) logo
-	ren logo.com logo.com
 
 pmode.com: pmode.asm
 	$(asm) pmode
 	$(lnk) pmode
-	ren pmode.com pmode.com
 
 souris.com: souris.asm
 	$(asm) souris
 	$(lnk) souris
-	ren souris.com souris.com
 
 test.com: test.asm
 	$(asm) test
 	$(lnk) test
-	ren test.com test.com
 
 verifier.com: verifier.asm
 	$(asm) verifier
 	$(lnk) verifier
-	ren verifier.com verifier.com
 
 volume.com: volume.asm
 	$(asm) volume
 	$(lnk) volume
-	ren volume.com volume.com
+
 
 clean:
   del *.obj

@@ -1,10 +1,16 @@
 .model tiny
-.386c
+.486
+smart
 .code
-org 0100h
-             
-                
+
+org 0h
+
+include ..\include\mem.h
+
 start:
+header exe <,1,0,,,offset imports,,>
+
+realstart:
      mov ax,0305h
      mov bx,0008h
      int 16h
@@ -43,62 +49,43 @@ Adres:
      int 47h
      mov bh,infos
      mov edi,ebp
-     mov ah,21
-     mov cl,7
-     int 47h
 lines:
+     xor edx,edx
+     mov dx,di
+     push edx
      mov edx,edi
      shr edx,4*4
      shl edx,4*3
-     mov cx,16
-     mov ah,10
-     int 47h
-     mov si,offset dep
-     mov ah,13
-     int 47h
+     push edx
+     push offset spaces
+     call [print]
      mov dx,di
-     mov ah,10
-     int 47h
-     mov ah,13
-     mov si,offset spaces
-     int 47h
-     mov ah,5
-     int 47h
      mov al,infos+1
-     mov cl,7
-     mov ah,21
-     int 47h
      mov esi,edi
 doaline:
      mov edx,edi
      shr edx,4*4
      shl edx,4*3
      mov fs,dx      
-     mov dl,fs:[di]
-     mov ah,10
-     mov cl,8
-     int 47h
-     mov ah,5
-     int 47h
+     push dword ptr fs:[di]
+     push 8
+     call [showhex]
+     push ' '
+     call [showchar]
      inc edi
      dec al
      jnz doaline
      mov edi,esi
-     mov si,offset spaces
-     mov ah,13
-     int 47h
+     push offset spaces2
+     call [print]
      mov al,infos+1
-     mov ah,21
-     mov cl,7
-     int 47h
 doaline2:
      mov edx,edi
      shr edx,4*4
      shl edx,4*3
      mov fs,dx     
-     mov dl,fs:[di]
-     mov ah,7
-     int 47h
+     push word ptr fs:[di]
+     call [showchar]
      inc edi
      dec al
      jnz doaline2
@@ -110,14 +97,12 @@ doaline2:
      int 47h
      jmp lines
 outes:     
-     mov ah,21
-     mov cl,112
-     int 47h
      mov bh,0
      mov bl,infos
-     mov si,offset menu
-     mov ah,14h
+     mov ah,25
      int 47h
+     push offset menu
+     call [print]
      waitkey:
      mov ax,0
      int 16h
@@ -153,18 +138,13 @@ outes:
      suit6:
      cmp ax,4100h
      jne suit7
-     mov ah,21
-     mov cl,116
-     int 47h
      mov dword ptr [pope],'TIDE'
+     mov bh,0
      mov bl,infos
-     xor bh,bh
-     mov si,offset menu
-     mov ah,14h
+     mov ah,25
      int 47h
-     mov ah,21
-     mov cl,7
-     int 47h
+     push offset menu
+     call [print]
      mov ax,0B800h
      mov es,ax   
      mov xxyy2,3
@@ -243,28 +223,20 @@ writs:
      cmp ch,cl
      je no
      push si ax
-     mov ah,25
+     mov bh,0
      mov bl,infos
-     xor bh,bh
+     mov ah,25
      int 47h
-     mov ah,21
-     mov cl,117
-     int 47h
-     mov si,offset msg
-     mov ah,13
-     int 47h
+     push offset msg
+     call [print]
      mov ax,0
      int 16h
+     mov bh,0
      mov bl,infos
-     xor bh,bh
      mov ah,25
      int 47h
-     mov ah,21
-     mov cl,116
-     int 47h
-     mov ah,13
-     mov si,offset menu
-     int 47h
+     push offset menu
+     call [print]
      pop bx si
      mov es:[bx-1],edi
      mov es:[si-1],dx
@@ -289,8 +261,7 @@ cursor:
      jne adres
      mov ah,29h
      int 47h
-     db 0CBH     ; +++++++
-     ret
+     retf
 
 calc1:
      push ax dx si
@@ -377,14 +348,25 @@ yy dw 0
 xxyy dw 3
 xxyy2 dw 3
 
-msg  db 'Erreur : zone non modifiable (ROM) pressez une touche pour continuer                ',0
-menu db 'haut/bas [F1/2] Offset [F3/4] Segment [F5/6] Mode F7, Quitter F8 MODE  '
+msg  db '\c74Erreur : zone non modifiable (ROM) pressez une touche pour continuer                ',0
+menu db '\c70haut/bas [F1/2] Offset [F3/4] Segment [F5/6] Mode F7, Quitter F8 MODE  '
 pope  db 'VUE     ',0         
-spaces db  ' ³ ',0
+spaces db  '\c02%hW:%hW \c04|  \c07',0
+spaces2 db  '\c04 | \c07',0
 
 showbuffer db 35 dup (0FFh)
 oldmode db 0
 infos db 40 dup (0)
+
+imports:
+         db "VIDEO.LIB::print",0
+print    dd 0
+         db "VIDEO.LIB::showhex",0
+showhex  dd 0
+         db "VIDEO.LIB::showchar",0
+showchar dd 0
+         dw 0
+
 end start
 
 

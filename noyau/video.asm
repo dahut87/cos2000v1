@@ -1,105 +1,86 @@
-.model tiny
-.486
-smart
-.code
+model tiny,stdcall
+p486
+locals
+jumps
+codeseg
+option procalign:byte
 
-org 0100h
+include "..\include\mem.h"
+include "..\include\graphic.h"
 
-include ..\include\bmp.h
+org 0h
 
-start:
-	jmp	tsr			;Saute à la routine résidente
-names db 'VIDEO'			;Nom drivers
-id    dw 1234h                ;Identifiant drivers
-Tsr:
-	cli				;Désactive interruptions logiciellement
-	cmp 	ax,cs:ID         	;Compare si test de chargement
-	jne 	nomore		;Si pas test alors on continu
-      rol     ax,3*4            ;Rotation de 3 chiffre de l'ID pour montrer que le drivers est chargé
-	jmp 	itsok			;On termine l'int avec notre code d'ID preuve du bon chargement de VIDEO
-nomore:
-        cmp     ah,maxfunc
-        jbe     noerrorint
-        stc
-        jmp     itsok
-        noerrorint:
-        clc
-	push 	bx
-	mov 	bl,ah			;On calcule d'aprés le n° de fonction
-	xor 	bh,bh			;quel sera l'entrée dans la table indexée
-	shl 	bx,1			;des adresses fonctions.
-	mov 	bx,cs:[bx+tables]	;On récupère cette adresse depuis la table
-	mov 	cs:current,bx	;On la stocke temporairement pour obtenir les registres d'origine
-	pop 	bx
-        clc
-        call 	cs:current		;Puis on execute la fonction
-itsok:
-	push 	bp		
-	mov 	bp,sp			;On prend sp dans bp pour adresser la pile
-	jnc 	noerror		;La fonction appelée a renvoyer une erreur :  Flag CARRY ?
-        or      byte ptr [bp+6],1b;Si oui on le retranscrit sur le registre FLAG qui sera dépilé lors du IRET
-        ;xor   eax,eax
-        ;mov     ax,cs                   ;On récupère le segment et l'offset puis en renvoie l'adresse physique
-        ;shl     eax,4                   ;de l'erreur.
-        ;add     ax,cs:current
-        ;jmp     endofint                ;on termine l'int
-noerror:
-	and 	byte ptr [bp+6],0FEh;Si pas d'erreur on efface le Bit CARRY du FLAG qui sera dépilé lors du IRET
-endofint:
-	pop 	bp
-	sti				;On réactive les interruptions logiciellement
-	iret				;Puis on retourne au programme appelant.
+header exe <"CE",1,0,0,offset exports,,,>
 
-current dw 0			;Mot temporaire qui contient l'adresse de la fonction appelée
-tables dw setvideomode		;Table qui contient les adresses de toutes les fonctions de VIDEO (WORD)
+
+exports:
+         db "setvideomode",0
+         dw setvideomode
+         db "getvideomode",0		
          dw getvideomode
+         db "clearscreen",0
          dw clearscreen
+         db "setfont",0
          dw setfont
+         db "loadfont",0
          dw loadfont
-         dw showspace
-         dw showline
+         db "getfont",0
+         dw getfont
+         db "addline",0
+         dw addline
+         db "showchar",0
          dw showchar
-         dw showint
-         dw showsigned
-         dw showhex
-         dw showbin
-         dw showstring
-         dw showstring0
-         dw showcharat
-         dw showintat
-         dw showsignedat
-         dw showhexat
-         dw showbinat
-         dw showstringat
-         dw showstring0at
+         db "showpixel",0
+         dw showpixel
+         db "getpixel",0
+         dw getpixel
+         db "setstyle",0
+         dw setstyle
+         db "getstyle",0
+         dw getstyle
+         db "enablecursor",0
+         dw enablecursor
+         db "disablecursor",0
+         dw disablecursor
+         db "setcolor",0
          dw setcolor
+         db "getcolor",0
          dw getcolor
+         db "scrolldown",0
          dw scrolldown
+         db "getxy",0
          dw getxy
-         dw setxy2
+         db "setxy",0
+         dw setxy
+         db "savescreen",0
          dw savescreen
+         db "restorescreen",0
          dw restorescreen
+         db "page2to1",0
          dw page2to1
+         db "page1to2",0
          dw page1to2
-         dw xchgPages
-         dw savepage1
-         dw changelineattr
+         ;db "xchgPages",0
+         ;dw xchgpages
+         db "waithretrace",0
+         dw waithretrace
+         db "waitretrace",0
          dw waitretrace
+         db "getvgainfos",0
          dw getvgainfos
-         dw loadbmppalet
-         dw showbmp
-         dw viewbmp
-         dw savedac
-         dw restoredac
-         dw savestate
-         dw restorestate
+         ;db "savedac",0
+         ;dw savedac
+         ;db "restoredac",0
+         ;dw restoredac
+         ;db "savestate",0
+         ;dw savestate
+         ;db "restorestate",0
+         ;dw restorestate
+         db "enablescroll",0
          dw enablescroll
+         db "disablescroll",0
          dw disablescroll
-	 dw showdate
-	 dw showtime
-	 dw showname
-	 dw showattr
-	 dw showsize
+         db "getchar",0
 	 dw getchar
 
 ;================================Table des modes videos (64 BYTES) ============================================
@@ -192,316 +173,226 @@ mode9 DB 0E7H, 00H,  03H,01H,0FH,00H,06H
              DB 00H,01H,02H,03H,04h,05H,06H,07H,08H,09H,0AH,0BH,0CH,0DH,0EH,0FH
              DB 41H,00H,0FH,00H,00H
              DB 50,75
+             
+;640*480 16 couleurs
+mode10        DB 0E3H
+             DB 00H
+             DB 03H,01H,0FH,00H,06H
+             DB 5FH,4FH,50H,82H,53H,9FH,0BH,3EH,00H,40H,00H,00H,00H,00H,00H,00H,0E9H,8BH,0DFH,28H,00H,0E7H,04H,0E3H,0FFH
+             DB 00H,00H,00H,00H,00H,00H,05H,0FH,0FFH
+             DB 00H,01H,02H,03H,04H,05H,06H,07H,10H,11H,3AH,3BH,3CH,3DH,3EH,3FH,01H,00H,0FH,00H,00H
+             DB 80,60
 
-DATABLOCKSIZE equ 40
-DATABLOCK 	  equ $
+;800*600 16 couleurs
+mode11        DB 0E7H
+             DB 00H
+             DB 03H,01H,0FH,00H,06H
+             DB 70H,63H,64H,92H,65H,82H,70H,0F0H,00H,60H,00H,00H,00H,00H,00H,00H,5BH,8CH,57H,32H,00H,58H,70H,0E3H,0FFH
+             DB 00H,00H,00H,00H,00H,00H,05H,0FH,0FFH
+             DB 00H,01H,02H,03H,04H,05H,06H,07H,10H,11H,3AH,3BH,3CH,3DH,3EH,3FH,01H,00H,0FH,00H,00H
+             DB 100,75
+
+
+datablocksize equ 40
+datablock 	  equ $
 ;============================================DATABLOCK=========================================================
-lines 	db 0
+lines 	        db 0
 columns 	db 0
-x           db 0
+x               db 0
 y 		db 0
 xy		dw 0
-colors 	db 7
+colors 	        db 7
 mode 		db 0FFh
 pagesize 	dw 0
-pages       db 0
+style           db 0
 font		db 0
 graphic 	db 0
-xg		dw 0
-yg		dw 0
-style		dw 0
+reserved1	dw 0
+reserved2	dw 0
+reserved3	dw 0
 nbpage    	db 0
-pagesshowed db 0
-plane       db 0
-xyg		dw 0
-linesize    dw 0
+color           db 0
+cursor          db 0
+segments        dw 0
+linesize        dw 0
 adress     	dw 0
 base 		dw 0
 scrolling       db 1
 
 ;=======================================Equivalence pour la clarté du code========================================
-Sequencer 	equ 03C4h
+sequencer 	equ 03C4h
 misc 		equ 03C2h
-CCRT 		equ 03D4h
-Attribs 	equ 03C0h
+ccrt 		equ 03D4h
+attribs 	equ 03C0h
 graphics    	equ 03CEh
 statut 		equ 03DAh
 
-maxfunc equ 39h
-maxmode	equ 9
-planesize	equ 64000
+maxmode	        equ 11
+planesize	equ 65000
 ;============================================Fonctions de l'int VIDEO===========================================
 
-;=============ENABLESCROLLING (Fonction 02AH)=========
+
+;=============ENABLESCROLLING=========
+;Autorise le défilement
+;->
+;<- 
+;=====================================
+PROC enablescroll FAR
+        mov     [cs:scrolling],1
+        ret
+endp enablescroll
+
+;=============DISABLESCROLLING=========
+;Désactive le d‚filement
+;->
+;<- 
+;======================================
+PROC disablescroll FAR
+        mov     [cs:scrolling],0
+        ret
+endp disablescroll
+
+;=============ENABLECURSOR=============
 ;Autorise le d‚filement
-;-> AH=42
-;<- 
-;=====================================================
- EnableScroll:
-        mov     cs:scrolling,1
+;->
+;<-
+;======================================
+PROC enablecursor FAR
+        USES    ax,dx
+        mov     [cs:cursor],1
+       	mov 	dx,ccrt
+	mov 	al,0Ah
+	out     dx,al
+	inc     dx
+	in      al,dx
+	and     al,11011111b
+	mov     ah,al
+	dec     dx
+	mov     al,0Ah
+	out     dx,ax
+	mov     al,[cs:x]
+	xor     ah,ah
+	mov     dl,[cs:y]
+	xor     dh,dh
+	call    setxy,ax,dx
         ret
+endp enablecursor
 
-;=============DISABLESCROLLING (Fonction 2Bh)=========
+;=============DISABLECURSOR=============
 ;D‚sactive le d‚filement
-;-> AH=43
-;<- 
-;=====================================================
-DisableScroll:
-        mov     cs:scrolling,0
+;->
+;<-
+;=======================================
+PROC disablecursor FAR
+        USES    ax,dx
+        mov     [cs:cursor],0
+       	mov 	dx,ccrt
+	mov 	al,0Ah
+	out     dx,al
+	inc     dx
+	in      al,dx
+	or      al,00100000b
+	mov     ah,al
+	dec     dx
+	mov     al,0Ah
+	out     dx,ax
         ret
-
-;================SHOWDATE (Fonction 2Ch)==============
-;Affiche la date contenu en DX
-;-> AH=44
-;<- 
-;=====================================================
-ShowDate:
-	push	ax cx edx
-	mov	ax,dx
-	mov	cx,2
-	xor	edx,edx
-	mov	dx,ax
-	and	dx,11111b
-	call	showfixint
-	mov	dl,'/'
-	call	showchar
-	mov	dx,ax
-	shr	dx,5
-	and	dx,111b
-	call	showfixint
-	mov	dl,'/'
-	call	showchar
-	mov	dx,ax
-	shr	dx,8
-	and	dx,11111111b
-	add	dx,1956
-	mov	cx,4
-	call	showfixint
-	pop	edx cx ax
+endp disablecursor
+        
+;==========SETSTYLE=========
+;Change le style du texte a %0
+;-> %0 style
+;<-
+;============================
+PROC setstyle FAR
+        ARG     @style:word
+        USES    cx
+        mov     ax,[@style]
+	mov 	[cs:style],al
 	ret
+endp setstyle
 
-;================SHOWTIME (Fonction 2Dh)==============
-;Affiche l'heure contenu en DX
-;-> AH=45
-;<- 
-;=====================================================
-ShowTime:
-	push 	ax cx edx
-	mov	ax,dx
-	mov	cx,2
-	xor 	edx,edx
-	mov	dx,ax
-	shr	dx,11
-	and	dx,11111b
-	call	showfixint
-	mov	dl,':'
-	call	showchar
-	mov	dx,ax
-	shr	dx,5
-	and	dx,111111b
-	call	showfixint
-	mov	dl,':'
-	call	showchar
-	mov	dx,ax
-	and	dx,11111b
-	shl	dx,1
-	call	showfixint
-	pop	edx cx ax
+;==========GETSTYLE=========
+;Récupère le style du texte dans AX
+;->
+;<- AX style
+;===========================
+PROC getstyle FAR
+	mov 	al,[cs:style]
+	xor     ah,ah
 	ret
+endp getstyle
 
-;================SHOWNAME (Fonction 2Eh)==============
-;Affiche le nom pointé par SI
-;-> AH=46
-;<- 
-;=====================================================
-ShowName:
-	push	cx dx si
-	xor	cx,cx
-showthename:
-	mov	dl,ds:[si]
-	call	showchar
-	inc	si
-	inc	cx
-	cmp	cx,8
-	jne	suiteaname
-	mov	dl,' '
-	call	showchar
-suiteaname:
-	cmp	cx,8+3
-	jb	showthename
-	pop	si dx cx
-	ret
-
-;================SHOWATTR (Fonction 2Fh)==============
-;Affiche les attributs spécifié par DL
-;-> AH=47
-;<- 
-;=====================================================
-ShowAttr:
-	push	dx
-	mov	al,dl	
-
-	test 	al,00000001b
-	je	noreadonly
-	mov	dl,'L'	
-	jmp	readonly
-noreadonly:
-	mov	dl,'-'
-readonly:
-	call	showchar
-
-	test 	al,00000010b
-	je	nohidden
-	mov	dl,'C'	
-	jmp	hidden
-nohidden:
-	mov	dl,'-'
-hidden:
-	call	showchar
-
-	test 	al,00000100b
-	je	nosystem
-	mov	dl,'S'	
-	jmp	system
-nosystem:
-	mov	dl,'-'
-system:
-	call	showchar
-
-	test 	al,00100000b
-	je	noarchive
-	mov	dl,'A'	
-	jmp	archive
-noarchive:
-	mov	dl,'-'
-archive:
-	call	showchar
-
-	test 	al,00010000b
-	je	nodirectory
-	mov	dl,'R'	
-	jmp	directory
-nodirectory:
-	mov	dl,'-'
-directory:
-	call	showchar
-
-	pop	dx
-	ret
-
-;================SHOWSIZE (Fonction 30h)==============
-;Affiche le nom pointé par DI
-;-> AH=48
-;<- 
-;=====================================================
-ShowSize:
-	push 	cx edx si ds
-	push	cs
-	pop	ds
-	mov	cx,4
-	cmp	edx,1073741824
-	ja	giga
-	cmp	edx,1048576*9
-	ja	mega
-	cmp	edx,1024*9
-	ja	kilo
-	call	showintR
-	mov	si,offset unit
-	call	showstring0
-	jmp	finsize
-kilo:
-	shr	edx,10
-	call	showintR
-	mov	si,offset unitkilo
-	call	showstring0
-	jmp	finsize
-mega:
-	shr	edx,20
-	call	showintR
-	mov	si,offset unitmega
-	call	showstring0
-	jmp	finsize
-giga:
-	shr	edx,30
-	call	showintR
-	mov	si,offset unitgiga
-	call	showstring0
-finsize:
-	pop	ds si edx cx
-	ret
-
-unit db ' o ',0
-unitkilo db ' ko',0
-unitmega db ' mo',0
-unitgiga db ' go',0
-
-;=============SetVideoMode (Fonction 00h)=========
-;Fixe le mode vidéo courant a AL
-;-> AH=0, AL mode d'écran
+;=============SetVideoMode=========
+;Fixe le mode vidéo courant a %0
+;-> %0 mode d'écran
 ;<- Carry if error
-;=================================================
-setvideomode:
-	push 	ax cx dx di
-      cmp   al,maxmode
-	ja	errorsetvideomode
-	cmp    cs:mode,5h
-	jb	nographic
+;==================================
+PROC setvideomode FAR
+        ARG     @mode:word
+        USES    ax,cx,dx,di
+        mov     ax,[@mode]
+        xor     ah,ah	
+        cmp     al,maxmode
+	ja	@@errorsetvideomode
+	cmp     [cs:mode],5h
+	jb	@@nographic
 	cmp	al,5h
-	jae	nographic
-	call	initvideo
-nographic:
-        cmp    cs:mode,0FFh
-        jne    noinit
-	call	initvideo
-noinit:
-	mov 	cs:mode,al
+	jae	@@nographic
+	call	initfont
+@@nographic:
+        cmp     [cs:mode],0FFh
+        jne     @@noinit
+	call	initfont
+@@noinit:
+	mov 	[cs:mode],al
 	xor 	ah,ah
 	mov 	di,ax
 	shl 	di,6
 	add 	di,offset mode0 
 	mov 	dx,misc
-	mov 	al,cs:[di]
+	mov 	al,[cs:di]
 	out 	dx,al
 	inc 	di              
 	mov 	dx,statut
-	mov 	al,cs:[di]
-	out 	dx,al 
+	mov 	al,[cs:di]
+	out 	dx,al
 	inc 	di              
 	mov 	dx,sequencer
 	xor 	ax,ax
-initsequencer:
-	mov 	ah,cs:[di]
+@@initsequencer:
+	mov 	ah,[cs:di]
 	out 	dx,ax
 	inc 	al
 	inc 	di
 	cmp 	al,4
-	jbe 	initsequencer    
+	jbe 	@@initsequencer
 	mov 	ax,0E11h
 	mov 	dx,ccrt
-	out 	dx,ax           
+	out 	dx,ax
 	xor 	ax,ax
-initcrt:
-	mov 	ah,cs:[di]
+@@initcrt:
+	mov 	ah,[cs:di]
 	out 	dx,ax
 	inc 	al
 	inc 	di
 	cmp 	al,24
-	jbe 	initcrt          
-      mov   dx,graphics
+	jbe 	@@initcrt
+        mov     dx,graphics
 	xor 	ax,ax
-initgraphic:
-	mov 	ah,cs:[di]
+@@initgraphic:
+	mov 	ah,[cs:di]
 	out 	dx,ax
 	inc 	al
 	inc 	di
 	cmp 	al,8
-	jbe 	initgraphic
+	jbe 	@@initgraphic
 	mov 	dx,statut
-	in 	al,dx                          
+	in 	al,dx
 	mov 	dx,attribs
 	xor 	ax,ax
-initattribs:
-	mov 	ah,cs:[di]
+@@initattribs:
+	mov 	ah,[cs:di]
 	push 	ax
 	in 	ax,dx
 	pop	ax
@@ -512,131 +403,141 @@ initattribs:
 	inc 	al
 	inc	di
 	cmp 	al,20
-	jbe	initattribs
+	jbe	@@initattribs
 	mov 	al,20h
 	out 	dx,al
-	mov 	al,cs:[di]
-	mov 	cs:columns,al
-	mov 	ah,cs:[di+1]
-	mov 	cs:lines,ah
+	mov 	al,[cs:di]
+	mov 	[cs:columns],al
+	mov 	ah,[cs:di+1]
+	mov 	[cs:lines],ah
 	mul 	ah
-	shl 	ax,1
-  	cmp   cs:mode,5
-      setae cs:graphics
-      jb    istext
-	shl   ax,3
-istext:
-	mov 	cs:pagesize,ax
+	mov     cl,[cs:di-5]
+	and     cl,01000000b
+	cmp     cl,0
+	je      @@colors16
+	mov     [cs:color],8
+	mov     cl,4
+	jmp     @@colors256
+@@colors16:
+        mov     [cs:color],4
+        mov     cl,3
+@@colors256:
+  	cmp     [cs:mode],5
+        setae   [cs:graphic]
+        jb      @@istext
+	shl     ax,cl
+        mov     [cs:segments],0A000h
+	jmp     @@wasgraph
+@@istext:
+        mov     [cs:segments],0B800h
+        shl     ax,1
+@@wasgraph:
+	mov 	[cs:pagesize],ax
 	mov	ax,planesize
 	xor	dx,dx
-	div	cs:pagesize
-	mov	cs:nbpage,al
-      mov   al,cs:[di-36]
+	div	[cs:pagesize]
+	mov	[cs:nbpage],al
+        mov     al,[cs:di-36]
 	xor 	ah,ah
-      shl   ax,2
-	mov   cl,cs:graphics
-	shr   ax,cl
-      mov   cs:linesize,ax
-      mov   ax,cs:[di-43]
-      mov   cs:adress,ax
-	mov	cs:base,ax
-      mov   cs:pages,0
-	pop 	di dx cx ax
+        shl     ax,2
+	mov     cl,[cs:graphic]
+	shr     ax,cl
+        mov     [cs:linesize],ax
+        mov     ax,[cs:di-43]
+        mov     [cs:adress],ax
+	mov	[cs:base],ax
+        mov     [cs:cursor],1
+        mov     [cs:style],0
 	ret
-errorsetvideomode:
-	pop 	di dx cx ax
+@@errorsetvideomode:
 	ret
+endp setvideomode
 
-initvideo:
-	push 	bx cx si ds
-;xor bx,bx
-;mov ds,bx
-;lds si,ds:[43h*4]
+
+initfont:
+	push 	ds
+	call    clearscreen
 	push 	cs
 	pop 	ds
-	mov 	si,offset font8x8
-	mov 	cl,8	
-      	mov 	bl,1
-	call 	loadfont
-	mov 	si,offset font8x16
-	mov 	cl,16	
-      	mov 	bl,0
-	call 	loadfont
-	mov 	cs:pagesize,64000
-	call 	clearscreen
-	pop 	ds si cx bx
+	call 	loadfont,offset font8x8,8,1
+	call 	loadfont,offset font8x16,16,0
+	pop 	ds
 	ret
 
-;=============GetVideoMode (Fonction 01h)=========
-;Renvoie le mode vidéo courant dans AL
-;-> AH=1
-;<- AL mode d'écran
-;=================================================
-getvideomode:
-	mov 	al,cs:mode
+;=============GetVideoMode=========
+;Renvoie le mode vidéo courant dans AX
+;->
+;<- AX
+;==================================
+PROC getvideomode FAR
+	mov 	al,[cs:mode]
+	xor     ah,ah
 	ret
+endp getvideomode
 
-;=============CLEARSCREEN (Fonction 02h)=========
+;=============CLEARSCREEN=========
 ;Efface l'ecran graphique ou texte
-;-> AH=2
-;<- 
-;================================================
-clearscreen:
-	push 	eax cx dx di es
-	mov 	cx,cs:pagesize
-	mov	di,cs:adress
+;->
+;<-
+;=================================
+PROC clearscreen FAR
+	USES 	eax,cx,dx,di,es
+	mov 	cx,planesize
+	mov	di,[cs:adress]
 	shr 	cx,2
-        cmp   byte ptr cs:graphics,1
-	jne 	erasetext
-	mov  	ax,0A000h  
-	mov 	es,ax       
-erasegraph:
-	mov	ah,0
-gogot:
-	push  ax cx
-	mov   cl,ah
-	mov   ah,1
-	shl   ah,cl
-	mov   al,2
-        mov   dx,sequencer
-	out   dx,ax
-	pop   cx ax
-	push 	si di cx eax
+        cmp     [cs:graphic],1
+	jne 	@@erasetext
+	mov  	ax,0A000h
+	mov 	es,ax
+@@erasegraph:
+	mov     ax,0F02h
+        mov     dx,sequencer
+	out     dx,ax
+	mov     ax,0205h
+        mov     dx,graphics
+	out     dx,ax
+	mov     ax,0003h
+	out     dx,ax
+	mov     ax,0FF08h
+	out     dx,ax	
 	mov	eax,00000000h
+	cld
 	rep 	stosd
-	pop 	eax cx di si
-        inc   ah
-	cmp	ah,3
-        jbe   gogot
-	jmp 	enderase
-erasetext:
+	mov     ax,0005h
+	cmp     [cs:color],4
+	je      @@not256
+	mov     ax,4005h	
+@@not256:
+        mov     dx,graphics
+	out     dx,ax
+	mov     ax,0003h
+	out     dx,ax
+        jmp     @@endoferase
+@@erasetext:
 	mov 	ax,0B800h
 	mov 	es,ax
 	mov 	eax,07200720h
 	cld
-	rep 	stosd
-enderase:
-        mov     cs:x,0
-        mov     cs:y,0
-        mov     cs:xg,0
-        mov     cs:yg,0
-        mov     cs:xy,0
-        mov     cs:xyg,0
-        mov     cs:plane,0
-        pop 	es di dx cx eax
-	ret             
+	rep 	stosd	
+@@endoferase:	
+        call    setxy,0,0
+	ret
+endp clearscreen
 
 
-;=============SetFont (Fonction 03h)=========
-;Active la font cl parmi les 8
-;-> AH=3, CL n° font
+;=============SetFont=========
+;Active la font %0 parmi les 8
+;-> %0 n° font
 ;<- Carry if error
-;============================================
-setfont:
-	push 	ax cx dx
+;=============================
+PROC setfont FAR
+        ARG     @font:word
+	USES 	ax,cx,dx
+	mov     cx,[@font]
+	xor     ch,ch
 	cmp	cl,7
-      	ja    	errorsetfont
-	mov	cs:font,cl
+      	ja    	@@errorsetfont
+	mov	[cs:font],cl
 	mov 	ah,cl
 	and 	cl,11b
 	and 	ah,0100b
@@ -645,64 +546,54 @@ setfont:
       	mov   	dx,sequencer
 	mov 	al,3
 	out 	dx,ax
-	pop	dx cx ax
         ret
-errorsetfont:
-	pop 	dx cx ax
+@@errorsetfont:
 	ret    
+endp setfont
 
-;=============GetFont (Fonction 0xh)=========
-;Récupère le n° de la font active
-;-> AH=x
+;=============GetFont=========
+;Récupère le n° de la font active AX
+;->
 ;<- CL n° font, Carry if error
-;============================================
-Getfont:
-	push 	ax cx dx
-	cmp	cl,7
-      	ja    	errorgetfont
-	mov	cs:font,cl
-	mov 	ah,cl
-	and 	cl,11b
-	and 	ah,0100b
-	shl 	ah,2
-	add 	ah,cl
-      	mov   	dx,sequencer
-	mov 	al,3
-	out 	dx,ax
-	pop	dx cx ax
-	ret        
-errorgetfont:
-	stc
-	pop 	dx cx ax
-	ret    
+;=============================
+PROC getfont FAR
+	mov	al,[cs:font]
+	xor     ah,ah
+endp getfont
 
-;=============LoadFont (Fonction 04h)==========
-;Charge une police pointée par ds:si dans la carte vidéo sous n°font BL, taille police dans CL
-;-> AH=4, BL n°font, DS:SI pointeur vers Font, CL taille police 
+;!!!!!!!!!!!!!!!!!!!! a remettre les anciens params de timing depuis origine
+;=============LoadFont========
+;Charge une police pointée par %0 dans la carte vidéo sous n°font %1, taille police dans %2
+;-> %0 n°font, %1 pointeur vers Font, %2 taille police
 ;<- Carry if error
-;===========================================
-loadfont:
-	push 	ax bx cx dx si di es
+;=============================
+PROC loadfont FAR
+        ARG     @pointer:word,@size:word,@font:word
+	USES 	ax,bx,cx,dx,si,di,es
+	LOCAL   @poppop:dword
+	mov     si,[@pointer]
+	mov     cx,[@size]
+	mov     bx,[@font]
 	cmp	bl,7
-      	ja    	errorloadfont
+      	ja    	@@errorloadfont
 	xor	di,di
       	cli  
       	mov   	dx,sequencer
-doseq:   
-	mov 	ax,cs:[di+offset reg1]
+@@doseq:
+	mov 	ax,[cs:di+offset reg1]
 	out 	dx,ax
 	inc 	di
 	inc 	di
 	cmp 	di,6
-	jbe 	doseq
+	jbe 	@@doseq
       	mov   	dx,graphics 
-doseq2:   
-	mov 	ax,cs:[di+offset reg1]
+@@doseq2:
+	mov 	ax,[cs:di+offset reg1]
 	out 	dx,ax
 	inc 	di
 	inc 	di
 	cmp 	di,6+6
-	jbe 	doseq2
+	jbe 	@@doseq2
 	sti
 	mov 	ax,0A000h
 	mov	es,ax
@@ -710,14 +601,14 @@ doseq2:
 	mov 	al,0
 	xor 	bh,bh
 	cmp 	bl,4
-	jb 	isless
+	jb 	@@isless
 	sub	bl,4
 	shl 	bl,1
 	inc 	bl
-	jmp 	okmake
-isless:
+	jmp 	@@okmake
+@@isless:
 	shl 	bl,1
-okmake:
+@@okmake:
 	mov 	di,bx
 	shl 	di,13
 	mov 	bh,cl
@@ -726,894 +617,424 @@ okmake:
 	neg 	bl
 	xor 	cx,cx
 	cld
-popz:
+@@popz:
 	mov 	cl,bh
 	rep 	movsb
 	mov 	cl,bl
 	rep 	stosb
 	dec 	dx
-	jnz 	popz 
+	jnz 	@@popz
 	xor 	di,di
       	mov   	dx,sequencer
-doseqs:   
-	mov 	ax,cs:[di+offset reg2]
+@@doseqs:
+	mov 	ax,[cs:di+offset reg2]
 	out 	dx,ax
 	inc 	di
 	inc 	di
 	cmp 	di,6
-	jbe 	doseqs
-        	mov     	dx,graphics 
-doseqs2:   
-	mov 	ax,cs:[di+offset reg2]
+	jbe 	@@doseqs
+	mov     dx,graphics
+@@doseqs2:
+	mov 	ax,[cs:di+offset reg2]
 	out 	dx,ax
 	inc 	di
 	inc 	di
 	cmp 	di,6+6
-	jbe 	doseqs2
-	pop 	es di si dx cx bx ax
+	jbe 	@@doseqs2
 	ret    
-errorloadfont:
+@@errorloadfont:
 	stc
-	pop 	es di si dx cx bx ax
 	ret
   
 reg2 	dw 0100h, 0302h, 0304h, 0300h 
      	dw 0004h, 1005h, 0E06h 
 reg1 	dw 0100h, 0402h, 0704h, 0300h
-     	dw 0204h, 0005h, 0406h                
+     	dw 0204h, 0005h, 0406h
+endp loadfont
 
-;==========SHOWSPACE (Fonction 05h)===========
-;met un espace aprés le curseur
-;-> AH=5
-;<- 
-;=============================================
-showspace:
-	push 	cx
-	mov   	cl,' '
-        mov   	ch,cs:colors
-        call  	charout
-        clc
-        pop   	cx
-	ret
-
-;==========SHOWLINE (Fonction 06h)===============
+;==========SHOWLINE===============
 ;remet le curseur text a la ligne avec un retour chariot
-;-> AH=6
+;->
 ;<-
-;================================================
-showline:
-        push    bx cx 
-	mov 	bl,cs:y
+;=================================
+PROC addline FAR
+        USES    bx,cx
+	mov 	bl,[cs:y]
 	xor 	bh,bh
-	mov 	cl,cs:lines
+	mov 	cl,[cs:lines]
       	sub     cl,2
 	cmp 	bl,cl
-      	jne     scro
+      	jne     @@scro
 	dec 	bl
 	mov	cx,1
-	cmp	byte ptr cs:graphics,0
-	je	okscro
+	cmp	[cs:graphic],0
+	je	@@okscro
 	mov	cx,8
-okscro:
-	call	scrolldown
-scro:
+@@okscro:
+	call	scrolldown,cx
+@@scro:
 	inc 	bl
-        call    setxy2
-        pop     cx bx
+        call    setxy,0,bx
 	ret
+endp addline
 
-;==========SHOWCHAR (Fonction 07h)===========
-;met un caractère de code ASCII DL aprés le curseur
-;-> AH=7, DL code ASCII du caractère
-;<- 
-;============================================
-showchar:
-	push 	cx
-	mov	cl,dl
-	mov 	ch,cs:colors
-	call	charout
-	pop 	cx
-	ret
-
-;==========SHOWINT (Fonction 08h)===========
-;Affiche un entier EDX aprés le curseur
-;-> AH=8, EDX un entier
-;<- 
-;===========================================
-ShowInt:
-	push	eax bx cx edx esi
-      	xor	cx,cx
-	mov   	eax,edx
-      	mov   	esi,10
-      	mov   	bx,offset showbuffer+27
-decint:
-      	xor   	edx,edx
-      	div   	esi
-      	add   	dl,'0'
-      	inc   	cx
-      	mov   	cs:[bx],dl
-	dec   	bx
-      	cmp   	ax,0
-      	jne   	decint
-	mov	ax,cx
-	mov	ch,cs:colors
-showinteger:
-	inc	bx
-	mov	cl,cs:[bx]
-	call	charout
-	dec	ax
-	jnz	showinteger
-      	pop   	esi edx cx bx eax 
-	ret   
-    
-showbuffer 	db 35 dup (0FFh)
-
-;==========SHOWFIXINT (Fonction h)===========
-;Affiche un entier EDX aprés le curseur de taille cx
-;-> AH=8, EDX un entier et al="cara"
-;<- 
-;===========================================
-ShowfixInt:
-	push	eax bx cx edx esi di
-	mov	di,cx
-      	xor	cx,cx
-	mov   	eax,edx
-      	mov   	esi,10
-      	mov   	bx,offset showbuffer+27
-decint2:
-      	xor   	edx,edx
-      	div   	esi
-      	add   	dl,'0'
-      	inc   	cx
-      	mov   	cs:[bx],dl
-	dec   	bx
-	cmp 	cx,di
-	jae 	nomuch
-      	cmp   	ax,0
-      	jne   	decint2
-	mov 	ax,di
-  	xchg 	cx,di
-	sub 	cx,di
-rego:
-	mov 	byte ptr cs:[bx],'0'
-	dec    	bx
-	dec    	cx
-	jnz	rego
-	jmp 	finishim
-nomuch:
-	mov	ax,di
-finishim:
-	mov	ch,cs:colors
-showinteger2:
-	inc	bx
-	mov	cl,cs:[bx]
-	call	charout
-	dec	ax
-	jnz	showinteger2
-      	pop  	di esi edx cx bx eax 
-	ret   
-
-;==========SHOWINTR (Fonction h)===========
-;Affiche un entier EDX aprés le curseur de taille cx
-;-> AH=8, EDX un entier
-;<- 
-;===========================================
-ShowIntR:
-	push	eax bx cx edx esi di
-	mov	di,cx
-      	xor	cx,cx
-	mov   	eax,edx
-      	mov   	esi,10
-      	mov   	bx,offset showbuffer+27
-decint3:
-      	xor   	edx,edx
-      	div   	esi
-      	add   	dl,'0'
-      	inc   	cx
-      	mov   	cs:[bx],dl
-	dec   	bx
-	cmp 	cx,di
-	jae 	nomuch
-      	cmp   	ax,0
-      	jne   	decint3
-	mov 	ax,di
-  	xchg 	cx,di
-	sub 	cx,di
-rego2:
-	mov 	byte ptr cs:[bx],' '
-	dec    	bx
-	dec    	cx
-	jnz	rego2
-	jmp 	finishim2
-nomuch2:
-	mov	ax,di
-finishim2:
-	mov	ch,cs:colors
-showinteger3:
-	inc	bx
-	mov	cl,cs:[bx]
-	call	charout
-	dec	ax
-	jnz	showinteger3
-      	pop  	di esi edx cx bx eax 
-	ret   
-
-;==========SHOWSIGNED (Fonction 09h)===========
-;Affiche un entier EDX de taille CX aprés le curseur
-;-> AH=9, EDX un entier, CX la taille
-;<- 
-;==============================================
-Showsigned:
-	push 	ebx edx
-	mov	ebx,edx
-	xor	edx,edx
-	cmp     cx,8
-	ja 	signed16
-	mov	dl,bl
-	cmp	dl,7Fh
-	jbe	notsigned
-	neg 	dl
-	jmp	showminus
-signed16:
-	cmp     cx,16
-	ja 	signed32
-	mov 	dx,bx
-	cmp	dx,7FFFh
-	jbe	notsigned
-	neg	dx
-	jmp	showminus
-signed32:	
-	mov	edx,ebx
-	cmp	edx,7FFFFFFFh
-	jbe	notsigned
-	neg 	edx
-showminus:
-	push  	dx
-	mov 	dl,'-'
-	call 	showchar
-      	pop   	dx
-notsigned:
-	call 	showint 
-	pop 	edx ebx
-	ret
-
-;==========SHOWHEX (Fonction 0Ah)===========
-;Affiche un nombre hexadécimal EDX de taille CX aprés le curseur
-;-> AH=10, EDX un entier, CX la taille
-;<- 
-;===========================================
-ShowHex:
-       	push  	ax bx cx edx
-       	mov   	ax,cx
-	shr   	ax,2
-       	sub   	cx,32
-       	neg   	cx
-       	shl   	edx,cl
-       	mov   	ch,cs:colors
-Hexaize:
-       	rol   	edx,4
-       	mov   	bx,dx
-       	and   	bx,0fh
-       	mov   	cl,cs:[bx+offset Tab]
-       	call	charout
-       	dec   	al
-       	jnz   	Hexaize
-       	pop   	edx cx bx ax
-       	ret
-
-Tab 	db '0123456789ABCDEF'
-
-;==========SHOWBIN (Fonction 0Bh)===========
-;Affiche un nombre binaire EDX de taille CX aprés le curseur
-;-> AH=11, EDX un entier, CX la taille
-;<- 
-;===========================================
-Showbin:
-       	push   	ax cx edx
-       	mov    	ax,cx
-       	sub    cx,32
-       	neg    cx
-       	shl    edx,cl
-       	mov    ch,cs:colors
-binaize:
-       rol    edx,1
-       mov    cl,'0'
-       adc    cl,0  
-	 call	  charout
-       dec    al
-       jnz    binaize
-       pop    edx cx ax
-       ret
-
-;==========SHOWBCD (Fonction 0xh)===========
-;Affiche un nombre en BCD EDX de taille CX aprés le curseur
-;-> AH=x, EDX un entier, CX la taille
-;<- 
-;===========================================
-ShowBCD:
-       push   ax cx edx
-       mov    ax,cx
-	 shr    ax,2
-       sub    cx,32
-       neg    cx
-       shl    edx,cl
-       mov    ch,cs:colors
-BCDaize:
-       rol    edx,4
-       mov    cl,dl
-       and    cl,0fh
-       add    cl,'0'
-	 call	  charout
-       dec    al
-       jnz    BCDaize
-       pop    edx cx ax
-       ret
-
-;==========SHOWSTRING (Fonction 0Ch)===========
-;Affiche une chaine de caractère pointée par DS:SI aprés le curseur
-;-> AH=12, DS:SI pointeur chaine type pascal
-;<- 
-;==============================================
-showstring:
-       push   bx cx si
-       mov    bl,[si]
-       mov    ch,cs:colors
-strinaize:
-       inc    si
-       mov    cl,[si]
-	 call	  charout
-       dec    bl
-       jnz    strinaize
-       pop    si cx bx
-       ret
-
-;==========SHOWSTRING0 (Fonction 0Dh)===========
-;Affiche une chaine de caractère pointée par DS:SI aprés le curseur
-;-> AH=13, DS:SI pointeur chaine type zéro terminal
-;<- 
-;===============================================
-showstring0:
-       push   cx si	
-       mov    ch,cs:colors
-strinaize0:
-       mov    cl,[si]
-       cmp    cl,0
-       je     no0
-	 call	  charout	
-	 inc    si
-       jmp    strinaize0
-no0:
-       pop    si cx
-       ret
-
-;==========SHOWCHARAT (Fonction 0Eh)===========
-;met un caractère de code ASCII DL en (x;y) (BH;BL)
-;-> AH=14, DL code ASCII du caractère, BH coordonnées x, BL coordonnées y
-;<- 
-;==============================================
-showcharat:
-	 push  es di
-	 call  setxy
-	 call  showchar
-	 pop 	 di es
-	 ret
-
-;==========SHOWINTAT (Fonction 0Fh)===========
-;Affiche un entier EDX en (x;y) (BH;BL)
-;-> AH=15, EDX entier, BH coordonnées x, BL coordonnées y
-;<- 
-;==============================================
-showintat:
-	 push  es di
-	 call  setxy
-	 call  showint
-	 pop 	 di es
-	 ret
-
-;==========SHOWSIGNEDAT (Fonction 10h)===========
-;Affiche un entier EDX de taille CX aprés le curseur en (x;y) (BH;BL)
-;-> AH=16, EDX entier, BH coordonnées x, BL coordonnées y
-;<- 
-;==============================================
-showsignedat:
-	 push  es di
-	 call  setxy
-	 call  showsigned
-	 pop 	 di es
-	 ret
-
-;==========SHOWHEXAT (Fonction 11h)===========
-;Affiche un nombre hexadécimal EDX de taille CX en (x;y) (BH;BL)
-;-> AH=17, EDX un entier, CX la taille, BH coordonnées x, BL coordonnées y
-;<- 
-;==============================================
-showhexat:
-	 push  es di
-	 call  setxy
-	 call  showhex
-	 pop 	 di es
-	 ret
-
-;==========SHOWBINAT (Fonction 012h)===========
-;Affiche un nombre binaire EDX de taille CX en (x;y) (BH;BL)
-;-> AH=18, EDX un entier, CX la taille, BH coordonnées x, BL coordonnées y
-;<- 
-;=============================================
-showbinat:
-	 push  es di
-	 call  setxy
-	 call  showbin
-	 pop 	 di es
-	 ret
-
-;==========SHOWSTRINGAT (Fonction 13h)===========
-;Affiche une chaine de caractère pointée par DS:SI en (x;y) (BH;BL)
-;-> AH=19, DS:SI pointeur chaine type pascal, BH coordonnées x, BL coordonnées y
-;<- 
-;================================================
-showstringat:
-	 push   es di
-	 call   setxy
-	 call   showstring
-	 pop 	  di es
-	 ret
- 
-;==========SHOWSTRING0AT (Fonction 14h)===========
-;Affiche une chaine de caractère pointée par DS:SI en (x;y) (BH;BL)
-;-> AH=20, DS:SI pointeur chaine type zéro terminal, BH coordonnées x, BL coordonnées y
-;<- 
-;=================================================
-showstring0at:
-	push 	 es di
-	call	 setxy
-	call 	 showstring0
-	pop 	 di es
-	ret
-
-;==========SETCOLOR (Fonction 15h)=========
+;==========SETCOLOR=========
 ;Change les attributs du texte a CL
-;-> AH=21 ,CL couleur
+;-> %0 couleur
 ;<- 
-;=========================================
-setcolor:
-	mov 	cs:colors,CL
+;===========================
+PROC setcolor FAR
+        ARG     @color:word
+        USES    cx
+        mov     cx,[@color]
+	mov 	[cs:colors],cl
 	ret
+endp setcolor
 
-;==========GETCOLOR (Fonction 16h)=========
-;Récupère les attributs du texte dans CL
-;-> AH=22
-;<- CL couleur
-;=========================================
-getcolor:
-	mov 	cl,cs:colors
+;==========GETCOLOR=========
+;Récupère les attributs du texte dans AX
+;->
+;<- AX couleur
+;===========================
+PROC getcolor FAR
+	mov 	al,[cs:colors]
+	xor     ah,ah
 	ret
-
-;==========SETSTYLE (Fonction xh)=========
-;Change le style du texte a CL
-;-> AH=x ,CX style
-;<- 
-;=========================================
-setstyle:
-	mov 	cs:style,CX
-	ret
-
-;==========GETSTYLE (Fonction xh)=========
-;Récupère le style du texte dans CL
-;-> AH=x
-;<- CX style
-;=========================================
-getstyle:
-	mov 	cx,cs:style
-	ret
-
-;==========SCROLLDOWN (Fonction 17h)=========
-;defile de cx lines vers le bas
-;-> AH=23, CX lines à défiler vers le bas
-;<- 
-;=============================
-scrolldown:
-	push 	ax cx dx si di ds es
-        cmp     cs:scrolling,0
-        je      graphp
-	mov 	ax,cx
-	mul 	cs:linesize
+endp getcolor
+	
+;==========SCROLLDOWN=========
+;defile de %0 lines vers le bas
+;-> %0 lines à défiler vers le bas
+;<-
+;=============================	
+PROC scrolldown FAR
+        ARG     @line:word
+	USES 	ax,cx,dx,si,di,ds,es
+        cmp     [cs:scrolling],0
+        je      @@graphp
+	mov 	ax,[@line]
+	mul 	[cs:linesize]
 	mov 	si,ax
-	mov 	cx,cs:pagesize
+	mov 	cx,[cs:pagesize]
 	sub 	cx,si
-	mov 	di,cs:adress
+	mov 	di,[cs:adress]
 	cld
-	cmp   byte ptr cs:graphics,1
-	jne 	textp
-	mov  	ax,0A000h  
+	cmp     [cs:graphic],1
+	jne 	@@textp
+	mov  	ax,0A000h
 	mov 	es,ax
-	mov 	ds,ax           
-	shr   cx,2    
-transfert:
-	mov	ah,0
-gogo:
-	push  ax cx
-	mov   cl,ah
-	mov   ah,1
-	shl   ah,cl
-	mov   al,2
-      mov   dx,sequencer
-	out   dx,ax
-	pop   cx ax
-	mov   al,4
-      mov   dx,graphics
-	out   dx,ax
-	push 	si di cx
-	rep 	movsd
-	pop 	cx di si
-      inc   ah
-	cmp	ah,3
-	jbe   gogo
-	jmp   graphp
-textp:
+	mov 	ds,ax
+	mov     ax,0F02h
+        mov     dx,sequencer
+	out     dx,ax
+	mov     ax,0105h
+        mov     dx,graphics
+	out     dx,ax
+	cld
+	rep 	movsb
+	mov     ax,0005h
+	cmp     [cs:color],4
+	je      @@not256ok
+	mov     ax,4005h	
+@@not256ok:
+        mov     dx,graphics
+	out     dx,ax
+	mov     ax,0003h
+	out     dx,ax
+        jmp     @@graphp
+        
+@@textp:
 	mov 	ax,0B800h
 	mov 	es,ax
 	mov 	ds,ax
 	rep 	movsb
-graphp:
-	pop 	es ds di si dx cx ax
+@@graphp:
 	ret
+endp scrolldown 	
 
-;==========GETXY (Fonction 18h)=========
-;Change les coordonnées du curseur a X:BH,Y:BL
-;-> AH=24
-;<- BH coordonnées x, BL coordonnées y
-;=============================
-getxy:
-	mov 	bh,cs:x
-	mov 	bl,cs:y
+;==========GETXY=========
+;Met les coordonnées du curseur dans %0 au format point
+;->
+;<- ah coordonnées x, al coordonnées y
+;========================
+PROC getxy FAR
+        ARG     @pointer:word
+	USES 	bx
+	mov     bx,[@pointer]
+	mov 	ah,[cs:x]
+	mov 	al,[cs:y]
 	ret
+endp getxy
 
-;==========SETXY (Fonction 19h)=========
-;Change les coordonnées du curseur a X:BH,Y:BL
-;-> AH=25, BH coordonnées x, BL coordonnées y
+;==========SETXY=========
+;Change les coordonnées du curseur a X:%0,Y:%1
+;-> %0 coordonnées x, %1 coordonnées y
 ;<- 
-;=====================================
-setxy:
-	push 	ax bx cx dx
-;         	xor ax,ax
-;	int 16h
-;        mov     cl,cs:lines
-;        dec     cl
-;	sub     cl,bl
-;	neg     cl
-;	js      zero
-;	xor     ch,ch
-;	inc     cl
-;       jmp     nozero
-;zero:
-;        mov     cx,0
-;nozero:
-;	call    scrolldown
-	mov 	cs:x,bh
-	mov 	cs:y,bl
-	mov 	al,bl
-	mov 	bl,bh
-	xor 	bh,bh
-	mov	di,cs:adress
+;========================
+PROC setxy FAR
+        ARG     @x:word,@y:word
+	USES 	ax,bx,dx,di
+	mov     ax,[@y]
+	mov     bx,[@x]
+	mov 	[cs:x],bl
+	mov 	[cs:y],al
+	mov	di,[cs:adress]
 	add 	di,bx
-	mul 	cs:columns
+	mul 	[cs:columns]
 	add 	di,ax
 	shl 	di,1
-	mov 	cs:xy,di
-	cmp	byte ptr cs:graphics,1
-	jne	oktext
-	mov	bl,cs:x
-	mov	cl,cs:y
-	xor	bh,bh
-	xor	ch,ch
-	shl	bx,3
-	shl	cx,3
-	call	setxyg
-	jmp   endofsetxy
-oktext:
-	mov 	ax,0B800h
-	mov 	es,ax
-	call   setcursor
-endofsetxy:
-	pop 	dx cx bx ax
+	mov 	[cs:xy],di
+	call    setcursor
 	ret
+endp setxy
 
-setxy2:
-	push	es di
-	call 	setxy
-	pop 	di es
-	ret
-
-;==========SETXYG (Fonction 0xh)=========
-;Change les coordonnées du curseur graphique a X:BX,Y:CX
-;-> AH=x, BX coordonnées x, CX coordonnées y
-;<- ES:DI pointeur sur pixel avec plan de bit ajusté
-;======================================
-setxyg:
-     	push 	ax bx cx dx
-	mov	cs:xg,bx
-	mov	cs:yg,cx
-      mov   ax,cx
-      mov	cl,bl   
-      mul  	cs:linesize                           
-      shr   bx,2
-      add  	ax,bx
-      mov   di,ax
-      and   cl,3                    
-      mov   ah,1                        
-      shl   ah,cl
-      mov   al,2                   
-      mov   dx, 3c4h       
-      out   dx,ax       
-	mov	cs:plane,cl
-	mov	cs:xyg,di       
-      mov   ax,0A000h      
-      mov  	es,ax                  
-	pop 	dx cx bx ax
-	ret
-
-;==========SHOWPIXEL (Fonction 0xh)=========
-;Affiche un pixel de couleur AL en X:BX,Y:CX
-;-> AH=x, BX coordonnées x, CX coordonnées y, AL couleur
+;==========SHOWPIXEL=========
+;Affiche un pixel de couleur AL en X:%0,Y:%1
+;-> %0 coordonnées x, %1 coordonnées y, %2 couleur
 ;<- 
-;=========================================
-showpixel:
-     	push 	ax bx cx dx di bp es
-      mov   bp,ax
-	mov   ax,cx
-      mov	cl,bl   
-      mul  	cs:linesize                           
-      shr   bx,2
-      add  	ax,bx
-      mov   di,ax
-	add   di,cs:adress
-      and   cl,3                    
-      mov   ah,1                        
-      shl   ah,cl
-      mov   al,2                   
-      mov   dx,sequencer
-      out   dx,ax       
-      mov   bx,0A000h      
-      mov  	es,bx
-	mov	ax,bp              
-	mov	es:[di],al	 	
-	pop	es bp di dx cx bx ax
-	ret
-
-;==========SHOWPIXEL (Fonction 0xh)=========
-;Récupère en al la couleur du pixel de coordonnées X:BX,Y:CX
-;-> AH=x, BX coordonnées x, CX coordonnées y, AL couleur
-;<- 
-;=========================================
-getpixel:
-     	push 	ax bx cx dx di bp es
-      mov   bp,ax
-	mov   ax,cx
-      mov	cl,bl   
-      mul  	cs:linesize                           
-      shr   bx,2
-      add  	ax,bx
-      mov   di,ax
-	add   di,cs:adress
-      and   cl,3 
-	mov	ah,cl                                      
-      mov   al,4                   
-      mov   dx,graphics
-      out   dx,ax       
-      mov   bx,0A000h      
-      mov  	es,bx
-	mov	ax,bp
-           
-	mov	al,es:[di] 	
-	pop	es bp di dx cx bx ax
-	ret
-
-;==========LOADBMPPALET (Fonction 0xh)=========
-;Charge la palette du BMP pointée par DS:SI
-;-> AH=x, DS:SI BMP
-;<- 
-;=============================================
-loadbmppalet:
-	push 	ax bx cx dx
-	mov 	bx,0400h+36h-4
-	mov 	cx,100h
-	mov 	dx, 3c8h
-paletteload:
-	mov 	al, cl
-	dec 	al
-	out 	dx, al
-	inc 	dx
-	mov 	al,[bx+si+2]
-	shr 	al,2
-	out 	dx, al
-	mov 	al,[bx+si+1]
-	shr 	al,2
-	out 	dx, al
-	mov 	al,[bx+si]
-	shr 	al,2
-	out 	dx, al
-	sub 	bx,4
-	dec 	dx
-	dec 	cl
-	jnz 	paletteload
-	pop 	dx cx bx ax
-	ret
-
-;==========VIEWBMP (Fonction 0xh)=========
-;Affiche le BMP pointée par DS:SI en X:BX, Y:CX avec la préparation de la palette
-;<- AH=x, DS:SI BMP, BX coordonnées X, CX coordonnées Y
-;->
-;=========================================
-viewbmp:
-	call	loadbmppalet
-	call	showbmp
-	ret
-
-;==========SHOWBMP (Fonction 0xh)=========
-;Affiche le BMP pointée par DS:SI en X:BX, Y:CX
-;<- AH=x, DS:SI BMP, BX coordonnées X, CX coordonnées Y
-;->
-;=========================================
-showbmp:
-	push 	ax bx cx dx
-	cmp	word ptr ds:[si+BMP_file.BMP_FileType],"MB"
-	jne     errorshowing
-	mov 	cs:xc,bx
-	mov 	cs:yc,cx
-	xor 	cx,cx
-	xor 	bx,bx
-	xor 	dx,dx
-bouclette:
-	mov 	al,[si+bx+436h]
-	push 	bx cx
-	sub 	cx,cs:yc
-	neg 	cx
-	mov 	bx,dx
-	add 	bx,cs:xc
-	call 	showpixel
-	pop 	cx bx
-	inc 	bx
-	inc 	dx
-	cmp 	dx,[si+offset BMP_File.BMP_width]
-	jb 	bouclette
-	xor 	dx,dx
-	inc 	cx
-	cmp 	cx,[si+offset BMP_File.BMP_height]
-	jb 	bouclette
-	clc
-	pop 	dx cx bx ax
-	ret
-	
-errorshowing:
-        stc
-        pop  dx cx bx ax
-        ret
+;============================
+PROC showpixel FAR
+        ARG     @x:word,@y:word,@color:word
+     	USES 	ax,bx,cx,dx,si,di,es
+     	mov     bx,[@x]
+     	mov     cx,[@y]
+     	mov     ax,[@color]
+     	cmp     [cs:color],4
+     	je      @@showpixel4
+        mov     si,ax
+	mov     ax,cx
+        mov	cl,bl
+        mul  	[cs:linesize]
+        shr     bx,2
+        add  	ax,bx
+        mov     di,ax
+	add     di,[cs:adress]
+        and     cl,3
+        mov     ah,1
+        shl     ah,cl
+        mov     al,2
+        mov     dx,sequencer
+        out     dx,ax
+        mov     bx,0A000h
+        mov  	es,bx
+	mov	ax,si
+	mov	[es:di],al	
+        jmp     @@endofshow
         
-xc dw 0
-yc dw 0
+@@showpixel4:
+        mov     dx,ax
+        mov     ax,cx
+        mov     ch,dl
+        mov	cl,bl
+        mul  	[cs:linesize]
+        shr     bx,3
+        add  	ax,bx
+        mov     di,ax
+        add     di,[cs:adress]
+        and     cl,111b
+        xor     cl,111b
+        mov     ah,1
+        shl     ah,cl
+        mov     al,8
+        mov     dx,graphics           ;masque
+        out     dx,ax
+        mov     ax,0205h
+        out     dx,ax
+        mov     ax,0003h
+        out     dx,ax
+        mov     bx,0A000h
+        mov  	es,bx
+        mov	al,[es:di]
+        mov	[es:di],ch	 	
+@@endofshow:        	
+	ret
+endp showpixel
 
-;==========GETVGAINFO (Fonction 0xh)=========
+;!!!!!!!!!!!!!! gerer le mode chain 4
+;==========GETPIXEL=========
+;Récupère en ax la couleur du pixel de coordonnées X:%0,Y:%1
+;-> %0 coordonnées x, %1 coordonnées y
+;<- AX couleur
+;=========================================
+PROC getpixel FAR
+        ARG     @x:word,@y:word
+     	USES 	ax,bx,cx,dx,di,es
+     	mov     bx,[@x]
+     	mov     cx,[@y]
+	mov     ax,cx
+        mov	cl,bl
+        mul  	[cs:linesize]
+        shr     bx,2
+        add  	ax,bx
+        mov     di,ax
+	add     di,[cs:adress]
+        and     cl,3
+	mov	ah,cl                                      
+        mov     al,4
+        mov     dx,graphics
+        out     dx,ax
+        mov     bx,0A000h
+        mov  	es,bx
+	mov	al,[es:di] 	
+	ret
+endp getpixel
+
+;==========GETVGAINFO=========
 ;Renvoie un bloc de donnée en ES:DI sur l'état de la carte graphique
-;<- AH=x, ES:DI pointeur
+;<- ES:%0 pointeur
 ;->
 ;=============================================
-Getvgainfos:
-	push 	cx si di ds
+PROC getvgainfos FAR
+        ARG     @pointer:word
+	USES 	cx,si,di,ds
 	push 	cs
 	pop 	ds
 	mov 	cx,datablocksize
 	mov 	si,offset datablock
+	mov     di,[@pointer]
 	cld
 	rep 	movsb
-	pop 	ds di si cx
 	ret
+endp getvgainfos
 
-;==========WAITRETRACE (Fonction 0xh)=========
+;==========WAITRETRACE=========
 ;Synchronisation avec la retrace verticale
-;<- AH=x
+;<-
 ;->
-;=============================================
-waitretrace:
-	push 	ax dx
+;==============================
+PROC waitretrace FAR
+	USES 	ax,dx
 	mov 	dx,3DAh
-waitr:
+@@waitr:
 	in 	al,dx
 	test 	al,8
-	jz 	waitr
-	pop 	dx ax
+	jz 	@@waitr
 	ret
-
-;Renvoie le caractère sur le curseur en dl	
-getchar:
-        push    ax di es
+endp waitretrace
+	
+;==========WAITHRETRACE=========
+;Synchronisation avec la retrace horizontale
+;<-
+;->
+;===============================
+PROC waithretrace FAR
+	USES 	ax,dx
+	mov 	dx,3DAh
+@@waitr:
+	in 	al,dx
+	test 	al,1
+	jz 	@@waitr
+	ret
+endp waithretrace
+	
+;==========GETCHAR=========
+;Renvoie en AX le caractère sur le curseur
+;<-
+;->
+;==========================	
+PROC getchar FAR
+        USES    di,es
         mov	ax,0B800h
 	mov	es,ax
-	mov	di,cs:xy
-	mov	dl,es:[di]
-        pop     es di ax
+	mov	di,[cs:xy]
+	mov	al,[es:di]
+	xor     ah,ah
         ret
+endp getchar
 
-;Ecrit le caractère ASCII CL attribut CH aprés le curseur, en le mettant à jours
-charout:
-	push 	ax bx cx dx di es
-	cmp	byte ptr cs:graphics,1
-	jne	textaccess
+;==========SHOWCHAR=========
+;Ecrit le caractère ASCII %0 attribut %1 aprés le curseur, en le mettant à jours
+;<-
+;->
+;===========================
+PROC showchar FAR
+        ARG     @char:word,@attr:word
+	USES 	ax,bx,cx,dx,di,es
+	mov     cl,[byte ptr @char]
+	mov     ch,[byte ptr @attr]
+        cmp     [@attr],0FFFFh
+        jne     @@notlastattr
+        mov     ch,[cs:colors]
+@@notlastattr:	
+	cmp	[cs:graphic],1
+	jne	@@textaccess
         call    emulatechar
-        jmp     adjusttext
-textaccess:
+        jmp     @@adjusttext
+@@textaccess:
 	mov	ax,0B800h
 	mov	es,ax
-	mov	di,cs:xy
-	mov	es:[di],cx
-	add	cs:xy,2
-adjusttext:
-        inc     cs:x
-	mov	  cl,cs:columns
-	cmp	  cs:x,cl
-	jb	  noadjusted
-        call    showline
-noadjusted:
+	mov	di,[cs:xy]
+	mov	[es:di],cx
+	add	[cs:xy],2
+@@adjusttext:
+        inc     [cs:x]
+	mov	cl,[cs:columns]
+	cmp	[cs:x],cl
+	jb	@@noadjusted
+        call    addline
+@@noadjusted:
         call    setcursor
-	pop 	es di dx cx bx ax
 	ret
+endp showchar
 
 setcursor:
-          push ax cx dx
-	mov 	dx,CCRT
+        push    ax cx dx
+        cmp     [cs:cursor],1
+        jne     notshow
+	mov 	dx,ccrt
 	mov 	al,0Eh
-	mov 	cx,cs:xy
+	mov 	cx,[cs:xy]
 	shr     cx,1
 	mov 	ah,ch
 	out 	dx,ax
 	mov 	ah,cl
 	inc	al
 	out 	dx,ax
-	pop dx cx ax
+notshow:
+	pop     dx cx ax
 	ret
 
 
 ;Ecrit le caractère ASCII CL attribut CH aprés le curseur graphique, en le mettant à jours en mode graphique
 emulatechar:
         push    ax bx cx dx di
-        mov	dx,cx
-	mov	di,dx
+        mov     al,ch
+	mov	di,cx
 	and 	di,11111111b
 	shl 	di,3
 	add 	di,offset font8x8
-	xor 	bx,bx
-	xor 	cx,cx
-	mov 	ah,cs:[di]
+	mov     bl,[cs:x]
+	mov     cl,[cs:y]
+        xor     bh,bh
+        xor     ch,ch	
+	shl     bx,3
+	shl     cx,3
+	mov 	ah,[cs:di]
+	xor     dx,dx
 bouclet:
-	mov 	al,dh
-	rol	ah,1
-	jc 	colored
+        rol	ah,1
+	push    ax
+        jc 	colored
 	shr	al,4
-	bt    word ptr cs:style,0
-	jc    transparent
+	cmp     [cs:style],0
+	jnz     transparent
 colored:
-	and	al,1111b
-	push 	bx cx
-	add   cx,cs:yg
-	add 	bx,cs:xg
-	call 	showpixel
-	pop 	cx bx
+        and     ax,1111b
+	call 	showpixel,bx,cx,ax
 transparent:
+        pop     ax
 	inc 	bx
-	cmp 	bx,8
+	inc     dl
+	cmp 	dl,8
 	jb 	bouclet
-	xor 	bx,bx
 	inc 	di
-	mov	ah,cs:[di]
+	mov	ah,[cs:di]
+	xor     dl,dl
+	sub	bx,8
 	inc 	cx
-	cmp 	cx,8
+	inc     dh
+	cmp 	dh,8
 	jb 	bouclet
-	add 	cs:xg,8
-	mov	cx,cs:linesize
-	shl	cx,2
-	cmp	cs:xg,cx
-	jb	ended
-	mov	cs:xg,0
-	add	cs:yg,8
 ended:
         pop     di dx cx bx ax
         ret
@@ -1624,9 +1045,9 @@ ended:
 savescreen:
 push    ax cx dx si di bp ds es gs
 mov     bp,sp
-mov     dx,ss:[bp+22]
+mov     dx,[ss:bp+22]
 mov     ah,2
-mov     cx,cs:pagesize
+mov     cx,[cs:pagesize]
 push    cs
 pop     ds
 mov     si,offset data3
@@ -1644,12 +1065,12 @@ data3 db '/vgascreen',0
 
 
 ;===================================sauve l'ecran rapidement en es:di================
-SaveScreento:
+savescreento:
         push    cx si di ds 
         mov     cx,0B800h
         mov     ds,cx
         xor     ecx,ecx
-        mov     cx,cs:pagesize
+        mov     cx,[cs:pagesize]
         shr     cx,2
         xor     si,si
         cld
@@ -1658,7 +1079,7 @@ SaveScreento:
         ret
 
 ;===================================sauve les parametres en es:di================
-Saveparamto:
+saveparamto:
         push    ecx si di ds
         push    cs
         pop     ds
@@ -1671,7 +1092,7 @@ Saveparamto:
         ret
         
 ;===================================restore les parametres depuis en ds:si================
-Restoreparamfrom:
+restoreparamfrom:
         push    ecx si di es
         push    cs
         pop     es
@@ -1682,48 +1103,12 @@ Restoreparamfrom:
         rep     movsb
         pop     es di si ecx
         ret
-        
-;sauve la page1 dans un bloc de mémoire
-Savepage1:
-push    ax cx dx si di bp ds es gs
-mov     bp,sp
-mov     dx,ss:[bp+22]
-mov     ah,2
-mov     cx,cs:pagesize
-push    cs
-pop     ds
-mov     si,offset data4
-int     49h
-mov     ah,6
-int     49h
-push    gs
-pop     es
-xor     di,di
-call    Savepage1to
-pop     gs es ds bp di si dx cx ax
-ret
 
-data4 db '/vgapage1',0
-
-;===================================sauve l'ecran rapidement================
-Savepage1to:
-        push    ecx si di ds
-        mov     cx,0B800H
-        mov     ds,cx
-        xor     ecx,ecx
-        mov     cx,cs:pagesize
-        shr     cx,2
-        mov     si,cs:pagesize
-        cld
-        rep     movsd
-        pop     ds di si ecx
-        ret
-        
 ;R‚cupŠre l'ecran de la carte depuis son bloc mémoire
-RestoreScreen:
+restorescreen:
 push    ax dx si bp ds gs
 mov     bp,sp
-mov     dx,ss:[bp+16]
+mov     dx,[ss:bp+16]
 push    cs
 pop     ds
 mov     si,offset data3
@@ -1737,12 +1122,12 @@ pop     gs ds bp si dx ax
 ret
 
 ;===================================restore l'ecran rapidement de ds:si================
-RestoreScreenfrom:
+restorescreenfrom:
         push    ecx si di ds es
         mov     cx,0B800H
         mov     es,cx
         xor     ecx,ecx
-        mov     cx,cs:pagesize
+        mov     cx,[cs:pagesize]
         shr     cx,2
         xor     di,di
         cld
@@ -1753,15 +1138,15 @@ RestoreScreenfrom:
 
 
 ;===============================Page2to1============================
-Page2to1:
+page2to1:
         push    ecx si di ds es
         mov     cx,0B800H
         mov     es,cx
         mov     ds,cx
         xor     ecx,ecx
-        mov     cx,cs:pagesize
+        mov     cx,[cs:pagesize]
         shr     cx,2
-        mov     si,cs:pagesize
+        mov     si,[cs:pagesize]
         xor     di,di
         cld
         rep     movsd
@@ -1769,15 +1154,15 @@ Page2to1:
         ret
 
 ;===============================Page1to2============================
-Page1to2:
+page1to2:
         push    ecx si di ds es
         mov     cx,0B800H
         mov     es,cx
         mov     ds,cx
         xor     ecx,ecx
-        mov     cx,cs:pagesize
+        mov     cx,[cs:pagesize]
         shr     cx,2
-        mov     di,cs:pagesize
+        mov     di,[cs:pagesize]
         xor     si,si
         cld
         rep     movsd
@@ -1785,213 +1170,195 @@ Page1to2:
         ret
 
 ;===============================xchgPages============================
-xchgPages:
-push    ax cx dx si di bp ds es gs
-mov     bp,sp
-mov     dx,ss:[bp+22]
-mov     ah,2
-mov     cx,datablocksize
-add     cx,cs:pagesize
-add     cx,3*256
-push    cs
-pop     ds
-mov     si,offset data4
-int     49h
-mov     ah,6
-int     49h
-push    gs
-pop     es
-xor     di,di
-call    savescreento
-call    Page2to1
-push    gs
-pop     ds
-xor     si,si
-mov     cx,0B800H
-mov     es,cx
-mov     di,cs:pagesize
-xor     ecx,ecx
-mov     cx,cs:pagesize
-shr     cx,2
-cld
-rep     movsd
-mov     ah,01h
-int     49h
-pop     gs es ds bp di si dx cx ax
-ret
+;xchgpages:
+;push    ax cx dx si di bp ds es gs
+;mov     bp,sp
+;mov     dx,[ss:bp+22]
+;mov     ah,2
+;mov     cx,datablocksize
+;add     cx,[cs:pagesize]
+;add     cx,3*256
+;push    cs
+;pop     ds
+;mov     si,offset data4
+;int     49h
+;mov     ah,6
+;int     49h
+;push    gs
+;pop     es
+;xor     di,di
+;call    savescreento
+;call    page2to1
+;push    gs
+;pop     ds
+;xor     si,si
+;mov     cx,0B800H
+;mov     es,cx
+;mov     di,[cs:pagesize]
+;xor     ecx,ecx
+;mov     cx,[cs:pagesize]
+;shr     cx,2
+;cld
+;rep     movsd
+;mov     ah,01h
+;int     49h
+;pop     gs es ds bp di si dx cx ax
+;ret
+;
+;data4 db '/vgatemp',0
 
 
 ;Sauve l'‚tat de la carte dans un bloc mémoire
-savestate:
-push    ax cx dx si di bp ds es gs
-mov     bp,sp
-mov     dx,ss:[bp+22]
-mov     ah,2
-mov     cx,datablocksize
-add     cx,cs:pagesize
-add     cx,3*256
-push    cs
-pop     ds
-mov     si,offset data
-int     49h
-mov     ah,6
-int     49h
-push    gs
-pop     es
-xor     di,di
-call    saveparamto
-add     di,datablocksize
-call    savescreento
-add     di,cs:pagesize
-call    savedacto
-pop     gs es ds bp di si dx cx ax
-ret
+;savestate:
+;push    ax cx dx si di bp ds es gs
+;mov     bp,sp
+;mov     dx,[ss:bp+22]
+;mov     ah,2
+;mov     cx,datablocksize
+;add     cx,[cs:pagesize]
+;add     cx,3*256
+;push    cs
+;pop     ds
+;mov     si,offset data
+;int     49h
+;mov     ah,6
+;int     49h
+;push    gs
+;pop     es
+;xor     di,di
+;call    saveparamto
+;add     di,datablocksize
+;call    savescreento
+;add     di,[cs:pagesize]
+;call    savedacto
+;pop     gs es ds bp di si dx cx ax
+;ret
 
-data db '/vga',0
+;data db '/vga',0
 
 ;R‚cupŠre l'‚tat de la carte depuis son bloc mémoire
-restorestate:
-push    ax dx si bp ds gs
-mov     bp,sp
-mov     dx,ss:[bp+16]
-push    cs
-pop     ds
-mov     si,offset data
-mov     ah,9
-int     49h
-push    gs
-pop     ds
-mov     al,ds:[7]
-cmp     cs:mode,al
-je      nochangemode
-mov     ah,0
-call    setvideomode
-nochangemode:
-xor     si,si
-call    restoreparamfrom
-add     si,datablocksize
-call    restorescreenfrom
-add     si,cs:pagesize
-call    restoredacfrom
-pop     gs ds bp si dx ax
-ret
+;restorestate:
+;push    ax dx si bp ds gs
+;mov     bp,sp
+;mov     dx,[ss:bp+16]
+;push    cs
+;pop     ds
+;mov     si,offset data
+;mov     ah,9
+;int     49h
+;push    gs
+;pop     ds
+;mov     al,[ds:7]
+;cmp     [cs:mode],al
+;je      nochangemode
+;mov     ah,0
+;call    setvideomode
+;nochangemode:
+;xor     si,si
+;call    restoreparamfrom
+;add     si,datablocksize
+;call    restorescreenfrom
+;add     si,[cs:pagesize]
+;call    restoredacfrom
+;pop     gs ds bp si dx ax
+;ret
 
 ;sauve le DAC dans un bloc de mémoire
-savedac:
-push    ax cx dx si di bp ds es gs
-mov     bp,sp
-mov     dx,ss:[bp+22]
-mov     ah,2
-mov     cx,3*256
-push    cs
-pop     ds
-mov     si,offset data2
-int     49h
-mov     ah,6
-int     49h
-push    gs
-pop     es
-xor     di,di
-call    savedacto
-pop     gs es ds bp di si dx cx ax
-ret
+;savedac:
+;push    ax cx dx si di bp ds es gs
+;mov     bp,sp
+;mov     dx,[ss:bp+22]
+;mov     ah,2
+;mov     cx,3*256
+;push    cs
+;pop     ds
+;mov     si,offset data2
+;int     49h
+;mov     ah,6
+;int     49h
+;push    gs
+;pop     es
+;xor     di,di
+;call    savedacto
+;pop     gs es ds bp di si dx cx ax
+;ret
 
-data2 db '/vgadac',0
+;data2 db '/vgadac',0
 
 ;R‚cupŠre le dac depuis son bloc mémoire
-restoredac:
-push    ax dx si bp ds gs
-mov     bp,sp
-mov     dx,ss:[bp+16]
-push    cs
-pop     ds
-mov     si,offset data2
-mov     ah,9
-int     49h
-push    gs
-pop     ds
-xor     si,si
-call    restoredacfrom
-pop     gs ds bp si dx ax
-ret
+;restoredac:
+;push    ax dx si bp ds gs
+;mov     bp,sp
+;mov     dx,[ss:bp+16]
+;push    cs
+;pop     ds
+;mov     si,offset data2
+;mov     ah,9
+;int     49h
+;push    gs
+;pop     ds
+;xor     si,si
+;call    restoredacfrom
+;pop     gs ds bp si dx ax
+;ret
 
 ;sauve le DAC en es:di
-savedacto:
-push ax cx dx di
-mov dx,3C7h
-mov cx,256
-save:
-mov al,cl
-dec al
-out dx,al
-inc dx
-inc dx
-in al,dx
-mov es:[di],al
-inc di
-in al,dx
-mov es:[di],al
-inc di
-in al,dx
-mov es:[di],al
-inc di
-dec dx
-dec dx
-dec cx
-jne save 
-pop di dx cx ax
-ret
+;savedacto:
+;push ax cx dx di
+;mov dx,3C7h
+;mov cx,256
+;save:
+;mov al,cl
+;dec al
+;out dx,al
+;inc dx
+;inc dx
+;in al,dx
+;mov [es:di],al
+;inc di
+;in al,dx
+;mov [es:di],al
+;inc di
+;in al,dx
+;mov [es:di],al
+;inc di
+;dec dx
+;dec dx
+;dec cx
+;jne save
+;pop di dx cx ax
+;ret
 
 ;restore le DAC depuis ds:si
-restoredacfrom:
-push ax cx dx si
-xor ax,ax
-mov dx,3C8h
-mov cx,256
-save2:
-mov al,cl
-dec al
-out dx,al
-inc dx 
-mov al,ds:[si]
-inc si
-out dx,al
-mov al,ds:[si]
-inc si 
-out dx,al
-mov al,ds:[si]
-inc si  
-out dx,al
-dec dx
-dec cx
-jne save2
-pop si dx cx ax
-ret
+;restoredacfrom:
+;push ax cx dx si
+;xor ax,ax
+;mov dx,3C8h
+;mov cx,256
+;save2:
+;mov al,cl
+;dec al
+;out dx,al
+;inc dx
+;mov al,[ds:si]
+;inc si
+;out dx,al
+;mov al,[ds:si]
+;inc si
+;out dx,al
+;mov al,[ds:si]
+;inc si
+;out dx,al
+;dec dx
+;dec cx
+;jne save2
+;pop si dx cx ax
+;ret
 
-;couleur al pour ligne di  A SUPPRIMER
-changelineattr:
-push ax bx di es
-mov bx,ax
-mov ax,0B800h
-mov es,ax
-mov ax,di
-mul cs:columns
-mov di,ax
-shl di,1
-mov al,cs:columns
-inc di
-popep:
-mov es:[di],bl
-add di,2
-dec al
-jnz popep
-pop es di bx ax
-ret   
 
 font8x8:
-include ..\include\pol8x8.inc
+include "..\include\pol8x8.inc"
 font8x16:
-include ..\include\pol8x16.inc
+include "..\include\pol8x16.inc"
 
 
-end start

@@ -1,10 +1,16 @@
 .model tiny
-.386c
+.486
+smart
 .code
-org 0100h
-             
-                
+
+org 0h
+
+include ..\include\mem.h
+
 start:
+header exe <,1,0,,,offset imports,,>
+
+realstart:
      mov ax,0305h
      mov bx,0008h
      int 16h
@@ -38,12 +44,8 @@ Adres:
      mov bl,infos
      xor bh,bh
      int 47h
-     mov ah,21
-     mov cl,116
-     int 47h
-     mov ah,13
-     mov si,offset errordisk
-     int 47h
+     push offset errordisk
+     call [print]
      mov ax,0
      int 16h
      noerror:
@@ -71,52 +73,32 @@ Adres:
      int 47h
      mov bh,infos
      mov di,bp
-     mov ah,21
-     mov cl,7
-     int 47h
 lines:
-     mov dx,sect
-     mov cx,16
-     mov ah,10
-     int 47h
-     mov si,offset dep
-     mov ah,13
-     int 47h
+     xor edx,edx
      mov dx,di
-     mov ah,10
-     int 47h
-     mov ah,13
-     mov si,offset spaces
-     int 47h
-    mov ah,5
-    int 47h
+     push edx
+     mov dx,sect
+     push edx
+     push offset spaces
+     call [print]
      mov al,infos+1
-     mov cl,7
-     mov ah,21
-     int 47h
      mov si,di
 doaline:
-     mov dl,[di+offset buffer]
-     mov ah,10
-     mov cl,8
-     int 47h
-     mov ah,5
-     int 47h
+     push dword ptr [di+offset buffer]
+     push 8
+     call [showhex]
+     push ' '
+     call [showchar]
      inc di
      dec al
      jnz doaline
      mov di,si
-     mov si,offset spaces
-     mov ah,13
-     int 47h
+     push offset spaces2
+     call [print]
      mov al,infos+1
-     mov ah,21
-     mov cl,7
-     int 47h
 doaline2:
-     mov dl,[di+offset buffer]
-     mov ah,7
-     int 47h
+     push word ptr [di+offset buffer]
+     call [showchar]
      inc di
      dec al
      jnz doaline2
@@ -128,14 +110,12 @@ doaline2:
      int 47h
      jmp lines
 outes:  
-     mov ah,21
-     mov cl,112
-     int 47h
      mov bh,0
      mov bl,infos
-     mov si,offset menu
-     mov ah,14h
+     mov ah,25
      int 47h
+     push offset menu
+     call [print]
      waitkey:
      mov ax,0
      int 16h
@@ -183,19 +163,12 @@ outes:
      cmp ax,4100h
      jne suit7
      mov dword ptr [pope],'TIDE'
+     mov bh,0
      mov bl,infos
-     xor bh,bh
      mov ah,25
      int 47h
-     mov ah,21
-     mov cl,116
-     int 47h
-     mov si,offset menu
-     mov ah,13
-     int 47h
-     mov ah,21
-     mov cl,7
-     int 47h
+     push offset menu
+     call [print]
      mov ax,0B800h
      mov es,ax   
      mov xxyy2,3
@@ -290,8 +263,7 @@ cursor:
      jne adres2
      mov ah,29h
      int 47H
-     db 0CBH
-     ret
+     retf
 
 calc1:
      push ax dx si
@@ -375,15 +347,27 @@ xx dw 0
 yy dw 0
 xxyy dw 3
 xxyy2 dw 3
-errordisk db 'Une erreur est apparue sur le lecteur, appuyez sur une touche                  ',0
-menu      db 'Haut&Bas [F1/2] Secteur [F3/4] Charger/Sauver [F5/6] Mode [F7] Quit. [F8] '
-pope  db 'VIEW',0         
-spaces db  ' ³ ',0
+
+errordisk db '\c74Une erreur est apparue sur le lecteur, appuyez sur une touche                  ',0
+menu      db '\c70Haut&Bas [F1/2] Secteur [F3/4] Charger/Sauver [F5/6] Mode [F7] Quit. [F8] '
+pope  db 'VUE     ',0
+spaces db  '\c02%hW:%hW \c04|  \c07',0
+spaces2 db  '\c04 | \c07',0
 
 showbuffer db 35 dup (0FFh)
 oldmode db 0 
 infos db 40 dup (0)                   
 buffer db 2048 dup (0)
+
+imports:
+         db "VIDEO.LIB::print",0
+print    dd 0
+         db "VIDEO.LIB::showhex",0
+showhex  dd 0
+         db "VIDEO.LIB::showchar",0
+showchar dd 0
+         dw 0
+
 
 end start
 

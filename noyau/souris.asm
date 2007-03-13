@@ -2,7 +2,7 @@
 .486
 smart
 .code
-org 0100h
+org 0h
 start:
 jmp tsr
 drv db 'MOUSE',0

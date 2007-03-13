@@ -1,42 +1,20 @@
-.model tiny
+.model  tiny
 .486
 smart
 .code
 
-org 0100h
+org     0h
 
 include ..\include\fat.h
 include ..\include\mem.h
 include ..\include\divers.h
 
 start:
-	push    cs
-        push    cs
-        push    cs
-        push    cs
-        pop     ds
-        pop     es
-        pop     fs
-        pop     gs
-     mov ah,21
-     mov cl,7
-     int 47h
+header  exe     <,1,0,,,offset imports,,>
 
-	mov	ah,3
-	int	48h
-	mov	ax,0002
-	int	47h
-        mov     ah,2
-        int     47h
-        mov     ah,6
-        int     47h
-        mov     ah,6
-        int     47h
-        mov     ah,42
-        int     47h
-        mov     ah,13
-        mov     si,offset msg
-        int     47h
+realstart:
+        push    offset msginit
+        call    [print]
         xor     bp,bp
         mov     dl,' '
         call    setdelimiter0
@@ -46,14 +24,11 @@ replay:
 noret:
         mov     ah,6
         int     47h
-	mov	ah,16
-	mov	di,offset dir
-	int	48h
-	mov	si,di    
-        mov     ah,13
-	int	47h
-        mov     si,offset prompt
-        int     47h
+        mov     ah,16
+        mov     di,offset dir
+        int     48h
+        push    offset prompt
+        call    [print]
         mov     di,offset buffer
 waitchar:
         mov     ax,0
@@ -63,21 +38,20 @@ waitchar:
         jne     norr
         cmp     bp,0
         je      waitchar
-        mov     ah,13
-        mov     si,cs:[bp-8]
-        int     47h
+        push    word ptr cs: [bp-8]
+        call    [print]
         push    cs
-        pop     es   
+        pop     es
         call    copy0
         call    getlength0
         add     di,cx
         jmp     waitchar
 norr:
-        cmp     al,0Dh  ;entrée
+        cmp     al,0dh          ;entrée
         je      entere
-        cmp     al,08h ;backspace
+        cmp     al,08h          ;backspace
         je      backspace
-        cmp     al,27 ;echap
+        cmp     al,27           ;echap
         je      escape
         cmp     al,' '
         jb      waitchar
@@ -85,14 +59,13 @@ norr:
         je      waitchar
         mov     [di],al
         inc     di
-        mov     dl,al  
-        mov     ah,7
-        int     47h
+        push    ax
+        call    [showchar]
         jmp     waitchar
 escape:
         cmp     di,offset buffer
         je      waitchar
-        mov     ah,18h
+        mov     ah,24
         int     47h
         mov     dx,offset buffer
         mov     cx,di
@@ -100,20 +73,21 @@ escape:
         js      waitchar
         je      waitchar
         sub     bh,cl
-        mov     ah,19h
+        mov     ah,25
         int     47h
         mov     di,offset buffer
         mov     byte ptr [di],0
 backspace:
         cmp     di,offset buffer
         je      waitchar
-        mov     ah,18h
+        mov     ah,24
         int     47h
         dec     bh
-        mov     dl,' '
-        mov     ah,0Eh
+        mov     ah,25
         int     47h
-        mov     ah,19h
+        push    ' '
+        call    [showchar]
+        mov     ah,25
         int     47h
         dec     di
         mov     byte ptr [di],0
@@ -141,13 +115,13 @@ tre:
         cmp     di,0
         je      error
         push    cs
-        pop     es   
+        pop     es
         call    evalue0
         cmp     dx,bp
         jb      noadd
         mov     bp,dx
         mov     ax,bx
-        noadd:
+noadd:
         call    cmpstr0
         jne     tre
         mov     si,offset buffer
@@ -172,7 +146,7 @@ nopod:
 error:
         mov     bp,ax
         push    cs
-        pop     es   
+        pop     es
         mov     dl,'.'
         call    searchchar0
         je      noaddext
@@ -187,57 +161,58 @@ noaddext:
         xor     bp,bp
         jmp     replay
 reallyerror:
-        mov     ah,13
-        mov     si,offset Error_Syntax
-        int     47h
-        mov     ah,13
-        mov     si,cs:[bp-8]
-        int     47h
+        push    offset error_syntax
+        call    [print]
+        push    word ptr cs: [bp-8]
+        call    [print]
         jmp     replay
 errorprec:
-        mov     ah,13
-        mov     si,offset derror
-        int     47h
+        push    offset derror
+        call    [print]
         jmp     replay
-        
-Code_Exit:
+
+code_exit:
         pop     ax
-        db      0CBh
-        
-Code_Version:
-        mov     ah,13
-        mov     si,offset Version_Text
-        int     47h
+        retf
+
+code_version:
+        push    offset version_text
+        call    [print]
         ret
-        
-Version_Text db 'Cos 2000 version 1.2Fr par Nico',0
-        
-Code_Cls:
+
+version_text db 'Cos 2000 version 1.4Fr par \c04MrNop',0
+
+code_cls:
         mov     ah,2
         int     47h
         ret
-        
-Code_Reboot:
-        push    0FFFFh
+
+code_reboot:
+        push    0ffffh
         push    00000h
-        db 0CBH
-        
-Code_Command:
+        retf
+
+code_command:
+        push    offset def
+        call    [print]
         mov     bx,offset commands
 showalls:
-        mov     si,[bx]
         add     bx,8
-        cmp     si,0
+        cmp     word ptr [bx],0
         je      endoff
-        mov     ah,13
-        int     47h
-        mov     ah,6
-        int     47h
+        push    word ptr [bx+4]
+        push    word ptr [bx+6]
+        push    word ptr [bx]
+        push    offset commandes
+        call    [print]
         jmp     showalls
         endoff:
         ret
 
-Code_Mode:
+def       db 'Liste des commandes internes\l\l',0
+commandes db '%0 \h10:\h12%0 \h70%0\l',0
+
+code_mode:
         mov     cx,0
         call    gettypeditem0
         mov     ah,0
@@ -248,387 +223,320 @@ Code_Mode:
         int     47h
         ret
 
-present db 'Le volume insere est nomme ',0
-present2 db ', Numero de serie : ',0
-nomdisque db 13 dup (0)
-Code_Dir:
-mov si,offset present
-mov ah,13
-int 47h
-mov ah,11
-mov di,offset nomdisque
-int 48h
-mov si,di
-mov ah,13
-int 47h
-mov si,offset present2
-mov ah,13
-int 47h
-mov ah,12
-int 48h
-mov ah,10
-mov cx,32
-int 47h
-mov ah,6
-int 47h
-mov ah,6
-int 47h
-xor ebp,ebp
-mov di,offset bufferentry
-mov si,di
-mov ah,7
-int 48h
-jc nofiles
+code_dir:
+        mov     ah,12
+        int     48h
+        push    edx
+        mov     ah,11
+        mov     di,offset nomdisque
+        int     48h
+        push    di
+        push    offset present
+        call    [print]
+        xor     bp,bp
+        mov     di,offset bufferentry
+        mov     ah,7
+        int     48h
+        jc      nofiles
 go:
-mov ah,46
-int 47h
-mov ah,05
-int 47h
-int 47h
-int 47h
-mov ah,44
-mov dx,[si+Entries.FileDateCrea]
-int 47h
-mov ah,05
-int 47h
-int 47h
-int 47h
-mov ah,45
-mov dx,[si+Entries.FileTimeCrea]
-int 47h
-mov ah,05
-int 47h
-int 47h
-int 47h
-mov ah,44
-mov dx,[si+Entries.FileDate]
-int 47h
-mov ah,05
-int 47h
-int 47h
-int 47h
-mov ah,45
-mov dx,[si+Entries.FileTime]
-int 47h
-mov ah,05
-int 47h
-int 47h
-int 47h
-mov ah,48
-mov edx,[si+Entries.FileSize]
-int 47h
-mov ah,05
-int 47h
-int 47h
-int 47h
-mov ah,47
-mov dl,[si+Entries.FileAttr]
-int 47h
-mov ah,6
-int 47h
-inc bp
-mov ah,8
-int 48h
-jnc go
+        push    word ptr [di+entries.fileattr]
+        push    dword ptr [di+entries.filesize]
+        push    word ptr [di+entries.filetime]
+        push    word ptr [di+entries.filedate]
+        push    word ptr [di+entries.filetimecrea]
+        push    word ptr [di+entries.filedatecrea]
+        push    di
+        push    offset line
+        call    [print]
+        inc     bp
+        mov     ah,8
+        int     48h
+        jnc     go
 nofiles:
-mov edx,ebp
-mov ah,6
-int 47h
-mov ah,8
-int 47h
-mov si,offset filess
-mov ah,13
-int 47h
-ret
-bufferentry db 32 dup (0)
-filess db ' Fichier(s) au total',0
+        push    ebp
+        push    offset filess
+        call    [print]
+        ret
+        
+nomdisque db    13 dup (0)
+bufferentry db  512 dup (0)
+present db      '\c02Le volume insere est nomme %0, Numero de serie : %hD\l\l',0
 
-changing db 'Changement de repertoire vers ',0
+line    db      '\c07%n   %d   %t   %d   %t   %z   %a\l',0
+filess  db      '\l\l\c02%u Fichier(s) au total\l',0
+
 code_cd:
-	mov     cx,0
+        mov     cx,0
         call    gettypeditem0
-	push	si
-	mov	si,offset changing
-	mov	ah,13
-	int	47h
-	pop	si
-	int	47h
-	mov 	ah,6
-	int 	47h
-	mov	si,di
-	mov	ah,13
-	int	48h
-	jnc	okchange
-	mov	si,offset errorchanging
-	mov	ah,13
-	int	47h
+        push    di
+        push    offset changing
+        call    [print]
+        mov     si,di
+        mov     ah,13
+        int     48h
+        jnc     okchange
+        push    offset errorchanging
+        call    [print]
 okchange:
-	ret
-errorchanging db 'Impossible d''atteindre ce dossier',0
+        ret
+        
+changing db     'Changement de repertoire vers %0\l',0
+errorchanging db '\c04Impossible d''atteindre ce dossier',0
+        
+code_kill:
+        mov     cx,0
+        call    gettypeditem0
+        push    di
+        push    offset killing
+        call    [print]
+        mov     si,di
+        mov     ah,5
+        int     49h
+        jc      nochanged
+        mov     ah,1
+        int     49h
+        jnc     okchanged
+nochanged:
+        push    offset errorkilling
+        call    [print]
+okchanged:
+        ret
+        
+killing db     'Fermeture du processus %0\l',0
+errorkilling db '\c04Impossible de fermer ce processus',0
 
 code_refresh:
-	mov 	ah,3
-	int 	48h
-	jnc	okrefresh
-	mov	si,offset errorrefreshing
-	mov	ah,13
-	int	47h
-ret
+        mov     ah,3
+        int     48h
+        jnc     okrefresh
+        push    offset errorrefreshing
+        call    [print]
+        ret
 okrefresh:
-mov si,offset present
-mov ah,13
-int 47h
-mov ah,11
-mov di,offset nomdisque
-int 48h
-mov si,di
-mov ah,13
-int 47h
-mov si,offset present2
-mov ah,13
-int 47h
-mov ah,12
-int 48h
-mov ah,10
-mov cx,32
-int 47h
-mov ah,6
-int 47h
-	ret
-errorrefreshing db 'Impossible de lire le support',0
+        mov     ah,12
+        int     48h
+        push    edx
+        mov     ah,11
+        mov     di,offset nomdisque
+        int     48h
+        push    di
+        push    offset present
+        call    [print]
+        ret
+        
+errorrefreshing db '\c04Impossible de lire le support',0
+extcom  db      '.CE',0
 
-extcom db '.COM',0
-
-Code_Mem:
-mov si,offset msgs
-mov ah,13
-int 47h
-mov ah,6
-int 47h
-mov ah,6
-int 47h
-mov si,offset menu
-mov ah,13
-int 47h
-mov ah,6
-int 47h
-mov ah,18h
-int 47h
-xor cx,cx
+code_mem:
+        push    offset msg
+        call    [print]
+        xor     ebx,ebx
+        xor     cx,cx
 listmcb:
-mov ah,4
-int 49h
-jc fino
-inc cx
-mov ah,18h
-int 47h
-push gs
-pop ds
-mov bh,0
-mov si,MB.Names
-mov ah,14h
-int 47h
-mov bh,15
-xor edx,edx
-mov dx,ds:[MB.Sizes]
-shl edx,4
-mov ah,0Fh
-int 47h
-mov bh,24
-cmp ds:[MB.IsResident],true
-push cs
-pop ds
-jne notresident
-mov si,offset resident
-mov ah,14h
-int 47h
-jmp suitelistmcb
-notresident:
-mov si,offset nonresident
-mov ah,14h
-int 47h
-suitelistmcb:
-mov bh,30
-cmp gs:[MB.Reference],0
-je next
-cmp gs:[MB.Reference],1000h
-jb next
-mov ax,gs:[MB.Reference]
-dec ax
-dec ax
-mov ds,ax
-mov si,MB.Names
-mov ah,14h
-int 47h
+        mov     ah,4
+        int     49h
+        jc      fino
+        inc     cx
+;placement mémoire
+        mov     dx,gs
+        inc     dx
+        inc     dx
+        push    edx
+;parent
+        cmp     gs: [mb.reference],0
+        jne     next
+        push    cs
+        push    offset none
+        add     bx,gs:[mb.sizes]
+        jmp     suitemn
 next:
-mov bh,46
-xor edx,edx
-mov dx,gs
-inc dx
-inc dx
-push cx
-mov cx,16
-mov ah,11h
-int 47h
-mov ah,6h
-int 47h
-pop cx
-jmp listmcb
+        mov     dx,gs: [mb.reference]
+        dec     dx
+        dec     dx
+        push    dx
+        push    offset mb.names
+suitemn:
+;Resident
+        cmp     gs: [mb.isresident],true
+        jne     notresident
+        push    offset resident
+        jmp     suitelistmcb
+notresident:
+        push    offset nonresident
+suitelistmcb:
+;taille memoire
+        xor     edx,edx
+        mov     dx,gs: [mb.sizes]
+        shl     edx,4
+        push    6
+        push    edx
+;nom
+        push    gs
+        push    offset mb.names
+        push    offset line2
+        call    [print]
+        jmp     listmcb
 fino:
-ret
-resident db 'oui',0
-nonresident db 'non',0
-msgs db 'Plan de la memoire',0
-menu db 'Nom            Taille   Res   Parent          Mem',0
+        shl     ebx,4
+        push    ebx
+        push    offset fin
+        call    [print]
+        ret
+resident db     "oui",0
+nonresident db  "non",0
+line2   db      "%0P\h15%w\h24%0\h30%0P\h46%hW\l",0
+fin     db      "\l\l\c02%u octets de memoire disponible\l",0
+msg     db      "Plan de la memoire\l\lNom            Taille   Res   Parent          Mem\l",0
+none    db      ".",0
 
 
 ;converti le jeux scancode/ascii en fr ax->ax
 convertfr:
-            push        dx si
-            mov         si,offset fr
+        push    dx si
+        mov     si,offset fr
 searchtouch:
-            mov         dx,cs:[si]
-            cmp         dx,0
-            je          endofconv
-            add         si,4
-            cmp         dx,ax
-            jne         searchtouch
-            mov         ax,cs:[si-2]
+        mov     dx,cs: [si]
+        cmp     dx,0
+        je      endofconv
+        add     si,4
+        cmp     dx,ax
+        jne     searchtouch
+        mov     ax,cs: [si-2]
 endofconv:
-            pop          dx si
-            ret
+        pop     dx si
+        ret
 
-fr:                     db   '1', 02, '&', 02
-                        db   '!', 02, '1', 02
-                        db   '2', 03, '‚', 03
-                        db   '@', 03, '2', 03
-                        db   '3', 04, '"', 04
-                        db   '#', 04, '3', 04
-                        db   '4', 05,  39, 05
-                        db   '$', 05, '4', 05
-                        db   '5', 06, '(', 06
-                        db   '%', 06, '5', 06
-                        db   '6', 07, '-', 07
-                        db   '^', 07, '6', 07
-                        db   '7', 08, 'Š', 08
-                        db   '&', 08, '7', 08
-                        db   '8', 09, '_', 09
-                        db   '*', 09, '8', 09
-                        db   '9', 10, '‡', 10
-                        db   '(', 10, '9', 10
-                        db   '0', 11, '…', 11
-                        db   ')', 11, '0', 11
-                        db   '-', 12, ')', 12
-                        db   '_', 12, 'ø', 12
-                        db   'Q', 16, 'A', 16
-                        db   'q', 16, 'a', 16
-                        db   'W', 17, 'Z', 17
-                        db   'w', 17, 'z', 17
-                        db   '{', 26, '‰', 26
-                        db   '[', 26, 'ˆ', 26
-                        db   ']', 27, '$', 27
-                        db   '}', 27, 'œ', 27
-                        db   'A', 30, 'Q', 30
-                        db   'a', 30, 'q', 30
-                        db   ':', 39, 'M', 39
-                        db   ';', 39, 'm', 39
-                        db    39, 40, '—', 40
-                        db   '"', 40, '%', 40
-                        db    00, 40, '%', 40
-                        db   '\', 43, '*', 43
-                        db   '|', 43, 'æ', 43
-                        db   'Z', 44, 'W', 44
-                        db   'z', 44, 'w', 44
-                        db   'm', 50, ',', 50
-                        db   'M', 50, '?', 50
-                        db   ',', 51, ';', 51
-                        db   '<', 51, '.', 51
-                        db   '.', 52, ':', 52
-                        db   '>', 52, '/', 52
-                        db   '?', 53, 'õ', 53
-                        db   '/', 53, '!', 53
-                        db   '\', 86, '<', 86
-                        db   '|', 86, '>', 86
-                        db   00, 79h, '~', 03
-                        db   00, 7Ah, '#', 04
-                        db   00, 7Bh, '{', 05
-                        db   00, 7Ch, '[', 06
-                        db   00, 7Dh, '|', 07
-                        db   00, 7Eh, '`', 08
-                        db   00, 7Fh, '\', 09
-                        db   00, 80h, '^', 10
-                        db   00, 81h, '@', 11
-                        db   00, 82h, ']', 12
-                        db   00, 83h, '}', 13
-                        db   00,  00,  00, 00
+fr:     db      '1', 02, '&', 02
+        db      '!', 02, '1', 02
+        db      '2', 03, '‚', 03
+        db      '@', 03, '2', 03
+        db      '3', 04, '"', 04
+        db      '#', 04, '3', 04
+        db      '4', 05, 39, 05
+        db      '$', 05, '4', 05
+        db      '5', 06, '(', 06
+        db      '%', 06, '5', 06
+        db      '6', 07, '-', 07
+        db      '^', 07, '6', 07
+        db      '7', 08, 'Š', 08
+        db      '&', 08, '7', 08
+        db      '8', 09, '_', 09
+        db      '*', 09, '8', 09
+        db      '9', 10, '‡', 10
+        db      '(', 10, '9', 10
+        db      '0', 11, '…', 11
+        db      ')', 11, '0', 11
+        db      '-', 12, ')', 12
+        db      '_', 12, 'ø', 12
+        db      'Q', 16, 'A', 16
+        db      'q', 16, 'a', 16
+        db      'W', 17, 'Z', 17
+        db      'w', 17, 'z', 17
+        db      '{', 26, '‰', 26
+        db      '[', 26, 'ˆ', 26
+        db      ']', 27, '$', 27
+        db      '}', 27, 'œ', 27
+        db      'A', 30, 'Q', 30
+        db      'a', 30, 'q', 30
+        db      ':', 39, 'M', 39
+        db      ';', 39, 'm', 39
+        db      39, 40, '—', 40
+        db      '"', 40, '%', 40
+        db      00, 40, '%', 40
+        db      '\', 43, '*', 43
+        db      '|', 43, 'æ', 43
+        db      'Z', 44, 'W', 44
+        db      'z', 44, 'w', 44
+        db      'm', 50, ',', 50
+        db      'M', 50, '?', 50
+        db      ',', 51, ';', 51
+        db      '<', 51, '.', 51
+        db      '.', 52, ':', 52
+        db      '>', 52, '/', 52
+        db      '?', 53, 'õ', 53
+        db      '/', 53, '!', 53
+        db      '\', 86, '<', 86
+        db      '|', 86, '>', 86
+        db      00, 79h, '~', 03
+        db      00, 7ah, '#', 04
+        db      00, 7bh, '{', 05
+        db      00, 7ch, '[', 06
+        db      00, 7dh, '|', 07
+        db      00, 7eh, '`', 08
+        db      00, 7fh, '\', 09
+        db      00, 80h, '^', 10
+        db      00, 81h, '@', 11
+        db      00, 82h, ']', 12
+        db      00, 83h, '}', 13
+        db      00, 00, 00, 00
 
+commands dw     str_exit ,code_exit ,syn_exit ,help_exit
+        dw      str_version,code_version,syn_version,help_version
+        dw      str_cls ,code_cls ,syn_cls ,help_cls
+        dw      str_reboot ,code_reboot ,syn_reboot ,help_reboot
+        dw      str_command,code_command,syn_command,help_command
+        dw      str_mode ,code_mode ,syn_mode ,help_mode
+        dw      str_dir ,code_dir ,syn_dir ,help_dir
+        dw      str_refresh ,code_refresh ,syn_refresh ,help_refresh
+        dw      str_cd ,code_cd ,syn_cd ,help_cd
+        dw      str_mem ,code_mem ,syn_mem ,help_mem
+        dw      str_kill ,code_kill ,syn_kill ,help_kill
+        dw      0
 
+str_exit db     'QUIT',0
+str_version db  'VERS',0
+str_cls db      'CLEAR',0
+str_reboot db   'REBOOT',0
+str_command db  'CMDS',0
+str_mode db     'MODE',0
+str_dir db      'DIR',0
+str_refresh db  'DISK',0
+str_cd  db      'CD',0
+str_mem db      'MEM',0
+str_kill db      'KILL',0
 
+syn_exit db     0
+syn_version db  0
+syn_cls db      0
+syn_reboot db   0
+syn_command db  0
+syn_mode db     'FFH',0
+syn_dir db      0
+syn_refresh db  0
+syn_cd  db      '@',0
+syn_mem db      0
+syn_kill  db    '@',0
 
+help_exit db    'Permet de quitter l''interpreteur',0
+help_version db 'Affiche la version de COS',0
+help_cls db     'Efface l''ecran',0
+help_reboot db  'Redemarre l''ordinateur',0
+help_command db 'Affiche le detail des commandes',0
+help_mode db    'Modifie le mode video en cours',0
+help_dir db     'Affiche le contenu du repertoire courant',0
+help_refresh db 'Lit le support disquette insere',0
+help_cd db      'Change le repertoire courant',0
+help_mem db     'Affiche le plan de la memoire',0
+help_kill db    'Termine le processus cible',0
 
+derror  db      '\c04Erreur de Syntaxe !',0
+error_syntax db '\c04La commande ou l''executable n''existe pas ! F1 pour ',0
+prompt  db      '\c07>',0
+msginit db      '\m02\e\c07\l\lInterpreteur de commande COS V1.9\lSous license \c05GPL\c07 - Ecrit par \c04MrNop\l\c07Utilisez la commande CMDS pour connaitres les commandes disponibles\l',0
 
+include str0.asm
 
+dir     db      32 dup (0)
+buffer  db      128 dup (0)
+buffer2 db      128 dup (0)
 
+imports:
+        db      "VIDEO.LIB::print",0
+print   dd      0
+        db      "VIDEO.LIB::showhex",0
+showhex dd      0
+        db      "VIDEO.LIB::showchar",0
+showchar dd     0
+        dw      0
 
-
-
-
-
-
-
-        
-commands      dw Str_Exit   ,Code_Exit   ,Syn_Exit   ,Help_Exit
-              dw Str_Version,Code_Version,Syn_Version,Help_Version
-              dw Str_Cls    ,Code_Cls    ,Syn_Cls    ,Help_Cls
-              dw Str_Reboot ,Code_Reboot ,Syn_Reboot ,Help_Reboot
-              dw Str_Command,Code_Command,Syn_Command,Help_Command   
-              dw Str_Mode   ,Code_Mode   ,Syn_Mode   ,Help_Mode
-              dw Str_Dir   ,Code_Dir   ,Syn_Dir   ,Help_Dir
-              dw Str_refresh   ,Code_refresh   ,Syn_refresh   ,Help_refresh
-	      dw Str_cd   ,Code_cd   ,Syn_cd   ,Help_cd
-	      dw Str_Mem   ,Code_Mem   ,Syn_Mem   ,Help_Mem
-              dw 0
-      
-Str_Exit      db 'QUIT',0
-Str_Version   db 'VERS',0
-Str_Cls       db 'CLEAR',0
-Str_Reboot    db 'REBOOT',0
-Str_Command   db 'CMDS',0
-Str_Mode      db 'MODE',0
-Str_Dir		db 'DIR',0
-Str_refresh 	db 'DISK',0
-Str_cd 		db 'CD',0
-Str_Mem 	db 'MEM',0
-Syn_Exit      db 0
-Syn_Version   db 0
-Syn_Cls       db 0
-Syn_Reboot    db 0
-Syn_Command   db 0
-Syn_Mode      db 'FFH',0
-Syn_Dir   db 0
-Syn_refresh   db 0
-Syn_cd   db '@',0
-Syn_Mem db 0
-Help_Exit     db 0
-Help_Version  db 0
-Help_Cls      db 0
-Help_Reboot   db 0
-Help_Command  db 0
-Help_Mode     db 0
-Help_Dir     db 0  
-Help_refresh     db 0   
-Help_cd     db 0
-Help_Mem db 0
-derror        db 'Erreur de Syntaxe !',0
-Error_Syntax  db 'La commande ou l''executable n''existe pas ! F1 pour ',0
-prompt        db '>',0
-msg           db 'Interpreteur de commande COS V1.8',0
-
-        include str0.asm
-
-dir           db 32 dup (0)
-buffer        db 256 dup (0)
-buffer2       db 256 dup (0)
-
-
-end start
+end     start

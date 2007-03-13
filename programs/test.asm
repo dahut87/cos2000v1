@@ -2,174 +2,38 @@
 .486
 smart
 .code
-org 0100h  
 
+org 0h
+
+include ..\include\mem.h
 
 start:
+header exe <,1,0,,,offset imports,,>
+
+realstart:
 mov ah,28h
 int 47h
-mov ax,0001
-int 47h
-mov ah,2
-int 47h
 
-mov si,offset text1      ;titre
-mov ah,13
-int 47h
-mov ah,6
-int 47h
-int 47h
-mov ah,21
-mov cl,3
-int 47h
-mov ah,13
-mov si,offset text2
-int 47h
-mov ah,6
-int 47h
-mov edx,2612182686
-mov ah,8
-int 47h
-mov ah,6
-int 47h
-mov edx,7576534
-mov ah,8
-int 47h
-mov ah,6
-int 47h
-mov ah,21
-mov cl,4
-int 47h
-mov si,offset text3
-mov ah,13
-int 47h
-mov ah,6
-int 47h
-mov edx,-6876253
-mov cx,32
-mov ah,9
-int 47h
-mov ah,6
-int 47h
-mov edx,-311212323
-mov cx,32
-mov ah,9
-int 47h
-mov ah,6
-int 47h
-mov ah,21
-mov cl,5
-int 47h  
-mov ah,13
-mov si,offset text4
-int 47h
-mov ah,6
-int 47h
-mov edx,0892325457
-mov cx,16
-mov ah,10
-int 47h
-mov ah,6
-int 47h
-mov edx,0236514
-mov ah,10
-mov cx,32
-int 47h
-mov ah,6
-int 47h
-mov ah,21
-mov cl,6
-int 47h
-mov ah,13
-mov si,offset text5
-int 47h
-mov ah,6
-int 47h     
-mov edx,3762182686
-mov ah,11
-mov cx,32
-int 47h
-mov ah,6
-int 47h
-mov edx,2182686
-mov ah,11
-mov cx,16
-int 47h
-mov ah,6
-int 47h
-mov ah,21
-mov cl,7
-int 47h
-mov ah,13
-mov si,offset text6
-int 47h
-mov ah,6
-int 47h
-mov dl,'h'
-mov ah,7
-int 47h
-mov ah,6
-int 47h
-mov dl,'@'
-mov ah,7
-int 47h
-mov ah,6
-int 47h
-mov ah,21
-mov cl,8
-int 47h
-mov ah,13
-mov si,offset text7
-int 47h
-mov ah,6
-int 47h
-mov si,offset textt
-mov ah,13
-int 47h
-mov ah,6
-int 47h
-mov si,offset texttt
-mov ah,13
-int 47h 
-mov ah,6
-int 47h
-mov ah,21
-mov cl,9
-int 47h
-mov ah,13
-mov si,offset text71
-int 47h
-mov ah,6
-int 47h     
-mov dx,0BF30h
-mov ah,44
-int 47h
-mov ah,6
-int 47h
-mov dx,0B0B6h
-mov ah,44
-int 47h
-mov ah,6
-int 47h
-mov ah,13
-mov si,offset text72
-int 47h
-mov ah,6
-int 47h
-mov edx,8601h
-mov ah,45
-int 47h
-mov ah,6
-int 47h
-mov dx,0B0B6h
-mov ah,45
-int 47h
-mov ah,6
-int 47h
+push word ptr 0FFFFh
+push dword ptr 652201
+push dword ptr 1545454545
+push word ptr 1523
+push word ptr 2041
+push offset zero
+push offset fixe
+push word ptr 5
+push word ptr 'i'
+push word ptr 'a'
+push dword ptr 5041
+push dword ptr 125645
+push dword ptr 5041
+push dword ptr 125645
+push dword ptr 5041
+push dword ptr 125645
+push offset message
+call [print]
 mov ax,0
 int 16h
-
-
 
 mov ah,2
 int 47h
@@ -177,20 +41,15 @@ mov ah,30
 int 47h
 mov ah,2
 int 47h
-mov ah,21
-mov cl,5
-int 47h  
+
 mov cx,200
 go1:
 mov ah,30
 int 47h
 mov ah,33
 int 47
-mov ah,20
-xor bh,bh
-inc bl
-mov si,offset text8 
-int 47h   
+push offset textdemo1
+call [print]
 call put
 mov ah,30
 int 47h
@@ -199,20 +58,14 @@ int 47h
 dec cx
 jnz go1
 
-mov ah,21
-mov cl,7
-int 47h
 mov cx,200
 go2:
-mov si,offset text9
 mov ah,30
 int 47h
 mov ah,33
 int 47h
-mov ah,6
-int 47h
-mov ah,13
-int 47h
+push offset textdemo2
+call [print]
 call put
 mov ah,30
 int 47h
@@ -221,20 +74,14 @@ int 47h
 dec cx
 jnz go2
 
-mov ah,21
-mov cl,9
-int 47h
 mov cx,200
 go3:
-mov si,offset text10
 mov ah,30
 int 47h
 mov ah,33
 int 47h
-xor bh,bh
-inc bl
-mov ah,20
-int 47h
+push offset textdemo3
+call [print]
 call put
 mov ah,30
 int 47h
@@ -247,14 +94,8 @@ mov ah,30
 int 47h
 mov ah,2
 int 47h
-mov bx,040Dh
-mov si,offset texte1
-mov ah,20
-int 47h
-mov si,offset texte2
-inc bl
-mov ah,20
-int 47h
+push offset texte2
+call [print]
 mov ah,30
 int 47h
 mov ah,2
@@ -262,9 +103,6 @@ int 47h
 mov ah,30
 int 47h
 
-mov cl,12
-mov ah,21
-int 47h
 mov bp,255
 xor edx,edx
 go4:
@@ -273,32 +111,28 @@ int 47h
 mov ah,33
 int 47h
 inc edx
-mov ah,11
-mov cx,16
-int 47h
-mov ah,6
-int 47h
+push edx
+push offset texte3
+call [print]
 mov ah,30
 int 47h
 mov ah,33
 int 47h
 dec bp
 jnz go4
-mov ah,14h
-xor bx,bx
-mov si,offset texte3
-int 47h
+push offset texte4
+call [print]
 mov ax,0
 int 16h
 mov ah,29h
 int 47h
-db 0CBh
+retf
 
 put:
 call random
 mov di,dx
 and di,4096-2
-mov si,offset text11
+mov si,offset fond
 call showstring2
 ret
 
@@ -322,24 +156,27 @@ mov cs:randseed,dx
 pop dx cx ax
 ret
 		  
-texttt db 'Texte',0
-textt db 'Divers',0
-text1 db ' D‚monstration de l''utilisation de la bibliothŠque VIDEO',0
-text2 db 'Nombre entier :',0
-text3 db 'Nombre sign‚ :',0
-text4 db 'Nombre h‚xad‚cimal :',0
-text5 db 'Nombre binaire :',0
-text6 db 'CaractŠres :',0
-text7 db 'Texte :',0
-text71 db 'Date :',0
-text72 db 'Heure :',0
-text8 db 'Scrolling Scrolling Scrolling Scrolling Scrolling Scrolling Scrolling Scrolling',0
-text9 db 'Vertical Vertical Vertical Vertical Vertical Vertical Vertical Vertical',0
-text10 db 'Rapide Rapide Rapide Rapide Rapide Rapide Rapide Rapide',0
-text11 db 'Echange rapide de pages Vid‚o',0
-texte1 db 'Routine d''affichage Ultra Rapide Agissant sur le Mat‚riel',0
-texte2 db 'Possibilit‚ de r‚aliser des effets de superposition',0
-texte3 db 'Sauvegarde et restauration de l''ecran',0
+zero db 'Chaine a z‚ro terminal',0
+fixe db 20,'Chaine a taille fixe'
+message db "\m01\e\c07\h01D‚monstration de la librairie VIDEO.LIB\l\l"
+        db "\c01Nombres entiers ou sign‚s (%%u/%%i):\l%u\l%iD\l"
+        db "\c02Nombre hexad‚cimaux (%%h):\l%hD\l%hW\l"
+        db "\c03Nombres Binaires (%%b):\l%bD\l%bB\l"
+        db "\c04Caracteres simples ou multiples (%%c/%%cM):\l%c\l%cM\l"
+        db "\c05Chaines a z‚ro terminal ou fixes (%%0/%%s):\l%s\l%0\l"
+        db "\c06Dates et heures (%%t/%%d):\l%t\l%d\l"
+        db "\c07Nombre a echelle automatique (%%z):\l%z\l%z\l"
+        db "\c08Attributs de fichiers (%%a):\l%a",0
+
+fond       db 16,'Ceci est un fond'
+textdemo1  db '\c05Scrolling Scrolling Scrolling Scrolling Scrolling Scrolling Scrolling Scrolling\l',0
+textdemo2  db '\c07Vertical Vertical Vertical Vertical Vertical Vertical Vertical Vertical\l',0
+textdemo3  db '\c09Rapide Rapide Rapide Rapide Rapide Rapide Rapide Rapide\l',0
+texte1     db 'Echange rapide de pages Vid‚o',0
+texte2     db '\g04,13Routine d''affichage Ultra Rapide Agissant sur le Mat‚riel'
+           db '\g04,14Possibilit‚ de r‚aliser des effets de superposition',0
+texte3     db '\c04%bD\l',0
+texte4     db '\g01,00Sauvegarde et restauration de l''ecran (%%s/%%r)',0
 
 showstring2:
         push    es bx cx si di
@@ -358,6 +195,9 @@ strinaize4:
         pop     di si cx bx es
         ret
 
-
+imports:
+        db "VIDEO.LIB::print",0
+print   dd 0
+        dw 0
 
 end start

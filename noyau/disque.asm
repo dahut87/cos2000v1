@@ -3,13 +3,13 @@
 smart
 .code
 
-org 0100h
+org 0h
 
 include ..\include\fat.h
+include ..\include\mem.h
 
 start:
 	jmp	tsr			;Saute à la routine résidente
-names db 'DRIVE'			;Nom drivers
 id    dw 1234h                ;Identifiant drivers
 Tsr:
 	cli				;Désactive interruptions logiciellement
@@ -36,15 +36,23 @@ noerrorint:
 itsok:
 	push 	bp		
 	mov 	bp,sp			;On prend sp dans bp pour adresser la pile
-	jnc 	noerror		;La fonction appelée a renvoyer une erreur :  Flag CARRY ?
+	pushf
+        jnc 	noerror		;La fonction appelée a renvoyer une erreur :  Flag CARRY ?
       or    byte ptr [bp+6],1b;Si oui on le retranscrit sur le registre FLAG qui sera dépilé lors du IRET
       ;xor  eax,eax
       ;mov  ax,cs                   ;On récupère le segment et l'offset puis en renvoie l'adresse physique
       ;shl  eax,4                   ;de l'erreur.
       ;add  ax,cs:current
-      jmp  endofint                ;on termine l'int
+      jmp  endofscan                ;on termine l'int
 noerror:
 	 and 	byte ptr [bp+6],0FEh;Si pas d'erreur on efface le Bit CARRY du FLAG qui sera dépilé lors du IRET
+endofscan:
+       popf
+       jne    noequal
+       or    byte ptr [bp+6],1000000b
+       jmp  endofint
+noequal:
+       and 	byte ptr [bp+6],0BFh
 endofint:
        pop 	bp
 	 sti				;On réactive les interruptions logiciellement
@@ -53,7 +61,7 @@ endofint:
 current dw 0			;Mot temporaire qui contient l'adresse de la fonction appelée
 tables  dw readsector
         dw writesector
-        dw verifysector2
+        dw verifysector
         dw initdrive
         dw loadfile
         dw compressrle
@@ -182,12 +190,21 @@ execfile:
         pop     gs
         mov     ah,6
         int     49h
+        mov     ah,12
+        int     49h
+        jc      reallyerror
         push    es
         push    cs
         mov     ax,offset arrive
         push    ax
         push    es
-        push    0100h
+        cmp     word ptr gs:[0h],'EC'
+        jne     noce
+        push    size exe
+        jmp     wasce
+ noce:
+        push    0000h
+ wasce:
         push    es
         push    es
         push    es
@@ -235,7 +252,6 @@ projfile:
 	jc	errorload2
 	mov	eax,cs:tempfit.FileSize
 	mov     ecx,eax
-	add     ecx,100h
 	push    eax
 	mov     ah,2
 	int     49h
@@ -244,7 +260,7 @@ projfile:
 	push    gs
 	pop     es
 	mov	cx,cs:tempfit.FileGroup
-	mov     di,100h
+	mov     di,0h
 	call	loadway
 	jc    	errorload2
 	clc
@@ -338,29 +354,38 @@ CmpNames:
 	repe 	cmpsb
 	jne 	nequal
 	inc 	si
+	jmp     equal
 nequal:
+        cmp 	byte ptr es:[di-1],' '
+        jne     notequal	
+equal:
 	cmp 	byte ptr [si-1],'.'
 	jne 	trynoext
 	mov 	al,' '
 	rep 	scasb
 	mov 	cx,3
 	rep 	cmpsb
-	jne 	notequal
-	cmp 	byte ptr [si],0
-	jne 	notequal
-	cmp 	cx,0
-	jl 	notequal
+	jne 	nequal2
+        inc     si
+        jmp     equal2
+nequal2:
+        cmp 	byte ptr es:[di-1],' '
+        jne     notequal
+equal2:
+	cmp 	byte ptr [si-1],0
+	jne     notequal
 itok:
+        clc
 	pop 	di si cx ax
 	ret
+notequal:
+	stc
+	pop 	di si cx ax
+	ret	
 trynoext:
 	cmp	byte ptr [si-1],0
 	jne	notequal
 	jmp	itok
-notequal:
-	stc
-	pop 	di si cx ax
-	ret
 
 ;charge le fichier de de groupe CX et de taille eax
 LoadWay:
@@ -882,13 +907,6 @@ invert:
 	cmp     cx,cs:myboot.sectorsize
 	jb 	invert
 	pop     cx si
-	ret
-
-VerifySector2:
-	call 	verifysector
-	jne 	nook
-	or 	byte ptr [bp+6],10b
-nook:
 	ret
 
 ;=============DecompressRle (Fonction 05H)==============
