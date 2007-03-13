@@ -1,562 +1,731 @@
-.model tiny
-.486
-smart
-.code
 
-org 0h
+        db "biosprint",0
+        dw biosprint
+        db "mbinit",0
+        dw mbinit
+        db "mbcreate",0
+        dw mbcreate
+        db "mbfree",0
+        dw mbfree
+        db "mbclean",0
+        dw mbclean
+        db "mbresident",0
+        dw mbresident
+        db "mbnonresident",0
+        dw mbnonresident
+        db "mbchown",0
+        dw mbchown
+        db "mballoc",0
+        dw mballoc
+        db "mbfind",0
+        dw mbfind
+        db "mbfindsb",0
+        dw mbfindsb
+        db "mbget",0
+        dw mbget
+        db "mbloadfuncs",0
+        dw mbloadfuncs
+        db "mbsearchfunc",0
+        dw mbsearchfunc
+        db "bioswaitkey",0
+        dw bioswaitkey
+        db "mbloadsection",0
+        dw mbloadsection
+        db "enableirq",0
+        dw enableirq
+        db "disableirq",0
+        dw enableirq
+        db "readmaskirq",0
+        dw readmaskirq
+        db "readirr",0
+        dw readirr
+        db "readisr",0
+        dw readisr
+        db "seteoi",0
+        dw seteoi
+        dd 0
 
-include ..\include\mem.h
-include ..\include\divers.h
+include "8259a.asm"
 
-start:
-maxfunc equ 13
-
-	jmp	tsr			;Saute à la routine résidente
-nameed db 'MB'			;Nom drivers
-id    dw 1234h                ;Identifiant drivers
-Tsr:
-	cli				;Désactive interruptions logiciellement
-	cmp 	ax,cs:ID         	;Compare si test de chargement
-	jne 	nomore		;Si pas test alors on continu
-      rol     ax,3*4            ;Rotation de 3 chiffre de l'ID pour montrer que le drivers est chargé
-	jmp 	itsok			;On termine l'int avec notre code d'ID preuve du bon chargement de VIDEO
-nomore:
-        cmp     ah,maxfunc
-        jbe     noerrorint
-        stc
-        jmp     itsok
-        noerrorint:
-        clc
-	push 	bx
-	mov 	bl,ah			;On calcule d'aprés le n° de fonction
-	xor 	bh,bh			;quel sera l'entrée dans la table indexée
-	shl 	bx,1			;des adresses fonctions.
-	mov 	bx,cs:[bx+tables]	;On récupère cette adresse depuis la table
-	mov 	cs:current,bx	;On la stocke temporairement pour obtenir les registres d'origine
-	pop 	bx
-        clc
-        call 	cs:current		;Puis on execute la fonction
-itsok:
-	push 	bp		
-	mov 	bp,sp			;On prend sp dans bp pour adresser la pile
-	jnc 	noerror		;La fonction appelée a renvoyer une erreur :  Flag CARRY ?
-        or      byte ptr [bp+6],1b;Si oui on le retranscrit sur le registre FLAG qui sera dépilé lors du IRET
-        ;xor   eax,eax
-        ;mov     ax,cs                   ;On récupère le segment et l'offset puis en renvoie l'adresse physique
-        ;shl     eax,4                   ;de l'erreur.
-        ;add     ax,cs:current
-        jmp     endofint                ;on termine l'int
-noerror:
-	and 	byte ptr [bp+6],0FEh;Si pas d'erreur on efface le Bit CARRY du FLAG qui sera dépilé lors du IRET
-endofint:
-	pop 	bp
-	sti				;On réactive les interruptions logiciellement
-	iret				;Puis on retourne au programme appelant.
-
-current dw 0			;Mot temporaire qui contient l'adresse de la fonction appelée
-tables dw MBinit		;Table qui contient les adresses de toutes les fonctions de VIDEO (WORD)
-         dw MBFree
-         dw MBCreate
-         dw MBresident
-         dw MBGet
-         dw MBFind
-         dw MBChown
-         dw MBAlloc
-         dw MBclean
-         dw MBfindsb
-         dw MBnonresident
-         dw MBSearchfunc
-         dw MBLoadfuncs
-         ;dw MBdefrag
-         ;dw MBcopy
-         ;dw MBchname
-         
-FirstMB dw 0
-
-;Resouds les dépendances du bloc de mémoire GS
-MBloadfuncs:
-       push    ax bx ecx dx si di ds es gs
-       push    gs
-       pop     ds
-       cmp     word ptr ds:[0],"EC"
-       ;jne     notloaded
-       jne     endofloading
-       mov     si,ds:[exe.import]
-loadfuncs:
-       cmp     word ptr [si],0
-       je      endofloading
-       call    MBSearchfunc
-       jnc     toendoftext
-       mov     bx,si
-findend2:
-        inc     bx
-        cmp     byte ptr [bx], ':'
-        jne     findend2
-        mov     byte ptr [bx],0
-        mov     ah,17
-        int     48h
-        jc      notloaded
-        mov     byte ptr [bx],':'
-        call    MBSearchfunc
-        jc      notloaded
-toendoftext:
-        mov     al,[si]
-        cmp     al,0
-        je      oktonext2
-        inc     si
-        jmp     toendoftext
-oktonext2:
-        inc     si
-        mov     [si],dx
-        mov     [si+2],gs
-        add     si,4
-        jmp     loadfuncs
-endofloading:
-          clc
-          pop gs es ds di si dx ecx bx ax
-          ret
-notloaded:
-          stc
-          pop gs es ds di si dx ecx bx ax
-          ret
-
-
-;Recherche une fonction pointé par DS:SI en mémoire et renvoie son adresse en GS:DX
-MBSearchfunc:
-        push    bx si di
-        mov     bx,si
-findend:
-        inc     bx
-        cmp     byte ptr [bx], ':'
-        jne     findend
-        mov     byte ptr [bx],0
-        call    MBfind
-        mov     byte ptr [bx],':'
-        jc      notfoundattallthesb
-        cmp     word ptr gs:[exe.checks],"EC"
-        jne     notfoundattallthesb
-        mov     di,gs:[exe.export]
-        inc     bx
-        inc     bx
-functions:
-        cmp     word ptr gs:[di],0
-        je      notfoundattallthesb
-        mov     si,bx
-cmpnamesfunc:
-        mov     al,gs:[di]
-        cmp     al,ds:[si]
-        jne     notfoundthesb
-        cmp     al,0
-        je      seemsok
-        inc     si
-        inc     di
-        jmp     cmpnamesfunc
-notfoundthesb:
-        mov     al,gs:[di]
-        cmp     al,0
-        je      oktonext
-        inc     di
-        jmp     notfoundthesb
-oktonext:
-        inc     di
-        inc     di
-        inc     di
-        jmp     functions
-seemsok:
-        mov     dx,gs:[di+1]
-        clc
-        pop     di si bx
+;Affiche le nombre hexa dans %0[dword]
+PROC biosprinth FAR
+        ARG     @num:dword
+        USES    ax,bx,cx,edx,si,di
+        mov     edx,[@num]
+        mov 	ah,09h
+        mov     di,8
+@@hexaize:
+        rol     edx,4
+        mov     si,dx
+	and	si,1111b
+	mov	al,[cs:si+offset @@tab]
+	mov     cx,1
+        cmp     al,32
+        jb      @@control
+        mov     bx,7
+        mov     ah,09h
+        int     10h
+@@control:
+        mov     ah,0Eh
+        int     10h
+        dec     di
+        jnz     @@hexaize
         ret
-notfoundattallthesb:
-        stc
-        pop     di si bx
+@@tab db '0123456789ABCDEF'
+endp biosprinth
+
+;Affiche le texte ASCIIZ pointé par %0
+PROC biosprint FAR
+        ARG    @pointer:word
+        USES   ax,bx,cx,si
+        mov    si,[@pointer]
+        mov    cx,1
+        mov    bx,7
+@@again:
+        lodsb
+        or     al,al
+        jz     @@fin
+        cmp    al,32
+        jb     @@control
+        mov    ah,09h
+        int    10h
+@@control:
+        mov    ah,0Eh
+        int    10h
+        jmp    @@again
+@@fin:
         ret
+endp biosprint
+
+;PROC flatmode FAR
+;        USES    eax,bx,edx
+;        ; first, calculate the linear address of GDT
+;        xor     edx,edx
+;        xor     eax,eax
+;        mov     dx,cs
+;        shl     edx,4
+;        add     [dword ptr cs:offset @@gdt+2],edx   ; store as GDT linear base addr
+;        ; now load the GDT into the GDTR
+;        lgdt    [fword ptr cs:offset @@gdt]   ; load GDT base (286-style 24-bit load)
+;        mov     bx,1 * size descriptor ; point to first descriptor
+;        mov     eax,cr0         ; prepare to enter protected mode
+;        or      al,1            ; flip the PE bit
+;        cli                     ; turn off interrupts
+;        mov     cr0,eax         ; we're now in protected mode
+;        mov     fs,bx           ; load the FS segment register
+;        and     al,0FEh         ; clear the PE bit again
+;        mov     cr0,eax         ; back to real mode
+;        sti                     ; resume handling interrupts
+;        ret                     ;
+        
+;@@gdt descriptor <@@gdtend - @@gdt - 1, @@gdt, 0, 0, 0, 0>  ; the GDT itself
+;      descriptor <0ffffh, 0, 0, 091h, 0cfh, 0>          ; 4G data segment
+;@@gdtend:
+;endp flatmode
+
+;Attend l'appuie sur une touche
+PROC bioswaitkey FAR
+        xor    ax,ax
+        int    16h
+        ret
+endp bioswaitkey
+
+firstmb dw 0
 
 
-;Mise a nivo de la mémoire (jonction de blocs libre)
-MBclean:
-        push    ax bx dx es gs
-        mov	bx,cs:firstmb
-	dec	bx
-	dec	bx
-	xor     ax,ax
-	xor     dx,dx
-searchfree3:
-	mov     gs,bx
-	cmp	gs:[MB.Check],'NH'
-	jne	erroronsearch
-        inc     bx
-        inc     bx
-	add	bx,gs:[MB.Sizes]
-	cmp     word ptr gs:[MB.Sizes],0
-	je      erroronsearch
-	cmp	gs:[MB.Reference],Free
-	jne     notfreeatall
-	cmp     ax,0
-	je      notmeetafree
-	add     dx,gs:[MB.Sizes]
-	mov     word ptr gs:[MB.Check],0
-	mov	dword ptr gs:[MB.Names],0	
-	mov	dword ptr gs:[MB.Names+4],0
-	inc     dx
-	inc     dx
-	jmp     nottrigered
-notmeetafree:	
-        xor     dx,dx
-	mov     ax,gs	
-	jmp     nottrigered
-notfreeatall:
-        cmp     ax,0
-        je      nottrigered
+;Charge les sections du block %0
+PROC mbloadsection FAR
+        ARG     @blocks:word
+       	USES    ax,bx,cx,si,di,ds,es
+       	LOCAL   @@toresov:word:60
+       	mov     ax,[@blocks]
+       	inc     ax
+       	inc     ax
+       	mov     es,ax
+       	mov     ds,ax
+        cmp     [word ptr 0],"EC"
+        jne     @@notace
+        lea     si,[@@toresov]
+        mov     [word ptr ss:si],0FFFFh
+        mov     bx,[ds:exe.sections]
+@@loading:
+        cmp     [dword ptr bx],0
+        je      @@finishloading
+        mov     ax,bx
+        add     ax,4
+        call    mbcreate,ax,[word ptr bx+2]
+        jc      @@error
+        inc     si
+        inc     si
+        mov     [ss:si],ax
+        push    si
+        mov     si,[bx]
+        xor     di,di
         mov     es,ax
-        add     es:[MB.Sizes],dx
-        xor     ax,ax
-nottrigered:
-	cmp	gs:[MB.IsNotLast],true
-	je	searchfree3
-	cmp     ax,0
-	je      reallyfinish
-	mov     es,ax
-        add     es:[MB.Sizes],dx
-        mov     es:[MB.IsNotLast],False
-reallyfinish:
-	clc
-	pop     gs es dx bx ax
-	ret
-erroronsearch:
-        stc
-        pop     gs es dx bx ax
+        mov     cx,[bx+2]
+        cld
+        rep     movsb
+        pop     si
+        add     bx,4
+@@gonext:
+        inc     bx
+        cmp     [byte ptr bx],0
+        jne     @@gonext
+        inc     bx
+        jmp     @@loading
+@@finishloading:
+pushad
+xor eax,eax
+mov ax,[word ptr ss:si]
+call biosprinth,eax
+popad
+        cmp     [word ptr ss:si],0FFFFh
+        je      @@finishdepands
+        call    mbloadfuncs,[word ptr ss:si]
+        jc      @@depandserror
+        dec     si
+        dec     si
+        jmp     @@finishloading
+@@finishdepands:
         ret
-
+@@notace:
+        stc
+        ret
+@@error:
+        stc
+        ret
+@@depandserror:
+        stc
+        ret
+endp mbloadsection
+        
 
 ;Initialise les blocs de mémoire en prenant memorystart pour segment de base
-MBinit:
-	push	ax cx es
-	cmp     cs:FirstMB,0
-	jne     notforfree
-	mov	ax,memorystart
-	mov	cs:Firstmb,ax       	
-        mov	cx,0A000h
-	sub	cx,ax
-	dec	ax
-	dec	ax
-	mov	es,ax
-	cmp     es:[MB.Check],'NH'
-	je      notforfree
-	mov     es:[MB.Reference],Free
-	mov     es:[MB.Sizes],cx
-	mov     es:[MB.Check],'NH'
-	mov	dword ptr es:[MB.Names],'eerF'	
-	mov	dword ptr es:[MB.Names+4],0
-	mov	es:[MB.IsNotLast],False
-	clc
-	pop	es cx ax
-	ret
-notforfree:
-	stc
-	pop	es cx ax
-	ret
-
-;Libère le bloc de mémoire GS
-MBFree:
-	push	ax bx es
-	mov	bx,gs
-	mov     ax,bx
-	dec     bx
-	dec     bx
-	mov	es,bx
-	cmp	es:[MB.Reference],Free
-	je	wasfree
-	cmp	es:[MB.IsResident],true
-	je	wasfree
-	mov	es:[MB.IsResident],false
-	mov	es:[MB.Reference],Free
-	mov	dword ptr es:[MB.Names],'eerF'
-	mov	dword ptr es:[MB.Names+4],0
-        mov	bx,cs:firstmb
-	dec	bx
-	dec	bx
-searchtofree:
-	mov     gs,bx
-	cmp	gs:[MB.Check],'NH'
-	jne	wasfree
-        inc     bx
-        inc     bx
-	add	bx,gs:[MB.Sizes]
-	cmp     word ptr gs:[MB.Sizes],0
-	je      wasfree
-	cmp     ax,gs:[MB.Reference]
-	jne     nottofree
-	mov	gs:[MB.IsResident],false
-	mov	gs:[MB.Reference],Free
-	mov	dword ptr gs:[MB.Names],'eerF'
-	mov	dword ptr gs:[MB.Names+4],0
-nottofree:
-        cmp	gs:[MB.IsNotLast],true
-	je	searchtofree
-        call    MBclean	
-	pop	es bx ax
-	ret
-wasfree:
-	stc
-	pop	es bx ax
-	ret
-	
-;Change le proprietaire de GS a dx
-MBChown:
-	push	bx es
-	mov	bx,gs
-	dec     bx
-	dec     bx
-	mov	es,bx
-	cmp	es:[MB.Reference],Free
-	je	wasfree2
-	mov	es:[MB.Reference],dx
-	pop	es bx
-	ret
-wasfree2:
-	stc
-	pop	es bx
-	ret
-	
-;Alloue un bloc de CX caractere pour le process visé -> GS
-MBAlloc:
-        push    dx si bp ds
-        mov     bp,sp
-        mov     dx,ss:[bp+12]	
+PROC mbinit FAR
+	USES    ax,cx,si,di,ds,es	
+	cmp     [cs:firstmb],0
+	jne     @@alreadyok
 	push    cs
 	pop     ds
-	mov     si,offset data
-	call    MBCreate
-	call    MBChown
-	pop     ds bp si dx
+	mov     [cs:firstmb],memorystart
+        mov     ax,memorystart-2
+        mov     es,ax
+        mov     si,offset afree
+        xor     di,di
+        mov     cx,size mb
+        rep     movsb
+	clc
 	ret
-	
-data db '/Data',0
+@@alreadyok:
+	stc
+	ret
+endp mbinit
 
-;Renvoie en GS le MB n° cx  carry quand terminé
-MBGet:
-        push    bx dx
-        mov	bx,cs:firstmb
-	dec	bx
-	dec	bx
-	xor     dx,dx
-searchfree2:
-	mov     gs,bx
-	cmp	gs:[MB.Check],'NH'
-	jne	itsend
-        inc     bx
-        inc     bx
-	add	bx,gs:[MB.Sizes]
-	cmp     word ptr gs:[MB.Sizes],0
-	je      itsend
-	cmp     dx,cx
-	je      foundmcb
-	ja      itsend
-        inc     dx
-	cmp	gs:[MB.IsNotLast],true
-	je	searchfree2
-itsend:
-	stc
-	pop	dx bx
-	ret
-foundmcb:
-	clc
-	pop	dx bx
-	ret		
-	
-;Renvoie en GS le MCB qui correspond a ds:si
-MBFind:
-        push    ax bx si di
-        mov	bx,cs:firstmb
-	dec	bx
-	dec	bx
-	mov     di,MB.Names
-search:
-	mov     gs,bx
-	cmp	gs:[MB.Check],'NH'
-	jne	itsend2
-        inc     bx
-        inc     bx
-	add	bx,gs:[MB.Sizes]
-	cmp     word ptr gs:[MB.Sizes],0
-	je      itsend2
-	push    si di
-cmpnames:
-        mov     al,gs:[di]
-        cmp     al,ds:[si]
-        jne     ok
-        cmp     al,0
-        je      ok
-        inc     si
-        inc     di
-        jmp     cmpnames
-ok:
-        pop     di si
-	je      foundmcb2
-	cmp	gs:[MB.IsNotLast],true
-	je	search
-itsend2:
-	stc
-	pop	di si bx ax
-	ret
-foundmcb2:
-        mov     bx,gs
-        inc     bx
-        inc     bx
-        mov     gs,bx
-	clc
-	pop	di si bx ax
-	ret
-		
-;Renvoie en GS le sous mcb qui correspond a ds:si et qui appartien a dx
-MBFindsb:
-        push    ax bx si di
-        mov	bx,cs:firstmb
-	dec	bx
-	dec	bx
-	mov     di,MB.Names
-search2:
-	mov     gs,bx
-	cmp	gs:[MB.Check],'NH'
-	jne	itsend3
-        inc     bx
-        inc     bx
-	add	bx,gs:[MB.Sizes]
-	cmp     word ptr gs:[MB.Sizes],0
-	je      itsend3
-	push    si di
-cmpnames2:
-        mov     al,gs:[di]
-        cmp     al,ds:[si]
-        jne     ok2
-        cmp     al,0
-        je      ok2
-        inc     si
-        inc     di
-        jmp     cmpnames2
-ok2:
-        pop     di si
-	jne     notfoundmcb2
-	cmp     gs:[MB.Reference],dx
-	je      foundmcb3
-notfoundmcb2:
-	cmp	gs:[MB.IsNotLast],true
-	je	search2
-itsend3:
-	stc
-	pop	di si bx ax
-	ret
-foundmcb3:
-        mov     bx,gs
-        inc     bx
-        inc     bx
-        mov     gs,bx
-	clc
-	pop	di si bx ax
-	ret
-	
-;Creér un bloc de nom ds:si de taille cx (octets) -> n°segment dans GS
-MBCreate:
-        push    bp
-        mov     bp,sp
-        mov     gs,ss:[bp+6]
-	push	ax bx cx dx si di es	
+afree mb <"HN",0,0,0,0A000h-memorystart,"Libre">
+         db 0
+
+;Creér un bloc de nom %0 de taille %1 (octets) -> n°segment dans AX
+PROC mbcreate FAR
+        ARG     @blocks:word,@size:word
+        USES	bx,cx,dx,si,di,ds,es
+        push    gs
+        mov     gs,[ss:bp+4]
+        mov     cx,[@size]	
 	shr	cx,4
 	inc	cx
-	mov	bx,cs:firstmb
+	mov	bx,[cs:firstmb]
 	dec	bx
 	dec	bx
-	mov     dl,1
-searchfree:
-	cmp	dl,False
-	je	wasntgood
-	mov   es,bx
-	cmp	es:[MB.Check],'NH'
-	jne	wasntgood
-	cmp	es:[MB.IsNotLast],True
+	mov     dl,true
+@@searchfree:
+	cmp	dl,false
+	je	@@notenougtmem
+	mov     es,bx
+	cmp	[word ptr es:mb.check],"NH"
+	jne	@@memoryerror
+	cmp	[es:mb.isnotlast],true
 	sete  dl
-	cmp	es:[MB.Reference],Free
-	jne	notsogood
-	mov	ax,es:[MB.Sizes]
+	cmp	[es:mb.reference],free
+	jne	@@notsogood
+	mov	ax,[es:mb.sizes]
 	cmp	cx,ax
-	ja	notsogood
-        mov   word ptr es:[MB.Check],'NH'
-	mov	es:[MB.IsNotLast],True
-	mov	es:[MB.Reference],gs
-	mov	es:[MB.IsResident],False
-	mov     di,MB.Names
-	push	ax cx
-	mov 	cx,32
-loops:
-	mov	dh,[si]
-	inc 	si
-	dec	cx
-	jz	endofloops
-	cmp	dh,0
-	je 	endofloops
-	mov	es:[di],dh
-	inc	di
-	jmp	loops
-endofloops:
-	inc	cx
-	mov	al,0
-	rep	stosb
-	pop	cx ax
+	ja	@@notsogood
+        ;mov     [word ptr es:mb.check],"NH"
+	mov	[es:mb.isnotlast],true
+	mov	[es:mb.reference],gs
+	mov	[es:mb.isresident],false
+	lea     di,[es:mb.names]
+	push    cx
+	mov 	cx,24/4
+	push    cs
+	pop     ds
+	mov     si,[@blocks]
+        cld
+	rep     movsd
+	pop     cx
 	inc     bx
 	inc     bx	
         sub	ax,cx
 	cmp     ax,0
-	je      nofree
+	je      @@nofree
 	dec	ax
 	dec	ax
-	mov	es:[MB.Sizes],cx
+	mov	[es:mb.sizes],cx
 	add	cx,bx
-	mov	es,cx	
-	mov	es:[MB.IsNotLast],dl
-	mov	es:[MB.IsResident],False
-	mov	es:[MB.Reference],Free
-	mov	es:[MB.Sizes],ax
-	mov	dword ptr es:[MB.Names],'eerF'
-	mov	dword ptr es:[MB.Names+4],0
-	mov	es:[MB.Check],'NH'
-nofree:
-	mov	gs,bx
+	mov	es,cx
+        mov     si,offset afree
+        xor     di,di
+        mov     cx,size mb
+        cld
+        rep     movsb	
+	mov	[es:mb.isnotlast],dl
+	mov	[es:mb.sizes],ax
+@@nofree:
+	mov	ax,bx
 	clc
-	pop	es di si dx cx bx ax
-	pop     bp
+	pop     gs
 	ret
-wasntgood:
+@@notsogood:
+        inc     bx
+        inc     bx
+	add	bx,[es:mb.sizes]
+	jmp	@@searchfree
+@@memoryerror:
 	stc
-	pop	es di si dx cx bx ax
-        pop     bp
+	pop     gs
 	ret
-notsogood:
-        inc     bx
-        inc     bx
-	add	bx,es:[MB.Sizes]
-	jmp	searchfree
+@@notenougtmem:
+        pop     gs
+        stc
+        ret
+endp mbcreate
 
-;Rend le segment GS résident
-MBresident:
-	push	bx es
-	mov	bx,gs
+;Libère le bloc de mémoire %0 et ses sous blocs
+PROC mbfree FAR
+        ARG     @blocks:word
+	USES	ax,bx,cx,si,di,ds,es
+	mov	bx,[@blocks]
+	mov     ax,bx
+	dec     bx
+	dec     bx
+	mov	es,bx
+	cmp	[word ptr es:mb.check],"NH"
+	jne	@@memoryerror
+	cmp	[es:mb.reference],free
+	je	@@wasfree
+	cmp	[es:mb.isresident],true
+	je	@@wasresident
+	mov	[es:mb.reference],free
+	push    cs
+	pop     ds
+	mov     si,offset @@isfree
+	lea     di,[es:mb.names]
+        mov     cx,6
+        cld
+        rep     movsb
+        mov	bx,[cs:firstmb]
+	dec	bx
+	dec	bx
+@@searchtofree:
+	mov     es,bx
+	cmp	[word ptr es:mb.check],"NH"
+	jne	@@memoryerror
+        inc     bx
+        inc     bx
+	add	bx,[es:mb.sizes]
+	cmp     [es:mb.sizes],0
+	je      @@nottofree
+	cmp     ax,[es:mb.reference]
+	jne     @@nottofree
+	mov	[es:mb.isresident],false
+	mov	[es:mb.reference],free
+        mov     cx,6
+        cld
+        rep     movsb
+@@nottofree:
+        cmp	[es:mb.isnotlast],true
+	je	@@searchtofree
+        call    mbclean	
+	ret
+@@memoryerror:
+	stc
+	ret
+@@wasfree:
+	stc
+	ret
+@@wasresident:
+	stc
+	ret
+        	
+@@isfree db "libre",0
+endp mbfree
+
+;Mise a nivo de la mémoire (jonction de blocs libre)
+PROC mbclean FAR
+        USES    ax,bx,dx,es,gs
+        mov	bx,[cs:firstmb]
+	dec	bx
+	dec	bx
+	xor     ax,ax
+	xor     dx,dx
+@@searchfree:
+	mov     gs,bx
+	cmp	[word ptr gs:mb.check],"NH"
+	jne	@@memoryerror
+        inc     bx
+        inc     bx
+	add	bx,[gs:mb.sizes]
+	cmp     [word ptr gs:mb.sizes],0
+	je      @@notenougtmem
+	cmp	[gs:mb.reference],free
+	jne     @@notfree
+	cmp     ax,0
+	je      @@notmeetfree
+	add     dx,[gs:mb.sizes]
+	mov     [word ptr gs:mb.check],0
+	mov	[dword ptr gs:mb.names],0	
+	inc     dx
+	inc     dx
+	jmp     @@nottrigered
+@@notmeetfree:	
+        xor     dx,dx
+	mov     ax,gs	
+	jmp     @@nottrigered
+@@notfree:
+        cmp     ax,0
+        je      @@nottrigered
+        mov     es,ax
+        add     [es:mb.sizes],dx
+        xor     ax,ax
+@@nottrigered:
+	cmp	[gs:mb.isnotlast],true
+	je	@@searchfree
+	cmp     ax,0
+	je      @@reallyfinish
+	mov     es,ax
+        add     [es:mb.sizes],dx
+        mov     [es:mb.isnotlast],false
+@@reallyfinish:
+	clc
+	ret
+@@notenougtmem:
+        stc
+        ret
+@@memoryerror:
+	stc
+	ret
+endp mbclean
+
+;Rend le segment %0 résident
+PROC mbresident FAR
+        ARG     @blocks:word
+	USES	bx,es
+	mov	bx,[@blocks]
 	dec	bx
 	dec     bx
 	mov	es,bx
-	mov	es:[MB.IsResident],True
-	pop	es bx
+	cmp	[word ptr es:mb.check],"NH"
+	jne	@@memoryerror	
+	mov	[es:mb.isresident],true
 	ret
+@@memoryerror:
+        stc
+        ret
+endp mbresident
 	
-;Rend le segment GS résident
-MBnonresident:
-	push	bx es
-	mov	bx,gs
+;Rend le segment %0 non résident
+PROC mbnonresident FAR
+        ARG     @blocks:word
+	USES	bx,es
+	mov	bx,[@blocks]
 	dec	bx
 	dec     bx
 	mov	es,bx
-	mov	es:[MB.IsResident],False
-	pop	es bx
+	cmp	[word ptr es:mb.check],"NH"
+	jne	@@memoryerror	
+	mov	[es:mb.isresident],false
 	ret
+@@memoryerror:
+        stc
+        ret
+endp mbnonresident
+
+
+;Change le proprietaire de %0 a %1
+PROC mbchown FAR
+        ARG     @blocks:word,@owner:word
+	USES	bx,dx,es
+	mov	bx,[@blocks]
+	dec     bx
+	dec     bx
+	mov	es,bx
+	cmp	[word ptr es:mb.check],"NH"
+	jne	@@memoryerror
+	cmp	[es:mb.reference],free
+	je	@@wasfree
+	mov     dx,[@owner]
+	mov	[es:mb.reference],dx
+	ret
+@@memoryerror:
+	stc
+	ret
+@@wasfree:
+	stc
+	ret
+endp mbchown
 	
-end start
+;Alloue un bloc /data de CX caractere pour le process appelant -> ax
+PROC mballoc FAR
+        ARG     @size:word
+        USES    ax,si,ds	
+	push    cs
+	pop     ds
+	call    mbcreate,offset @@data,[@size]
+	call    mbchown,ax,[word ptr ss:bp+4]
+	ret
+
+@@data db '/data',0
+endp mballoc
+
+;Renvoie en AX le MB n° %0  carry quand terminé
+PROC mbget FAR
+        ARG     @num:word
+        USES    bx,dx,es
+        mov	bx,[cs:firstmb]
+	dec	bx
+	dec	bx
+	xor     dx,dx
+@@searchfree:
+	mov     es,bx
+	cmp	[word ptr es:mb.check],"NH"
+	jne	@@memoryerror
+        inc     bx
+        inc     bx
+	add	bx,[es:mb.sizes]
+	cmp     [es:mb.sizes],0
+	je      @@memoryerror
+	cmp     dx,[@num]
+	je      @@foundmcb
+	ja      @@notfound
+        inc     dx
+	cmp	[es:mb.isnotlast],true
+	je	@@searchfree
+@@memoryerror:
+	stc
+	ret
+@@foundmcb:
+        mov     ax,es
+        inc     ax
+        inc     ax
+	clc
+	ret
+@@notfound:
+ 	stc
+	ret
+endp mbget 		
+	
+;Renvoie en AX le MCB qui correspond a ds:%0
+PROC mbfind FAR
+        ARG     @blocks:word
+        USES    bx,si,di,es
+        mov	bx,[cs:firstmb]
+	dec	bx
+	dec	bx
+	mov     si,[@blocks]
+	lea     di,[es:mb.names]
+@@search:
+	mov     es,bx
+	cmp	[word ptr es:mb.check],"NH"
+	jne	@@memoryerror
+        inc     bx
+        inc     bx
+	add	bx,[es:mb.sizes]
+	cmp     [es:mb.sizes],0
+	je      @@memoryerror
+	push    si di
+@@cmpnames:
+        mov     al,[es:di]
+        cmp     al,[ds:si]
+        jne     @@ok
+        cmp     al,0
+        je      @@ok
+        inc     si
+        inc     di
+        jmp     @@cmpnames
+@@ok:
+        pop     di si
+	je      @@foundmcb
+	cmp	[es:mb.isnotlast],true
+	je	@@search
+@@notfound:
+	stc
+	ret
+@@memoryerror:
+        stc
+        ret
+@@foundmcb:
+        mov     ax,es
+        inc     ax
+        inc     ax
+	clc
+	ret
+endp mbfind
+
+		
+;Renvoie en AX le sous mcb qui correspond a %0 et qui appartien a %1
+PROC mbfindsb FAR
+        ARG     @blocks:word,@owner:word
+        USES    bx,dx,si,di,es
+        mov	bx,[cs:firstmb]
+	dec	bx
+	dec	bx
+	mov     si,[@blocks]
+	lea     di,[es:mb.names]
+	mov     dx,[@owner]
+@@search:
+	mov     es,bx
+	cmp	[word ptr es:mb.check],"NH"
+	jne	@@memoryerror
+        inc     bx
+        inc     bx
+	add	bx,[es:mb.sizes]
+	cmp     [es:mb.sizes],0
+	je      @@memoryerror
+	push    si di
+@@cmpnames:
+        mov     al,[es:di]
+        cmp     al,[ds:si]
+        jne     @@ok
+        cmp     al,0
+        je      @@ok
+        inc     si
+        inc     di
+        jmp     @@cmpnames
+@@ok:
+        pop     di si
+	jne     @@notfoundmcb
+	cmp     [es:mb.reference],dx
+	je      @@foundmcb
+@@notfoundmcb:
+	cmp	[es:mb.isnotlast],true
+	je	@@search
+@@notfound:
+	stc
+	ret
+@@foundmcb:
+        mov     ax,es
+        inc     ax
+        inc     ax
+	clc
+	ret
+@@memoryerror:
+        stc
+        ret
+endp mbfindsb
+
+;Resouds les dépendances du bloc de mémoire %0
+PROC mbloadfuncs FAR
+        ARG     @blocks:word
+        USES    ax,bx,cx,dx,si,ds
+        mov     ds,[@blocks]
+        cmp     [word ptr 0],"EC"
+        jne     @@notace
+        mov     si,[ds:exe.imports]
+        cmp     si,0
+        je      @@endofloading
+@@loadfuncs:
+        cmp     [word ptr si],0
+        je      @@endofloading
+        call    mbsearchfunc,si
+        jnc     @@toendoftext
+        mov     bx,si
+@@findend:
+        inc     bx
+        cmp     [byte ptr bx], ':'
+        jne     @@findend
+        mov     [byte ptr bx],0
+;call projectfile,bx
+        jc      @@erroronload
+        mov     [byte ptr bx],':'
+        call    mbsearchfunc,si
+        jc      @@libnotexist
+@@toendoftext:
+        mov     cl,[si]
+        cmp     cl,0
+        je      @@oktonext
+        inc     si
+        jmp     @@toendoftext
+@@oktonext:
+        inc     si
+        mov     [si],ax
+        mov     [si+2],dx
+        add     si,4
+        jmp     @@loadfuncs
+@@endofloading:
+        clc
+        ret
+@@notace:
+        stc
+        ret
+@@libnotexist:
+        stc
+        ret
+@@erroronload:
+        stc
+        ret
+endp mbloadfuncs
+
+
+;Recherche une fonction pointé par DS:SI en mémoire et renvoie son adresse en DX:AX
+PROC mbsearchfunc FAR
+        ARG     @func:word
+        USES    bx,si,di,es
+        mov     bx,[@func]
+        push    bx
+@@findend:
+        inc     bx
+        cmp     [byte ptr bx], ':'
+        jne     @@findend
+        mov     [byte ptr bx],0
+        call    mbfind
+        mov     [byte ptr bx],':'
+        jc      @@notfoundattallthesb
+        mov     es,ax
+        cmp     [word ptr es:exe.checks],"EC"
+        jne     @@notfoundattallthesb
+        mov     di,[es:exe.exports]
+        inc     bx
+        inc     bx
+@@functions:
+        cmp     [word ptr es:di],0
+        je      @@notfoundattallthesb
+        mov     si,bx
+@@cmpnamesfunc:
+        mov     al,[es:di]
+        cmp     al,[ds:si]
+        jne     @@notfoundthesb
+        cmp     al,0
+        je      @@seemsok
+        inc     si
+        inc     di
+        jmp     @@cmpnamesfunc
+@@notfoundthesb:
+        mov     al,[es:di]
+        cmp     al,0
+        je      @@oktonext
+        inc     di
+        jmp     @@notfoundthesb
+@@oktonext:
+        inc     di
+        inc     di
+        inc     di
+        jmp     @@functions
+@@seemsok:
+        mov     dx,es
+        mov     ax,[es:di+1]
+        clc
+        ret
+@@notfoundattallthesb:
+        stc
+        ret
+endp mbsearchfunc

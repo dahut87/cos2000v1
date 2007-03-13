@@ -1,73 +1,36 @@
-lnk_boot = tlink /x
-asm= tasm /t/m5/zi
-lnk= tlink /x/t
+asm= lzasm
+lnk= elink
 
-all: boot.bin clavier.sys 8259a.sys disque.sys heure.sys horloge.sys manette.sys port.sys souris.sys systeme.sys video.sys mcb.sys
+all: systeme.sys boot.bin
 
-boot.bin: boot.asm
-	$(asm) boot
-	$(lnk_boot) boot
-	exe2boot boot.exe boot.bin
+systeme.sys: video.obj systeme.obj
+	$(lnk) systeme.obj systeme.sys
 
-clavier.sys: clavier.asm
-	$(asm) clavier
-	$(lnk) clavier
-	ren clavier.com clavier.sys
+systeme.obj: ../lib/detect.lib ../lib/video.lib video.sys 
+	$(asm) systeme.asm
 
-8259a.sys: 8259a.asm
-	$(asm) 8259a
-	$(lnk) 8259a
-	ren 8259a.com 8259a.sys
 
-disque.sys: disque.asm
-	$(asm) disque
-	$(lnk) disque
-	ren disque.com disque.sys
+video.sys: 
+	$(lnk) video.obj video.sys
 
-heure.sys: heure.asm
-	$(asm) heure
-	$(lnk) heure
-	ren heure.com heure.sys
+boot.bin: boot.obj
+	$(lnk) boot.obj boot.bin /bs
 
-horloge.sys: horloge.asm
-	$(asm) horloge
-	$(lnk) horloge
-	ren horloge.com horloge.sys
+detect.obj:
+	$(asm) detect.asm
 
-manette.sys: manette.asm
-	$(asm) manette
-	$(lnk) manette
-	ren manette.com manette.sys
+video.obj:
+	$(asm) video.asm 
 
-port.sys: port.asm
-	$(asm) port
-	$(lnk) port
-	ren port.com port.sys
-
-souris.sys: souris.asm
-	$(asm) souris
-	$(lnk) souris
-	ren souris.com souris.sys
-
-systeme.sys: systeme.asm
-	$(asm) systeme
-	$(lnk) systeme
-	ren systeme.com systeme.sys
-
-video.sys: video.asm
-	$(asm) video
-	$(lnk) video
-	ren video.com video.sys
-
-mcb.sys: mcb.asm
-	$(asm) mcb
-	$(lnk) mcb
-	ren mcb.com mcb.sys
+boot.obj:
+	$(asm) boot.asm
 
 clean:
   del *.obj
   del *.exe
+  del *.bak
+  del *.lib
   del *.com
+  del *.bin
   del *.sys
   del *.err
-  del *.bin
