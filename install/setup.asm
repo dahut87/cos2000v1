@@ -1,20 +1,21 @@
-.model tiny
-.486
-smart
-.code
+model tiny,stdcall
+p486
+locals
+jumps
+codeseg
+option procalign:byte
 
 org 0100h
 
 ent equ 32h
 
-start:
-jmp CopyCOS
+jmp copycos
 
-Message db 0Dh,0Ah,'COS 2000 V1.2Fr programme d''installation',0Dh,0AH,'Inserez une disquette formatee et appuyez sur entre...',0Dh,0AH,'Attention le contenu de celle ci peut etre altere !!!',0Dh,0AH,'$'
-Message2 db 0Dh,0AH,'Creation du secteur de demarrage...',0Dh,0Ah,'$'
-Message3 db  0Dh,0AH,'Copie des fichiers systeme...',0Dh,0Ah,'$'
-Errormsg db 0Dh,0AH,'Erreur d''installation, contactez moi a COS2000@MULTIMANIA.COM !',0Dh,0AH,'$'
-Ok db 0Dh,0AH,'COS2000 a ete correctement installe, veuillez redemarrer votre PC',0Dh,0AH,'$'
+message db 0Dh,0Ah,'COS 2000 V1.3.1BetaFr programme d''installation',0Dh,0AH,'Inserez une disquette formatee et appuyez sur entre...',0Dh,0AH,'Attention le contenu de celle ci peut etre altere !!!',0Dh,0AH,'$'
+message2 db 0Dh,0AH,'Creation du secteur de demarrage...',0Dh,0Ah,'$'
+message3 db  0Dh,0AH,'Copie des fichiers systeme...',0Dh,0Ah,'$'
+errormsg db 0Dh,0AH,'Erreur d''installation, contactez moi a COS2000@MULTIMANIA.COM !',0Dh,0AH,'$'
+ok db 0Dh,0AH,'COS2000 a ete correctement installe, veuillez redemarrer votre PC',0Dh,0AH,'$'
 files db '*.*',0
 boot db 'boot.bin',0
 dat db 'data',0
@@ -53,7 +54,7 @@ copycos:
         mov        dx,offset message3
         int        21h
 allfile:
-        mov        byte ptr [offset dta+43],'$'
+        mov        [byte ptr offset dta+43],'$'
         mov        ah,9
         mov        dx,offset dta+30
         int        21h
@@ -97,8 +98,8 @@ allfile:
         push       cs
         pop        es
         mov        di,offset dta+30-3
-        mov        word ptr [di],":a"
-        mov        byte ptr [di+2],"\"
+        mov        [word ptr di],":a"
+        mov        [byte ptr di+2],"\"
         xor        cx,cx
         mov        dx,di
         int        21h
@@ -118,7 +119,7 @@ allfile:
         jc         error
         mov        ah,4fh
         int        21h
- jnc        allfile
+        jnc        allfile
         mov        ah,09
         mov        dx,offset message2
         int        21h
@@ -146,7 +147,7 @@ allfile:
         xor        bx,bx
         int        13h
         mov        ah,09
-        mov        dx,offset Ok
+        mov        dx,offset ok
         int        21h
         xor        ax,ax
         int        16h
@@ -160,5 +161,4 @@ error:
         xor        ax,ax
         int        16h
         ret
-        
-end start
+

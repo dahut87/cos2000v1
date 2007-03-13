@@ -1,14 +1,15 @@
-.model tiny
-.486
-smart
+model tiny,stdcall
+p486
 locals
-.code
+jumps
+codeseg
+option procalign:byte
+
+include "..\include\mem.h"
+
 org 0h
 
-include ..\include\mem.h
-
-start:
-header exe <,1,0,,,,offset exports,>
+header exe <"CE",1,0,0,offset exports,offset imports,,>
 
 exports:
          db "print",0
@@ -25,20 +26,16 @@ exports:
          dw showsize
          db "showspace",0
          dw showspace
-         db "showline",0
-         dw showline
-         db "showchar",0
-         dw showchar
          db "showint",0
-         dw ShowInt
-         db "Showsigned",0
-         dw Showsigned
+         dw showint
+         db "showsigned",0
+         dw showsigned
          db "showhex",0
-         dw ShowHex
+         dw showhex
          db "showbin",0
-         dw Showbin
+         dw showbin
          db "showbcd",0
-         dw ShowBCD
+         dw showbcd
          db "showstring",0
          dw showstring
          db "showstring0",0
@@ -48,19 +45,40 @@ exports:
          db "showintl",0
          dw showintl
          dw 0
+         
+imports:
+         db "VIDEO::addline",0
+addline dd 0
+         db "VIDEO::setcolor",0
+setcolor dd 0
+         db "VIDEO::getxy",0
+getxy dd 0
+         db "VIDEO::setxy",0
+setxy dd 0
+         db "VIDEO::setvideomode",0
+setvideomode dd 0
+         db "VIDEO::setfont",0
+setfont dd 0
+         db "VIDEO::clearscreen",0
+clearscreen dd 0
+         db "VIDEO::enablescroll",0
+enablescroll dd 0
+         db "VIDEO::disablescroll",0
+disablescroll dd 0
+         db "VIDEO::showchar",0
+showchar dd 0
+         dw 0
 
 ;================PRINT==============
 ;Affiche la chaine %0 en utilisant les parametres de formatage %x....%x
 ;-> %0 %x
 ;<-
 ;===================================
-print PROC FAR
-        ARG     pointer:word=taille
-        push    bp
-        mov     bp,sp
+PROC print FAR
+        ARG     @@pointer:word
         push    ax bx cx si di
         xor     di,di
-        mov     si,[pointer]
+        mov     si,[@@pointer]
 @@strinaize0:
         mov     cl,[si]
         cmp     cl,0
@@ -70,16 +88,17 @@ print PROC FAR
         cmp     cl,'\'
         je      @@special2
 @@showit:
-        call	charout	
+        xor     ch,ch
+        call    [cs:showchar],cx,0FFFFh
         inc     si
         jmp     @@strinaize0
 @@special:
-        cmp     byte ptr [si+1],'%'
+        cmp     [byte ptr si+1],'%'
         jne     @@notshowit
         inc     si
         jmp     @@showit
 @@notshowit:
-        mov     cl,byte ptr [si+1]
+        mov     cl,[byte ptr si+1]
         cmp     cl,'c'
         je      @@showchar
         cmp     cl,'u'
@@ -114,20 +133,18 @@ print PROC FAR
         jmp     @@no0
 
 @@showchar:
-        cmp     byte ptr [si+2],'M'
+        cmp     [byte ptr si+2],'M'
         je      @@showmultchar
-        push    word ptr [offset pointer+di+2]
-        call    showchar
+        call    [cs:showchar],[word ptr @@pointer+di+2],0FFFFh
         add     si,2
         add     di,2
         jmp     @@strinaize0
 @@showmultchar:
-        mov     cx,[offset pointer+di+2+2]
+        mov     cx,[offset @@pointer+di+2+2]
         cmp     cx,0
         je      @@nextfunc
 @@showcharx:
-        push    word ptr [offset pointer+di+2]
-        call    showchar
+        call    [cs:showchar],[word ptr @@pointer+di+2],0FFFFh
         dec     cx
         jnz     @@showcharx
 @@nextfunc:
@@ -136,27 +153,20 @@ print PROC FAR
         jmp     @@strinaize0
 
 @@showint:
-        push    dword ptr [offset pointer+di+2]
-        call    showint
+        call    showint,[dword ptr @@pointer+di+2]
         add     si,2
         add     di,4
         jmp     @@strinaize0
 
 @@showfixint:
-        push    dword ptr [offset pointer+di+2]
-        add     di,4
-        push    word ptr [offset pointer+di+2]
-        add     di,2
-        call    showintl
+        call    showintl,[word ptr @@pointer+di+6],[dword ptr @@pointer+di+2]
+        add     di,6
         add     si,2
         jmp     @@strinaize0
 
 @@showintr:
-        push    dword ptr [offset pointer+di+2]
-        add     di,4
-        push    word ptr [offset pointer+di+2]
-        add     di,2
-        call    showintr
+        call    showintr,[word ptr @@pointer+di+6],[dword ptr @@pointer+di+2]
+        add     di,6
         add     si,2
         jmp     @@strinaize0
 
@@ -176,36 +186,32 @@ print PROC FAR
         jmp     @@strinaize0
 
 @@showstring:
-        cmp     byte ptr [si+2],'P'
-        je      @@showstringpointer
-        push    word ptr [offset pointer+di+2]
-        call    showstring
+        cmp     [byte ptr si+2],'P'
+        je      @@showstring@@pointer
+        call    showstring,[word ptr @@pointer+di+2]
         add     si,2
         add     di,2
         jmp     @@strinaize0
-@@showstringpointer:
+@@showstring@@pointer:
         push    ds
-        mov     ds,[offset pointer+di+2+2]
-        push    word ptr [offset pointer+di+2]
-        call    showstring
+        mov     ds,[offset @@pointer+di+2+2]
+        call    showstring,[word ptr @@pointer+di+2]
         add     si,3
         add     di,4
         pop     ds
         jmp     @@strinaize0
 
 @@showstring0:
-        cmp     byte ptr [si+2],'P'
-        je      @@showstring0pointer
-        push    word ptr [offset pointer+di+2]
-        call    showstring0
+        cmp     [byte ptr si+2],'P'
+        je      @@showstring0@@pointer
+        call    showstring0,[word ptr offset @@pointer+di+2]
         add     si,2
         add     di,2
         jmp     @@strinaize0
-@@showstring0pointer:
+@@showstring0@@pointer:
         push    ds
-        mov     ds,[offset pointer+di+2+2]
-        push    word ptr [offset pointer+di+2]
-        call    showstring0
+        mov     ds,[offset @@pointer+di+2+2]
+        call    showstring0,[word ptr offset @@pointer+di+2]
         add     si,3
         add     di,4
         pop     ds
@@ -217,49 +223,44 @@ print PROC FAR
         jmp     @@strinaize0
 
 @@showsize:
-        push    dword ptr [offset pointer+di+2]
-        call    showsize
+        call    showsize,[dword ptr offset @@pointer+di+2]
         add     si,2
         add     di,4
         jmp     @@strinaize0
 
 @@showattr:
-        push    word ptr [offset pointer+di+2]
-        call    showattr
+        call    showattr,[word ptr offset @@pointer+di+2]
         add     si,2
         add     di,2
         jmp     @@strinaize0
 
 @@showname:
-        push    word ptr [offset pointer+di+2]
-        call    showname
+        call    showname,[word ptr offset @@pointer+di+2]
         add     si,2
         add     di,2
         jmp     @@strinaize0
 
 @@showtime:
-        push    word ptr [offset pointer+di+2]
-        call    showtime
+        call    showtime,[word ptr offset @@pointer+di+2]
         add     si,2
         add     di,2
         jmp     @@strinaize0
 
 @@showdate:
-        push    word ptr [offset pointer+di+2]
-        call    showdate
+        call    showdate,[word ptr offset @@pointer+di+2]
         add     si,2
         add     di,2
         jmp     @@strinaize0
 
 @@Chosesize:
         pop     cx
-        push    dword ptr [offset pointer+di+2]
+        push    [dword ptr offset @@pointer+di+2]
         add     di,4
-        cmp     byte ptr [si+2],'B'
+        cmp     [byte ptr si+2],'B'
         je      @@byte
-        cmp     byte ptr [si+2],'W'
+        cmp     [byte ptr si+2],'W'
         je      @@word
-        cmp     byte ptr [si+2],'D'
+        cmp     [byte ptr si+2],'D'
         je      @@dword
         dec     si
 
@@ -282,12 +283,12 @@ print PROC FAR
         retn
 
 @@special2:
-        cmp     byte ptr [si+1],'\'
+        cmp     [byte ptr si+1],'\'
         jne     @@notshowit2
         inc     si
         jmp     @@showit
 @@notshowit2:
-        mov     cl,byte ptr [si+1]
+        mov     cl,[byte ptr si+1]
         cmp     cl,'l'
         je      @@showline
         cmp     cl,'g'
@@ -314,29 +315,29 @@ print PROC FAR
         jmp     @@no0
 
 @@color:
-        mov     cl,[si+2]
-        sub     cl,'0'
-        shl     cl,4
-        add     cl,[si+3]
-        sub     cl,'0'
-        mov     ah,21
-        int     47h
+        mov     al,[si+2]
+        sub     al,'0'
+        shl     al,4
+        add     al,[si+3]
+        sub     al,'0'
+        xor     ah,ah
+        call    [cs:setcolor],ax
         add     si,4
         jmp     @@strinaize0
 
 @@gotox:
-        mov     ah,24
-        int     47h
-        mov     ah,[si+2]
-        sub     ah,'0'
-        mov     bh,ah
-        shl     bh,3
-        add     bh,ah
-        add     bh,ah
-        add     bh,[si+3]
+        mov     bh,[si+2]
         sub     bh,'0'
-        mov     ah,25
-        int     47h
+        mov     bl,bh
+        shl     bl,3
+        add     bl,bh
+        add     bl,bh
+        add     bl,[si+3]
+        sub     bl,'0'
+        xor     bh,bh
+        call    [cs:getxy]
+        xor     ah,ah
+        call    [cs:setxy],bx,ax
         add     si,4
         jmp     @@strinaize0
 
@@ -349,34 +350,32 @@ print PROC FAR
         add     al,ah
         add     al,[si+3]
         sub     al,'0'
-        mov     ah,0
-        int     47h
+        xor     ah,ah
+        call    [cs:setvideomode]
         add     si,4
         jmp     @@strinaize0
 
 @@setfont:
         mov     ah,[si+2]
         sub     ah,'0'
-        mov     cl,ah
-        shl     cl,3
-        add     cl,ah
-        add     cl,ah
-        add     cl,[si+3]
-        sub     cl,'0'
-        mov     ah,3
-        int     47h
+        mov     al,ah
+        shl     al,3
+        add     al,ah
+        add     al,ah
+        add     al,[si+3]
+        sub     al,'0'
+        xor     ah,ah
+        call    [cs:setfont],ax
         add     si,4
         jmp     @@strinaize0
 
 @@showline:
-        mov     ah,6
-        int     47h
+        call    [cs:addline]
         add     si,2
         jmp     @@strinaize0
 
 @@clearscreen:
-        mov     ah,2
-        int     47h
+        call    [cs:clearscreen]
         add     si,2
         jmp     @@strinaize0
 
@@ -393,35 +392,36 @@ print PROC FAR
         jmp     @@strinaize0
 
 @@enablescroll:
-        mov     ah,42
-        int     47h
+        call    [cs:enablescroll]
         add     si,2
         jmp     @@strinaize0
 
 @@disablescroll:
-        mov     ah,43
-        int     47h
+        call    [cs:disablescroll]
         add     si,2
         jmp     @@strinaize0
 
 @@goto:
         mov     ah,[si+2]
         sub     ah,'0'
-        mov     bh,ah
-        shl     bh,3
-        add     bh,ah
-        add     bh,ah
-        add     bh,[si+3]
-        sub     bh,'0'
+        mov     al,ah
+        shl     al,3
+        add     al,ah
+        add     al,ah
+        add     al,[si+3]
+        sub     al,'0'
+        xor     ah,ah
           ;
-        mov     ah,[si+5]
-        sub     ah,'0'
-        mov     bl,ah
+        mov     bh,[si+5]
+        sub     bh,'0'
+        mov     bl,bh
         shl     bl,3
-        add     bl,ah
-        add     bl,ah
+        add     bl,bh
+        add     bl,bh
         add     bl,[si+6]
         sub     bl,'0'
+        xor     bh,bh
+        call    [cs:setxy],ax,bx
         mov     ah,25
         int     47h
         add     si,7
@@ -429,312 +429,215 @@ print PROC FAR
 
 @@no0:
         add     di,bp
-        add     di,2
-        mov     ax,ss:[bp]   ;BP
-        mov     bx,ss:[bp+2] ;IP
-        mov     cx,ss:[bp+4] ;CS
-        mov     ss:[di],ax
-        mov     ss:[di+2],bx
-        mov     ss:[di+4],cx
+        mov     ax,[ss:bp]   ;BP
+        mov     bx,[ss:bp+2] ;IP
+        mov     cx,[ss:bp+4] ;CS
+        mov     [ss:di],ax
+        mov     [ss:di+2],bx
+        mov     [ss:di+4],cx
         mov     bp,di
         pop     di si cx bx ax
         mov     sp,bp
-        pop     bp
-        retf
+        ret
 
-print ENDP
-;================TESTS==============
-;met dans DX le contenu de %0
-;-> %0
-;<-
-;===================================
-tests PROC FAR
-        ARG     date:word=taille
-        push    bp
-       	mov     bp,sp
-	push	ax cx edx
-        mov     dx,[date]
-	pop	edx cx ax
-	pop     bp
-	retf    taille
-tests ENDP
+ENDP print
+
 
 ;================SHOWDATE==============
 ;Affiche la date contenu en %0
 ;-> %0
 ;<-
 ;======================================
-ShowDate PROC FAR
-        ARG     date:word=taille
-        push    bp
-       	mov     bp,sp
-	push	edx
+PROC showdate FAR
+        ARG     @dates:word
+	USES	edx
 	xor	edx,edx
-	mov	dx,[date]
+	mov	dx,[@dates]
 	and	dx,11111b
-	push    edx
-	push    2
-	call	showintl
-	push    '/'
-	call	showchar
-	mov	dx,[date]
+	call	showintl,2,edx	
+	call	[cs:showchar],'/',0FFFFh
+	mov	dx,[@dates]
 	shr	dx,5
 	and	dx,111b
-	push    edx
-	push    2
-	call	showintl
-	push	'/'
-	call	showchar
-	mov	dx,[date]
+	call	showintl,2,edx	
+	call	[cs:showchar],'/',0FFFFh
+	mov	dx,[@dates]
 	shr	dx,8
 	and	dx,11111111b
 	add	dx,1956
-	push    edx
-	push    4
-	call	showintl
-	pop	edx
-	pop     bp
-	retf    taille
-ShowDate ENDP
+	call	showintl,2,edx	
+	ret
+ENDP showdate
 
 ;================SHOWTIME==============
 ;Affiche l'heure contenu en %0
 ;-> %0
 ;<-
 ;======================================
-ShowTime PROC FAR
-        ARG     time:word=taille
-        push    bp
-       	mov     bp,sp
-	push 	edx
+PROC showtime FAR
+        ARG     @times:word
+	USES 	edx
 	xor 	edx,edx
-	mov	dx,[time]
+	mov	dx,[@times]
 	shr	dx,11
 	and	dx,11111b
-	push    edx
-	push    2
-	call	showintl
-	push    ':'
-	call	showchar
-	mov	dx,[time]
+	call	showintl,2,edx
+	call	[cs:showchar],':',0FFFFh
+	mov	dx,[@times]
 	shr	dx,5
 	and	dx,111111b
-	push    edx
-	push    2
-	call	showintl
-	push    ':'
-	call	showchar
-	mov	dx,[time]
+	call	showintl,2,edx
+	call	[cs:showchar],':',0FFFFh
+	mov	dx,[@times]
 	and	dx,11111b
 	shl	dx,1
-	push    edx
-	push    2
-	call	showintl
-	pop	edx
-	pop     bp
-	retf    taille
-ShowTime ENDP
+	call	showintl,2,edx
+	ret
+ENDP showtime
 	
 ;================SHOWNAME==============
 ;Affiche le nom pointé par ds:%0
 ;-> ds:%0
 ;<-
 ;======================================
-ShowName PROC FAR
-        ARG     thename:word=taille
-        push    bp
-       	mov     bp,sp
-	push	cx si
-	mov     si,[thename]
+PROC showname FAR
+        ARG     @thename:word
+	USES	cx,si
+	mov     si,[@thename]
 	xor	cx,cx
 @@showthename:
-	push    word ptr ds:[si]
-	call	showchar
+	call	[cs:showchar],[word ptr ds:si],0FFFFh
 	inc	si
 	inc	cx
 	cmp	cx,8
 	jne	@@suiteaname
-	push    ' '
-	call	showchar
+	call	[cs:showchar],' ',0FFFFh
 @@suiteaname:
 	cmp	cx,8+3
 	jb	@@showthename
-	pop	si cx
-	pop     bp
-	retf    taille
-ShowName ENDP
+	ret
+ENDP showname
 
 ;================SHOWATTR==============
 ;Affiche les attributs spécifié par %0
 ;-> %0
 ;<-
 ;======================================
-ShowAttr PROC FAR
-        ARG     attr:word=taille
-        push    bp
-       	mov     bp,sp
-	test 	[attr],00000001b
+PROC showattr FAR
+        ARG     @attr:word
+       	push    0FFFFh
+	test 	[@attr],00000001b
 	je	@@noreadonly
 	push    'L'	
 	jmp	@@readonly
 @@noreadonly:
 	push    '-'
 @@readonly:
-	call	showchar
-	test 	[attr],00000010b
+	call	[cs:showchar]
+	push    0FFFFh
+	test 	[@attr],00000010b
 	je	@@nohidden
 	push    'C'	
 	jmp	@@hidden
 @@nohidden:
 	push    '-'
 @@hidden:
-	call	showchar
-	test 	[attr],00000100b
+	call	[cs:showchar]
+	push    0FFFFh
+	test 	[@attr],00000100b
 	je	@@nosystem
 	push    'S'	
 	jmp	@@system
 @@nosystem:
 	push    '-'
 @@system:
-	call	showchar
-	test 	[attr],00100000b
+	call	[cs:showchar]
+	push    0FFFFh
+	test 	[@attr],00100000b
 	je	@@noarchive
 	push    'A'	
 	jmp	@@archive
 @@noarchive:
 	push    '-'
 @@archive:
-	call	showchar
-	test 	[attr],00010000b
+	call	[cs:showchar]
+	push    0FFFFh
+	test 	[@attr],00010000b
 	je	@@nodirectory
 	push    'R'	
 	jmp	@@directory
 @@nodirectory:
 	push    '-'
 @@directory:
-	call	showchar
-	pop	bp
-	retf    taille
-ShowAttr ENDP
+	call	[cs:showchar]
+	ret
+ENDP showattr
 
 ;================SHOWSIZE==============
 ;Affiche le nom pointé par %0
 ;-> %0
 ;<-
 ;======================================
-ShowSize PROC FAR
-        ARG     thesize:dword=taille
-        push    bp
-       	mov     bp,sp
-	push 	edx ds
+PROC showsize FAR
+        ARG     @thesize:dword
+	USES 	edx,ds
 	push	cs
 	pop	ds
-	mov     edx,[thesize]
+	mov     edx,[@thesize]
 	cmp	edx,1073741824
 	ja	@@giga
 	cmp	edx,1048576*9
 	ja	@@mega
 	cmp	edx,1024*9
 	ja	@@kilo
-	push    edx
-	push    4
-	call	showintR
-	push    offset unit
-	call	showstring0
+	call	showintr,4,edx
+	call	showstring0,offset unit
 	jmp	@@finsize
 @@kilo:
 	shr	edx,10
-	push    edx
-	push    4
-	call	showintR
-	push    offset unitkilo
-	call	showstring0
+	call	showintr,4,edx
+	call	showstring0,offset unitkilo
 	jmp	@@finsize
 @@mega:
 	shr	edx,20
-	push    edx
-	push    4
-	call	showintR
-	push    offset unitmega
-	call	showstring0
+	call	showintr,4,edx
+	call	showstring0,offset unitmega
 	jmp	@@finsize
 @@giga:
 	shr	edx,30
-	push    edx
-	push    4
-	call	showintR
-	push    offset unitgiga
-	call	showstring0
+	call	showintr,4,edx
+	call	showstring0,offset unitgiga
 @@finsize:
-	pop	ds edx
-        pop     bp
-	retf    taille
+	ret
 
 unit db ' o ',0
 unitkilo db ' ko',0
 unitmega db ' mo',0
 unitgiga db ' go',0
-ShowSize ENDP
+ENDP showsize
 
 ;==========SHOWSPACE===========
 ;met un espace aprés le curseur
 ;->
 ;<-
 ;==============================
-showspace PROC FAR
-        push    bp
-       	mov     bp,sp
-	push 	cx
-	mov   	cl,' '
-        call  	charout
+PROC showspace FAR
+        call	[cs:showchar],' ',0FFFFh
         clc
-        pop   	cx
-        pop     bp
-	retf
-showspace ENDP
+	ret
+ENDP showspace
 
-;==========SHOWLINE===============
-;remet le curseur text a la ligne avec un retfour chariot
-;->
-;<-
-;=================================
-showline PROC FAR
-        push     ax
-        mov      ah,06
-        int      47h
-        pop      ax
-	retf
- showline ENDP
-
-;==========SHOWCHAR===========
-;met un caractère de code ASCII %0 aprés le curseur
-;-> %0
-;<-
-;=============================
-showchar PROC FAR
-        ARG     char:word=taille
-        push    bp
-       	mov     bp,sp
-       	push    cx
-        mov     cx,[char]
-	call	charout
-	pop     cx
-	pop     bp
-	retf    taille
-showchar ENDP
 
 ;==========SHOWINT===========
 ;Affiche un entier %0 aprés le curseur
 ;-> %0
 ;<-
 ;============================
-ShowInt PROC FAR
-        ARG     integer:dword=taille
-        push    bp
-       	mov     bp,sp
-	push	eax bx cx edx esi
+PROC showint FAR
+        ARG     @integer:dword
+	USES	eax,bx,cx,edx,esi
       	xor	cx,cx
-	mov   	eax,[integer]
+	mov   	eax,[@integer]
       	mov   	esi,10
       	mov   	bx,offset showbuffer+27
 @@decint:
@@ -742,37 +645,33 @@ ShowInt PROC FAR
       	div   	esi
       	add   	dl,'0'
       	inc   	cx
-      	mov   	cs:[bx],dl
+      	mov   	[cs:bx],dl
 	dec   	bx
       	cmp   	ax,0
       	jne   	@@decint
 	mov	ax,cx
 @@showinteger:
 	inc	bx
-	mov	cl,cs:[bx]
-	call	charout
+	mov	cl,[cs:bx]
+        call	[cs:showchar],cx,0FFFFh
 	dec	ax
 	jnz	@@showinteger
-      	pop   	esi edx cx bx eax
-      	pop     bp
-	retf    taille
+	ret
 
 showbuffer 	db 50 dup (0FFh)
-ShowInt ENDP
+ENDP showint
 
 ;==========SHOWINTL===========
 ;Affiche un entier %0 aprés le curseur de taille %1 caractère centré a gauche
 ;-> %0 un entier  % taille en caractères
 ;<-
 ;===============================
-ShowIntL PROC FAR
-        ARG     sizeofint:word,integer:dword=taille
-        push    bp
-       	mov     bp,sp
-	push	eax bx cx edx esi di
-	mov	di,[sizeofint]
+PROC showintl FAR
+        ARG     @sizeofint:word,@integer:dword
+	USES	eax,bx,cx,edx,esi,di
+	mov	di,[@sizeofint]
       	xor	cx,cx
-	mov   	eax,[integer]
+	mov   	eax,[@integer]
       	mov   	esi,10
       	mov   	bx,offset showbuffer+27
 @@decint:
@@ -780,7 +679,7 @@ ShowIntL PROC FAR
       	div   	esi
       	add   	dl,'0'
       	inc   	cx
-      	mov   	cs:[bx],dl
+      	mov   	[cs:bx],dl
 	dec   	bx
 	cmp 	cx,di
 	jae 	@@nomuch
@@ -790,7 +689,7 @@ ShowIntL PROC FAR
   	xchg 	cx,di
 	sub 	cx,di
 @@rego:
-	mov 	byte ptr cs:[bx],'0'
+	mov 	[byte ptr cs:bx],'0'
 	dec    	bx
 	dec    	cx
 	jnz	@@rego
@@ -800,28 +699,24 @@ ShowIntL PROC FAR
 @@finishim:
 @@showinteger:
 	inc	bx
-	mov     cl,cs:[bx]
-	call	charout
+	mov     cl,[cs:bx]
+        call	[cs:showchar],cx,0FFFFh
 	dec	ax
 	jnz	@@showinteger
-      	pop  	di esi edx cx bx eax
-      	pop     bp
-	retf    taille
-showintl ENDP
+	ret
+ENDP showintl
 
 ;==========SHOWINTR===========
 ;Affiche un entier %0 aprés le curseur de taille %1 caractère centré a droite
 ;-> %0 un entier  % taille en caractères
 ;<-
 ;===============================
-ShowIntR PROC FAR
-        ARG     sizeofint:word,integer:dword=taille
-        push    bp
-       	mov     bp,sp
-	push	eax bx cx edx esi di
-	mov	di,[sizeofint]
+PROC showintr FAR
+        ARG     @sizeofint:word,@integer:dword
+	USES	eax,bx,cx,edx,esi,di
+	mov	di,[@sizeofint]
       	xor	cx,cx
-	mov   	eax,[integer]
+	mov   	eax,[@integer]
       	mov   	esi,10
       	mov   	bx,offset showbuffer+27
 @@decint:
@@ -829,7 +724,7 @@ ShowIntR PROC FAR
       	div   	esi
       	add   	dl,'0'
       	inc   	cx
-      	mov   	cs:[bx],dl
+      	mov   	[cs:bx],dl
 	dec   	bx
 	cmp 	cx,di
 	jae 	@@nomuch
@@ -839,7 +734,7 @@ ShowIntR PROC FAR
   	xchg 	cx,di
 	sub 	cx,di
 @@rego:
-	mov 	byte ptr cs:[bx],' '
+	mov 	[byte ptr cs:bx],' '
 	dec    	bx
 	dec    	cx
 	jnz	@@rego
@@ -849,27 +744,23 @@ ShowIntR PROC FAR
 @@finishim:
 @@showinteger:
 	inc	bx
-	mov	cl,cs:[bx]
-	call	charout
+	mov	cl,[cs:bx]
+        call	[cs:showchar],cx,0FFFFh
 	dec	ax
 	jnz	@@showinteger
-      	pop  	di esi edx cx bx eax
-      	pop     bp
-	retf    taille
-ShowIntR ENDP
+	ret
+ENDP showintr
 
 ;==========SHOWSIGNED===========
 ;Affiche un entier %0 de taille %1 aprés le curseur
 ;-> %0 un entier, %1 la taille
 ;<-
 ;===============================
-Showsigned PROC FAR
-        ARG     sizeofint:word,integer:dword=taille
-        push    bp
-       	mov     bp,sp
-	push 	ebx cx edx
-	mov	ebx,[integer]	
-	mov	cx,[sizeofint]	
+PROC showsigned FAR
+        ARG     @sizeofint:word,@integer:dword=taille
+	USES 	ebx,cx,edx
+	mov	ebx,[@integer]	
+	mov	cx,[@sizeofint]	
 	xor	edx,edx
 	cmp     cx,1
 	ja 	@@signed16
@@ -892,89 +783,75 @@ Showsigned PROC FAR
 	jbe	@@notsigned
 	neg 	edx
 @@showminus:
-	push    '-'
-	call 	showchar
+	call 	[cs:showchar],'-',0FFFFh
 @@notsigned:
-        push    edx
-	call 	showint
-	pop 	edx cx ebx
-	pop     bp
-	retf    taille
-Showsigned ENDP
+	call 	showint,edx,0FFFFh
+	ret
+ENDP showsigned
 
 ;==========SHOWHEX===========
 ;Affiche un nombre hexadécimal %0 de taille %1 aprés le curseur
 ;-> %0 un entier, %1 la taille
 ;<-
 ;============================
-ShowHex PROC FAR
-        ARG     sizeofint:word,integer:dword=taille
-        push    bp
-       	mov     bp,sp
-       	push  	ax bx cx edx
-       	mov     edx,[integer]
-       	mov   	cx,[sizeofint]
+PROC showhex FAR
+        ARG     @sizeofint:word,@integer:dword=taille
+        USES  	ax,bx,cx,edx
+       	mov     edx,[@integer]
+       	mov   	cx,[@sizeofint]
+       	mov     ax,cx
 	shr   	ax,2
        	sub   	cx,32
        	neg   	cx
        	shl   	edx,cl
-       	mov   	ax,[sizeofint]
-	shr   	ax,2
 @@Hexaize:
        	rol   	edx,4
        	mov   	bx,dx
        	and   	bx,0fh
-       	mov   	cl,cs:[bx+offset Tab]
-       	call	charout
+       	mov   	cl,[cs:bx+offset Tab]
+        call	[cs:showchar],cx,0FFFFh
        	dec   	al
        	jnz   	@@Hexaize
-       	pop   	edx cx bx ax
-       	pop     bp
-       	retf    taille
+       	ret
 
 Tab 	db '0123456789ABCDEF'
-ShowHex ENDP
+ENDP showhex
 
 ;==========SHOWBIN===========
 ;Affiche un nombre binaire %0 de taille %1 aprés le curseur
 ;-> %0 un entier, %1 la taille
 ;<-
 ;============================
-Showbin PROC FAR
-        ARG     sizeofint:word,integer:dword=taille
-        push    bp
-       	mov     bp,sp
-       	push   	ax cx edx
-        mov     edx,[integer]
-       	mov   	cx,[sizeofint]
+PROC showbin FAR
+        ARG     @sizeofint:word,@integer:dword=taille
+       	USES   	ax,cx,edx
+        mov     edx,[@integer]
+       	mov   	cx,[@sizeofint]
        	sub     cx,32
        	neg     cx
        	shl     edx,cl
-       	mov   	ax,[sizeofint]
+       	mov   	ax,[@sizeofint]
 @@binaize:
         rol     edx,1
         mov     cl,'0'
         adc     cl,0
-        call	charout
+        call	[cs:showchar],cx,0FFFFh
         dec     al
         jnz     @@binaize
-        pop     edx cx ax
-        pop     bp
-        retf    taille
-Showbin ENDP
+        ret
+ENDP showbin
 
 ;==========SHOWBCD===========
 ;Affiche un nombre en BCD %0 de taille %1 aprés le curseur
 ;-> %0 un entier, %1 la taille
 ;<-
 ;============================
-ShowBCD PROC FAR
-        ARG     sizeofint:word,integer:dword=taille
-        push    bp
-       	mov     bp,sp
-        push    ax cx edx
-        mov     edx,[integer]
-        mov     ax,[sizeofint]
+PROC showbcd FAR
+        ARG     @sizeofint:word,@integer:dword
+        USES    ax,cx,edx
+        mov     edx,[@integer]
+        mov     ax,[@sizeofint]
+        mov     cx,ax
         shr     ax,2
         sub     cx,32
         neg     cx
@@ -984,69 +861,47 @@ ShowBCD PROC FAR
         mov     cl,dl
         and     cl,0fh
         add     cl,'0'
-        call    charout
+        call	[cs:showchar],cx,0FFFFh
         dec     al
         jnz     @@BCDaize
-        pop     edx cx ax
-        pop     bp
-        retf    taille
-ShowBCD ENDP
+        ret
+ENDP showbcd
 
 ;==========SHOWSTRING===========
 ;Affiche une chaine de caractère pointée par ds:%1 aprés le curseur
 ;-> ds:%1 pointeur chaine type pascal
 ;<-
 ;===============================
-showstring PROC FAR
-        ARG     pointer:word=taille
-        push    bp
-       	mov     bp,sp
-        push    bx cx si
-        mov     si,[pointer]
+PROC showstring FAR
+        ARG     @pointer:word
+        USES    bx,si
+        mov     si,[@pointer]
         mov     bl,[si]
 @@strinaize:
         inc     si
-        mov     cl,[si]
-        call	charout
+        call	[cs:showchar],[word ptr si],0FFFFh
         dec     bl
         jnz     @@strinaize
-        pop     si cx bx
-        pop     bp
-        retf    taille
-showstring ENDP
+        ret
+ENDP showstring
 
 ;==========SHOWSTRING0===========
 ;Affiche une chaine de caractère pointée par ds:%1 aprés le curseur
 ;-> ds:%1 pointeur chaine type zéro terminal
 ;<-
 ;================================
-showstring0 PROC FAR
-        ARG     pointer:word=taille
-        push    bp
-        mov     bp,sp
-        push    cx si
-        mov     si,[pointer]	
+PROC showstring0 FAR
+        ARG     @pointer:word
+        USES    cx,si
+        mov     si,[@pointer]	
 @@strinaize0:
         mov     cl,[si]
         cmp     cl,0
         je      @@no0
-        call	charout	
+        call	[cs:showchar],cx,0FFFFh	
         inc     si
         jmp     @@strinaize0
 @@no0:
-        pop     si cx
-        pop     bp
-        retf    taille
-showstring0 ENDP
-
-;Envoie le caractère CL vers l'ecran
-charout PROC NEAR
-        push ax dx
-        mov  ah,7
-        mov  dl,cl
-        int  47h
-        pop  dx ax
         ret
-charout ENDP
+ENDP showstring0
 
-end start

@@ -1,17 +1,9 @@
 all:
-	cd commande
-	make
-	cd ..
-
-	cd programs
+	cd lib
 	make
 	cd ..
 
 	cd noyau
-	make
-	cd ..
-
-	cd contribs
 	make
 	cd ..
 
@@ -21,29 +13,14 @@ all:
 
 copy:
 	make all
-	copy commande\*.exe ..\binaires\data
-	copy programs\*.com ..\binaires\data
-	copy programs\*.rip ..\binaires\data
-	copy noyau\*.sys ..\binaires\data
-	copy noyau\*.bin ..\binaires\data
-	copy contribs\*.com ..\binaires\data
-	copy install\*.com ..\binaires
-	make clean
+	
 
 clean:
-	cd commande
-	make clean
-	cd ..
-
-	cd programs
+	cd lib
 	make clean
 	cd ..
 
 	cd noyau
-	make clean
-	cd ..
-
-	cd contribs
 	make clean
 	cd ..
 

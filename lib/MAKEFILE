@@ -1,0 +1,26 @@
+asm= lzasm
+lnk= elink
+
+all: detect.lib video.lib
+
+detect.lib: detect.obj 
+	$(lnk) detect.obj detect.lib
+
+video.lib: video.obj 
+	$(lnk) video.obj video.lib
+
+detect.obj:
+	$(asm) detect.asm
+
+video.obj:
+	$(asm) video.asm 
+
+clean:
+  del *.obj
+  del *.exe
+  del *.bak
+  del *.lib
+  del *.com
+  del *.bin
+  del *.sys
+  del *.err
