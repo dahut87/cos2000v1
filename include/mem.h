@@ -29,4 +29,49 @@ ends descriptor
 
 
 free        equ 0                 ;Reference quand libre
-memorystart equ 0052h             ;premier bloc de la mémoire
+
+
+
+macro   exporting
+	 label exports
+endm
+
+macro   importing
+	 label imports
+endm
+
+macro   noimporting
+	 label imports
+	 dd 0
+endm
+
+macro   noexporting
+	 label imports
+	 dd 0
+endm
+
+macro   ende
+	 dd 0
+endm
+
+macro   endi
+	 dd 0
+endm
+
+macro   use    lib:req,fonction:req
+	 db "&lib&::&fonction&",0
+label &fonction& dword
+         dd 0
+endm
+
+macro   declare    fonction:req
+	 db "&fonction&",0
+         dw offset fonction
+endm
+
+macro   heading    versmaj:req,versmin:req,start:req
+header exe <"CE",offset &versmaj&,offset &versmin&,0,offset exports,offset imports,0,offset &start&>
+	 db "&fonction&",0
+         dw offset fonction
+endif
+endm
