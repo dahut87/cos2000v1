@@ -1,49 +1,32 @@
 
-        db "biosprint",0
-        dw biosprint
-        db "mbinit",0
-        dw mbinit
-        db "mbcreate",0
-        dw mbcreate
-        db "mbfree",0
-        dw mbfree
-        db "mbclean",0
-        dw mbclean
-        db "mbresident",0
-        dw mbresident
-        db "mbnonresident",0
-        dw mbnonresident
-        db "mbchown",0
-        dw mbchown
-        db "mballoc",0
-        dw mballoc
-        db "mbfind",0
-        dw mbfind
-        db "mbfindsb",0
-        dw mbfindsb
-        db "mbget",0
-        dw mbget
-        db "mbloadfuncs",0
-        dw mbloadfuncs
-        db "mbsearchfunc",0
-        dw mbsearchfunc
-        db "bioswaitkey",0
-        dw bioswaitkey
-        db "mbloadsection",0
-        dw mbloadsection
-        db "enableirq",0
-        dw enableirq
-        db "disableirq",0
-        dw enableirq
-        db "readmaskirq",0
-        dw readmaskirq
-        db "readirr",0
-        dw readirr
-        db "readisr",0
-        dw readisr
-        db "seteoi",0
-        dw seteoi
-        dd 0
+exporting
+declare biosprinth
+declare biosprint
+declare mbinit
+declare mbcreate
+declare mbfree
+declare mbclean
+declare mbresident
+declare mbnonresident
+declare mbchown
+declare mballoc
+declare mbfind
+declare mbfindsb
+declare mbget
+declare mbloadfuncs
+declare mbsearchfunc
+declare bioswaitkey
+declare mbloadsection
+declare enableirq
+declare enableirq
+declare readmaskirq
+declare readirr
+declare readisr
+declare seteoi
+declare enablea20
+declare disablea20
+declare flatmode
+ende
 
 include "8259a.asm"
 
@@ -97,31 +80,81 @@ PROC biosprint FAR
         ret
 endp biosprint
 
-;PROC flatmode FAR
-;        USES    eax,bx,edx
-;        ; first, calculate the linear address of GDT
-;        xor     edx,edx
-;        xor     eax,eax
-;        mov     dx,cs
-;        shl     edx,4
-;        add     [dword ptr cs:offset @@gdt+2],edx   ; store as GDT linear base addr
-;        ; now load the GDT into the GDTR
-;        lgdt    [fword ptr cs:offset @@gdt]   ; load GDT base (286-style 24-bit load)
-;        mov     bx,1 * size descriptor ; point to first descriptor
-;        mov     eax,cr0         ; prepare to enter protected mode
-;        or      al,1            ; flip the PE bit
-;        cli                     ; turn off interrupts
-;        mov     cr0,eax         ; we're now in protected mode
-;        mov     fs,bx           ; load the FS segment register
-;        and     al,0FEh         ; clear the PE bit again
-;        mov     cr0,eax         ; back to real mode
-;        sti                     ; resume handling interrupts
-;        ret                     ;
+PROC enablea20 FAR
+        USES    ax
+        mov     al,0d1h
+        out     64h,al
+        call    a20wait
+        mov     al,0dfh
+        out     60h,al
+        call    a20wait
+        ;mov     al,0ffh
+        ;out     64h,al
+        ;call    a20wait
+        ret
+endp enablea20
+
+PROC disablea20 FAR
+        USES    ax
+        mov     al,0d1h
+        out     64h,al
+        call    a20wait
+        mov     al,0DDh
+        out     60h,al
+        call    a20wait
+        ;mov     al,0ffh
+        ;out     64h,al
+        ;call    a20wait
+        ret
+endp disablea20
+
+a20wait:
+        in      al,64h
+        jmp     @@suite
+@@suite:
+        and     al,2
+        jnz     a20wait
+        ret
+;par le system control port A
+;in al,92h
+;or al,2
+;out 92h,al
+
+;par le system control port A
+;in al,92h
+;and al,not 2
+;out 92h,al
+
+PROC flatmode FAR
+        USES    eax,bx,ds
+        push    cs
+        pop     ds
+        ; first, calculate the linear address of GDT
+        xor     eax,eax
+        mov     ax,ds
+        shl     eax,4
+        add     [dword ptr offset @@gdt+2],eax   ; store as GDT linear base addr
+        ; now load the GDT into the GDTR
+        lgdt    [fword ptr offset @@gdt]   ; load GDT base
+        mov     bx,1 * size descriptor ; point to first descriptor
+        cli                     ; turn off interrupts
+        mov     eax,cr0         ; prepare to enter protected mode
+        or      al,1            ; flip the PE bit
+        mov     cr0,eax         ; we're now in protected mode
+        jmp     @@suite
+@@suite:
+        mov     fs,bx           ; load the FS segment register
+        and     al,0FEh         ; clear the PE bit again
+        mov     cr0,eax         ; back to real mode
+        jmp     @@suite2
+@@suite2:
+        sti                     ; resume handling interrupts
+        ret                     ;
         
-;@@gdt descriptor <@@gdtend - @@gdt - 1, @@gdt, 0, 0, 0, 0>  ; the GDT itself
-;      descriptor <0ffffh, 0, 0, 091h, 0cfh, 0>          ; 4G data segment
-;@@gdtend:
-;endp flatmode
+@@gdt descriptor <offset @@gdtend - offset @@gdt - 1, offset @@gdt, 0, 0, 0, 0>  ; the GDT itself
+      descriptor <0ffffh, 0, 0, 091h, 0cfh, 0>          ; 4G data segment
+@@gdtend:
+endp flatmode
 
 ;Attend l'appuie sur une touche
 PROC bioswaitkey FAR
@@ -153,6 +186,9 @@ PROC mbloadsection FAR
         je      @@finishloading
         mov     ax,bx
         add     ax,4
+pushad
+call biosprint,ax
+popad
         call    mbcreate,ax,[word ptr bx+2]
         jc      @@error
         inc     si
@@ -174,11 +210,6 @@ PROC mbloadsection FAR
         inc     bx
         jmp     @@loading
 @@finishloading:
-pushad
-xor eax,eax
-mov ax,[word ptr ss:si]
-call biosprinth,eax
-popad
         cmp     [word ptr ss:si],0FFFFh
         je      @@finishdepands
         call    mbloadfuncs,[word ptr ss:si]
@@ -244,21 +275,19 @@ PROC mbcreate FAR
 	cmp	[word ptr es:mb.check],"NH"
 	jne	@@memoryerror
 	cmp	[es:mb.isnotlast],true
-	sete  dl
+	sete    dl
 	cmp	[es:mb.reference],free
 	jne	@@notsogood
 	mov	ax,[es:mb.sizes]
 	cmp	cx,ax
 	ja	@@notsogood
-        ;mov     [word ptr es:mb.check],"NH"
+        mov     [word ptr es:mb.check],"NH"
 	mov	[es:mb.isnotlast],true
 	mov	[es:mb.reference],gs
 	mov	[es:mb.isresident],false
 	lea     di,[es:mb.names]
 	push    cx
 	mov 	cx,24/4
-	push    cs
-	pop     ds
 	mov     si,[@blocks]
         cld
 	rep     movsd
@@ -276,14 +305,16 @@ PROC mbcreate FAR
         mov     si,offset afree
         xor     di,di
         mov     cx,size mb
+        push    cs
+        pop     ds
         cld
         rep     movsb	
 	mov	[es:mb.isnotlast],dl
 	mov	[es:mb.sizes],ax
 @@nofree:
 	mov	ax,bx
-	clc
 	pop     gs
+	clc
 	ret
 @@notsogood:
         inc     bx
@@ -291,8 +322,8 @@ PROC mbcreate FAR
 	add	bx,[es:mb.sizes]
 	jmp	@@searchfree
 @@memoryerror:
-	stc
 	pop     gs
+	stc
 	ret
 @@notenougtmem:
         pop     gs
@@ -532,9 +563,9 @@ PROC mbfind FAR
 	dec	bx
 	dec	bx
 	mov     si,[@blocks]
-	lea     di,[es:mb.names]
 @@search:
 	mov     es,bx
+	lea     di,[es:mb.names]
 	cmp	[word ptr es:mb.check],"NH"
 	jne	@@memoryerror
         inc     bx
@@ -636,6 +667,9 @@ PROC mbloadfuncs FAR
 @@loadfuncs:
         cmp     [word ptr si],0
         je      @@endofloading
+pushad
+call biosprint,si
+popad
         call    mbsearchfunc,si
         jnc     @@toendoftext
         mov     bx,si

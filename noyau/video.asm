@@ -12,77 +12,42 @@ org 0h
 
 header exe <"CE",1,0,0,offset exports,,,>
 
-
-exports:
-         db "setvideomode",0
-         dw setvideomode
-         db "getvideomode",0		
-         dw getvideomode
-         db "clearscreen",0
-         dw clearscreen
-         db "setfont",0
-         dw setfont
-         db "loadfont",0
-         dw loadfont
-         db "getfont",0
-         dw getfont
-         db "addline",0
-         dw addline
-         db "showchar",0
-         dw showchar
-         db "showpixel",0
-         dw showpixel
-         db "getpixel",0
-         dw getpixel
-         db "setstyle",0
-         dw setstyle
-         db "getstyle",0
-         dw getstyle
-         db "enablecursor",0
-         dw enablecursor
-         db "disablecursor",0
-         dw disablecursor
-         db "setcolor",0
-         dw setcolor
-         db "getcolor",0
-         dw getcolor
-         db "scrolldown",0
-         dw scrolldown
-         db "getxy",0
-         dw getxy
-         db "setxy",0
-         dw setxy
-         db "savescreen",0
-         dw savescreen
-         db "restorescreen",0
-         dw restorescreen
-         db "page2to1",0
-         dw page2to1
-         db "page1to2",0
-         dw page1to2
-         ;db "xchgPages",0
-         ;dw xchgpages
-         db "waithretrace",0
-         dw waithretrace
-         db "waitretrace",0
-         dw waitretrace
-         db "getvgainfos",0
-         dw getvgainfos
-         ;db "savedac",0
-         ;dw savedac
-         ;db "restoredac",0
-         ;dw restoredac
-         ;db "savestate",0
-         ;dw savestate
-         ;db "restorestate",0
-         ;dw restorestate
-         db "enablescroll",0
-         dw enablescroll
-         db "disablescroll",0
-         dw disablescroll
-         db "getchar",0
-	 dw getchar
-
+exporting
+declare setvideomode		
+declare getvideomode
+declare clearscreen
+declare setfont
+declare loadfont
+declare getfont
+declare addline
+declare showchar
+declare showpixel
+declare getpixel
+declare setstyle
+declare getstyle
+declare enablecursor
+declare disablecursor
+declare setcolor
+declare getcolor
+declare scrolldown
+declare getxy
+declare setxy
+declare savescreen
+declare restorescreen
+declare page2to1
+declare page1to2
+declare xchgpages
+declare waithretrace
+declare waitretrace
+declare getvideoinfos
+declare savedac
+declare restoredac
+declare savestate
+declare restorestate
+declare enablescroll
+declare disablescroll
+declare getchar
+ende
 ;================================Table des modes videos (64 BYTES) ============================================
 ;40*25 16 couleurs
 mode0        DB 67H,00H,  03H,08H,03H,00H,02H
@@ -192,32 +157,8 @@ mode11        DB 0E7H
              DB 00H,01H,02H,03H,04H,05H,06H,07H,10H,11H,3AH,3BH,3CH,3DH,3EH,3FH,01H,00H,0FH,00H,00H
              DB 100,75
 
-
-datablocksize equ 40
-datablock 	  equ $
 ;============================================DATABLOCK=========================================================
-lines 	        db 0
-columns 	db 0
-x               db 0
-y 		db 0
-xy		dw 0
-colors 	        db 7
-mode 		db 0FFh
-pagesize 	dw 0
-style           db 0
-font		db 0
-graphic 	db 0
-reserved1	dw 0
-reserved2	dw 0
-reserved3	dw 0
-nbpage    	db 0
-color           db 0
-cursor          db 0
-segments        dw 0
-linesize        dw 0
-adress     	dw 0
-base 		dw 0
-scrolling       db 1
+datablock vgainf <0,0,0,0,0,7,0FFh,0,0,0,0,0,0,0,0,0,0,0,1>
 
 ;=======================================Equivalence pour la clarté du code========================================
 sequencer 	equ 03C4h
@@ -238,7 +179,7 @@ planesize	equ 65000
 ;<- 
 ;=====================================
 PROC enablescroll FAR
-        mov     [cs:scrolling],1
+        mov     [cs:datablock.scrolling],1
         ret
 endp enablescroll
 
@@ -248,7 +189,7 @@ endp enablescroll
 ;<- 
 ;======================================
 PROC disablescroll FAR
-        mov     [cs:scrolling],0
+        mov     [cs:datablock.scrolling],0
         ret
 endp disablescroll
 
@@ -259,7 +200,7 @@ endp disablescroll
 ;======================================
 PROC enablecursor FAR
         USES    ax,dx
-        mov     [cs:cursor],1
+        mov     [cs:datablock.cursor],1
        	mov 	dx,ccrt
 	mov 	al,0Ah
 	out     dx,al
@@ -270,9 +211,9 @@ PROC enablecursor FAR
 	dec     dx
 	mov     al,0Ah
 	out     dx,ax
-	mov     al,[cs:x]
+	mov     al,[cs:datablock.x]
 	xor     ah,ah
-	mov     dl,[cs:y]
+	mov     dl,[cs:datablock.y]
 	xor     dh,dh
 	call    setxy,ax,dx
         ret
@@ -285,7 +226,7 @@ endp enablecursor
 ;=======================================
 PROC disablecursor FAR
         USES    ax,dx
-        mov     [cs:cursor],0
+        mov     [cs:datablock.cursor],0
        	mov 	dx,ccrt
 	mov 	al,0Ah
 	out     dx,al
@@ -308,7 +249,7 @@ PROC setstyle FAR
         ARG     @style:word
         USES    cx
         mov     ax,[@style]
-	mov 	[cs:style],al
+	mov 	[cs:datablock.style],al
 	ret
 endp setstyle
 
@@ -318,7 +259,7 @@ endp setstyle
 ;<- AX style
 ;===========================
 PROC getstyle FAR
-	mov 	al,[cs:style]
+	mov 	al,[cs:datablock.style]
 	xor     ah,ah
 	ret
 endp getstyle
@@ -335,17 +276,17 @@ PROC setvideomode FAR
         xor     ah,ah	
         cmp     al,maxmode
 	ja	@@errorsetvideomode
-	cmp     [cs:mode],5h
+	cmp     [cs:datablock.mode],5h
 	jb	@@nographic
 	cmp	al,5h
 	jae	@@nographic
 	call	initfont
 @@nographic:
-        cmp     [cs:mode],0FFh
+        cmp     [cs:datablock.mode],0FFh
         jne     @@noinit
 	call	initfont
 @@noinit:
-	mov 	[cs:mode],al
+	mov 	[cs:datablock.mode],al
 	xor 	ah,ah
 	mov 	di,ax
 	shl 	di,6
@@ -407,47 +348,47 @@ PROC setvideomode FAR
 	mov 	al,20h
 	out 	dx,al
 	mov 	al,[cs:di]
-	mov 	[cs:columns],al
+	mov 	[cs:datablock.columns],al
 	mov 	ah,[cs:di+1]
-	mov 	[cs:lines],ah
+	mov 	[cs:datablock.lines],ah
 	mul 	ah
 	mov     cl,[cs:di-5]
 	and     cl,01000000b
 	cmp     cl,0
 	je      @@colors16
-	mov     [cs:color],8
+	mov     [cs:datablock.color],8
 	mov     cl,4
 	jmp     @@colors256
 @@colors16:
-        mov     [cs:color],4
+        mov     [cs:datablock.color],4
         mov     cl,3
 @@colors256:
-  	cmp     [cs:mode],5
-        setae   [cs:graphic]
+  	cmp     [cs:datablock.mode],5
+        setae   [cs:datablock.graphic]
         jb      @@istext
 	shl     ax,cl
-        mov     [cs:segments],0A000h
+        mov     [cs:datablock.segments],0A000h
 	jmp     @@wasgraph
 @@istext:
-        mov     [cs:segments],0B800h
+        mov     [cs:datablock.segments],0B800h
         shl     ax,1
 @@wasgraph:
-	mov 	[cs:pagesize],ax
+	mov 	[cs:datablock.pagesize],ax
 	mov	ax,planesize
 	xor	dx,dx
-	div	[cs:pagesize]
-	mov	[cs:nbpage],al
+	div	[cs:datablock.pagesize]
+	mov	[cs:datablock.nbpage],al
         mov     al,[cs:di-36]
 	xor 	ah,ah
         shl     ax,2
-	mov     cl,[cs:graphic]
+	mov     cl,[cs:datablock.graphic]
 	shr     ax,cl
-        mov     [cs:linesize],ax
+        mov     [cs:datablock.linesize],ax
         mov     ax,[cs:di-43]
-        mov     [cs:adress],ax
-	mov	[cs:base],ax
-        mov     [cs:cursor],1
-        mov     [cs:style],0
+        mov     [cs:datablock.adress],ax
+	mov	[cs:datablock.base],ax
+        mov     [cs:datablock.cursor],1
+        mov     [cs:datablock.style],0
 	ret
 @@errorsetvideomode:
 	ret
@@ -470,7 +411,7 @@ initfont:
 ;<- AX
 ;==================================
 PROC getvideomode FAR
-	mov 	al,[cs:mode]
+	mov 	al,[cs:datablock.mode]
 	xor     ah,ah
 	ret
 endp getvideomode
@@ -483,9 +424,9 @@ endp getvideomode
 PROC clearscreen FAR
 	USES 	eax,cx,dx,di,es
 	mov 	cx,planesize
-	mov	di,[cs:adress]
+	mov	di,[cs:datablock.adress]
 	shr 	cx,2
-        cmp     [cs:graphic],1
+        cmp     [cs:datablock.graphic],1
 	jne 	@@erasetext
 	mov  	ax,0A000h
 	mov 	es,ax
@@ -504,7 +445,7 @@ PROC clearscreen FAR
 	cld
 	rep 	stosd
 	mov     ax,0005h
-	cmp     [cs:color],4
+	cmp     [cs:datablock.color],4
 	je      @@not256
 	mov     ax,4005h	
 @@not256:
@@ -537,7 +478,7 @@ PROC setfont FAR
 	xor     ch,ch
 	cmp	cl,7
       	ja    	@@errorsetfont
-	mov	[cs:font],cl
+	mov	[cs:datablock.font],cl
 	mov 	ah,cl
 	and 	cl,11b
 	and 	ah,0100b
@@ -557,7 +498,7 @@ endp setfont
 ;<- CL n° font, Carry if error
 ;=============================
 PROC getfont FAR
-	mov	al,[cs:font]
+	mov	al,[cs:datablock.font]
 	xor     ah,ah
 endp getfont
 
@@ -570,7 +511,6 @@ endp getfont
 PROC loadfont FAR
         ARG     @pointer:word,@size:word,@font:word
 	USES 	ax,bx,cx,dx,si,di,es
-	LOCAL   @poppop:dword
 	mov     si,[@pointer]
 	mov     cx,[@size]
 	mov     bx,[@font]
@@ -659,15 +599,15 @@ endp loadfont
 ;=================================
 PROC addline FAR
         USES    bx,cx
-	mov 	bl,[cs:y]
+	mov 	bl,[cs:datablock.y]
 	xor 	bh,bh
-	mov 	cl,[cs:lines]
+	mov 	cl,[cs:datablock.lines]
       	sub     cl,2
 	cmp 	bl,cl
       	jne     @@scro
 	dec 	bl
 	mov	cx,1
-	cmp	[cs:graphic],0
+	cmp	[cs:datablock.graphic],0
 	je	@@okscro
 	mov	cx,8
 @@okscro:
@@ -687,7 +627,7 @@ PROC setcolor FAR
         ARG     @color:word
         USES    cx
         mov     cx,[@color]
-	mov 	[cs:colors],cl
+	mov 	[cs:datablock.colors],cl
 	ret
 endp setcolor
 
@@ -697,7 +637,7 @@ endp setcolor
 ;<- AX couleur
 ;===========================
 PROC getcolor FAR
-	mov 	al,[cs:colors]
+	mov 	al,[cs:datablock.colors]
 	xor     ah,ah
 	ret
 endp getcolor
@@ -710,16 +650,16 @@ endp getcolor
 PROC scrolldown FAR
         ARG     @line:word
 	USES 	ax,cx,dx,si,di,ds,es
-        cmp     [cs:scrolling],0
+        cmp     [cs:datablock.scrolling],0
         je      @@graphp
 	mov 	ax,[@line]
-	mul 	[cs:linesize]
+	mul 	[cs:datablock.linesize]
 	mov 	si,ax
-	mov 	cx,[cs:pagesize]
+	mov 	cx,[cs:datablock.pagesize]
 	sub 	cx,si
-	mov 	di,[cs:adress]
+	mov 	di,[cs:datablock.adress]
 	cld
-	cmp     [cs:graphic],1
+	cmp     [cs:datablock.graphic],1
 	jne 	@@textp
 	mov  	ax,0A000h
 	mov 	es,ax
@@ -733,7 +673,7 @@ PROC scrolldown FAR
 	cld
 	rep 	movsb
 	mov     ax,0005h
-	cmp     [cs:color],4
+	cmp     [cs:datablock.color],4
 	je      @@not256ok
 	mov     ax,4005h	
 @@not256ok:
@@ -761,8 +701,8 @@ PROC getxy FAR
         ARG     @pointer:word
 	USES 	bx
 	mov     bx,[@pointer]
-	mov 	ah,[cs:x]
-	mov 	al,[cs:y]
+	mov 	ah,[cs:datablock.x]
+	mov 	al,[cs:datablock.y]
 	ret
 endp getxy
 
@@ -776,14 +716,14 @@ PROC setxy FAR
 	USES 	ax,bx,dx,di
 	mov     ax,[@y]
 	mov     bx,[@x]
-	mov 	[cs:x],bl
-	mov 	[cs:y],al
-	mov	di,[cs:adress]
+	mov 	[cs:datablock.x],bl
+	mov 	[cs:datablock.y],al
+	mov	di,[cs:datablock.adress]
 	add 	di,bx
-	mul 	[cs:columns]
+	mul 	[cs:datablock.columns]
 	add 	di,ax
 	shl 	di,1
-	mov 	[cs:xy],di
+	mov 	[cs:datablock.xy],di
 	call    setcursor
 	ret
 endp setxy
@@ -799,16 +739,16 @@ PROC showpixel FAR
      	mov     bx,[@x]
      	mov     cx,[@y]
      	mov     ax,[@color]
-     	cmp     [cs:color],4
+     	cmp     [cs:datablock.color],4
      	je      @@showpixel4
         mov     si,ax
 	mov     ax,cx
         mov	cl,bl
-        mul  	[cs:linesize]
+        mul  	[cs:datablock.linesize]
         shr     bx,2
         add  	ax,bx
         mov     di,ax
-	add     di,[cs:adress]
+	add     di,[cs:datablock.adress]
         and     cl,3
         mov     ah,1
         shl     ah,cl
@@ -826,11 +766,11 @@ PROC showpixel FAR
         mov     ax,cx
         mov     ch,dl
         mov	cl,bl
-        mul  	[cs:linesize]
+        mul  	[cs:datablock.linesize]
         shr     bx,3
         add  	ax,bx
         mov     di,ax
-        add     di,[cs:adress]
+        add     di,[cs:datablock.adress]
         and     cl,111b
         xor     cl,111b
         mov     ah,1
@@ -863,11 +803,11 @@ PROC getpixel FAR
      	mov     cx,[@y]
 	mov     ax,cx
         mov	cl,bl
-        mul  	[cs:linesize]
+        mul  	[cs:datablock.linesize]
         shr     bx,2
         add  	ax,bx
         mov     di,ax
-	add     di,[cs:adress]
+	add     di,[cs:datablock.adress]
         and     cl,3
 	mov	ah,cl                                      
         mov     al,4
@@ -884,18 +824,18 @@ endp getpixel
 ;<- ES:%0 pointeur
 ;->
 ;=============================================
-PROC getvgainfos FAR
+PROC getvideoinfos FAR
         ARG     @pointer:word
 	USES 	cx,si,di,ds
 	push 	cs
 	pop 	ds
-	mov 	cx,datablocksize
+	mov 	cx,size datablock
 	mov 	si,offset datablock
 	mov     di,[@pointer]
 	cld
 	rep 	movsb
 	ret
-endp getvgainfos
+endp getvideoinfos
 
 ;==========WAITRETRACE=========
 ;Synchronisation avec la retrace verticale
@@ -936,7 +876,7 @@ PROC getchar FAR
         USES    di,es
         mov	ax,0B800h
 	mov	es,ax
-	mov	di,[cs:xy]
+	mov	di,[cs:datablock.xy]
 	mov	al,[es:di]
 	xor     ah,ah
         ret
@@ -954,22 +894,22 @@ PROC showchar FAR
 	mov     ch,[byte ptr @attr]
         cmp     [@attr],0FFFFh
         jne     @@notlastattr
-        mov     ch,[cs:colors]
+        mov     ch,[cs:datablock.colors]
 @@notlastattr:	
-	cmp	[cs:graphic],1
+	cmp	[cs:datablock.graphic],1
 	jne	@@textaccess
         call    emulatechar
         jmp     @@adjusttext
 @@textaccess:
 	mov	ax,0B800h
 	mov	es,ax
-	mov	di,[cs:xy]
+	mov	di,[cs:datablock.xy]
 	mov	[es:di],cx
-	add	[cs:xy],2
+	add	[cs:datablock.xy],2
 @@adjusttext:
-        inc     [cs:x]
-	mov	cl,[cs:columns]
-	cmp	[cs:x],cl
+        inc     [cs:datablock.x]
+	mov	cl,[cs:datablock.columns]
+	cmp	[cs:datablock.x],cl
 	jb	@@noadjusted
         call    addline
 @@noadjusted:
@@ -979,11 +919,11 @@ endp showchar
 
 setcursor:
         push    ax cx dx
-        cmp     [cs:cursor],1
+        cmp     [cs:datablock.cursor],1
         jne     notshow
 	mov 	dx,ccrt
 	mov 	al,0Eh
-	mov 	cx,[cs:xy]
+	mov 	cx,[cs:datablock.xy]
 	shr     cx,1
 	mov 	ah,ch
 	out 	dx,ax
@@ -1003,8 +943,8 @@ emulatechar:
 	and 	di,11111111b
 	shl 	di,3
 	add 	di,offset font8x8
-	mov     bl,[cs:x]
-	mov     cl,[cs:y]
+	mov     bl,[cs:datablock.x]
+	mov     cl,[cs:datablock.y]
         xor     bh,bh
         xor     ch,ch	
 	shl     bx,3
@@ -1016,7 +956,7 @@ bouclet:
 	push    ax
         jc 	colored
 	shr	al,4
-	cmp     [cs:style],0
+	cmp     [cs:datablock.style],0
 	jnz     transparent
 colored:
         and     ax,1111b
@@ -1047,7 +987,7 @@ push    ax cx dx si di bp ds es gs
 mov     bp,sp
 mov     dx,[ss:bp+22]
 mov     ah,2
-mov     cx,[cs:pagesize]
+mov     cx,[cs:datablock.pagesize]
 push    cs
 pop     ds
 mov     si,offset data3
@@ -1070,7 +1010,7 @@ savescreento:
         mov     cx,0B800h
         mov     ds,cx
         xor     ecx,ecx
-        mov     cx,[cs:pagesize]
+        mov     cx,[cs:datablock.pagesize]
         shr     cx,2
         xor     si,si
         cld
@@ -1084,7 +1024,7 @@ saveparamto:
         push    cs
         pop     ds
         xor     ecx,ecx
-        mov     cx,datablocksize
+        mov     cx,size datablock
         mov     si,offset datablock
         cld
         rep     movsb
@@ -1097,7 +1037,7 @@ restoreparamfrom:
         push    cs
         pop     es
         xor     ecx,ecx
-        mov     cx,datablocksize
+        mov     cx,size datablock
         mov     di,offset datablock
         cld
         rep     movsb
@@ -1127,7 +1067,7 @@ restorescreenfrom:
         mov     cx,0B800H
         mov     es,cx
         xor     ecx,ecx
-        mov     cx,[cs:pagesize]
+        mov     cx,[cs:datablock.pagesize]
         shr     cx,2
         xor     di,di
         cld
@@ -1144,9 +1084,9 @@ page2to1:
         mov     es,cx
         mov     ds,cx
         xor     ecx,ecx
-        mov     cx,[cs:pagesize]
+        mov     cx,[cs:datablock.pagesize]
         shr     cx,2
-        mov     si,[cs:pagesize]
+        mov     si,[cs:datablock.pagesize]
         xor     di,di
         cld
         rep     movsd
@@ -1160,9 +1100,9 @@ page1to2:
         mov     es,cx
         mov     ds,cx
         xor     ecx,ecx
-        mov     cx,[cs:pagesize]
+        mov     cx,[cs:datablock.pagesize]
         shr     cx,2
-        mov     di,[cs:pagesize]
+        mov     di,[cs:datablock.pagesize]
         xor     si,si
         cld
         rep     movsd
@@ -1170,190 +1110,190 @@ page1to2:
         ret
 
 ;===============================xchgPages============================
-;xchgpages:
-;push    ax cx dx si di bp ds es gs
-;mov     bp,sp
-;mov     dx,[ss:bp+22]
-;mov     ah,2
-;mov     cx,datablocksize
-;add     cx,[cs:pagesize]
-;add     cx,3*256
-;push    cs
-;pop     ds
-;mov     si,offset data4
-;int     49h
-;mov     ah,6
-;int     49h
-;push    gs
-;pop     es
-;xor     di,di
-;call    savescreento
-;call    page2to1
-;push    gs
-;pop     ds
-;xor     si,si
-;mov     cx,0B800H
-;mov     es,cx
-;mov     di,[cs:pagesize]
-;xor     ecx,ecx
-;mov     cx,[cs:pagesize]
-;shr     cx,2
-;cld
-;rep     movsd
-;mov     ah,01h
-;int     49h
-;pop     gs es ds bp di si dx cx ax
-;ret
-;
-;data4 db '/vgatemp',0
+xchgpages:
+push    ax cx dx si di bp ds es gs
+mov     bp,sp
+mov     dx,[ss:bp+22]
+mov     ah,2
+mov     cx,size datablock
+add     cx,[cs:datablock.pagesize]
+add     cx,3*256
+push    cs
+pop     ds
+mov     si,offset data4
+int     49h
+mov     ah,6
+int     49h
+push    gs
+pop     es
+xor     di,di
+call    savescreento
+call    page2to1
+push    gs
+pop     ds
+xor     si,si
+mov     cx,0B800H
+mov     es,cx
+mov     di,[cs:datablock.pagesize]
+xor     ecx,ecx
+mov     cx,[cs:datablock.pagesize]
+shr     cx,2
+cld
+rep     movsd
+mov     ah,01h
+int     49h
+pop     gs es ds bp di si dx cx ax
+ret
+
+data4 db '/vgatemp',0
 
 
 ;Sauve l'‚tat de la carte dans un bloc mémoire
-;savestate:
-;push    ax cx dx si di bp ds es gs
-;mov     bp,sp
-;mov     dx,[ss:bp+22]
-;mov     ah,2
-;mov     cx,datablocksize
-;add     cx,[cs:pagesize]
-;add     cx,3*256
-;push    cs
-;pop     ds
-;mov     si,offset data
-;int     49h
-;mov     ah,6
-;int     49h
-;push    gs
-;pop     es
-;xor     di,di
-;call    saveparamto
-;add     di,datablocksize
-;call    savescreento
-;add     di,[cs:pagesize]
-;call    savedacto
-;pop     gs es ds bp di si dx cx ax
-;ret
+savestate:
+push    ax cx dx si di bp ds es gs
+mov     bp,sp
+mov     dx,[ss:bp+22]
+mov     ah,2
+mov     cx,size datablock
+add     cx,[cs:datablock.pagesize]
+add     cx,3*256
+push    cs
+pop     ds
+mov     si,offset data
+int     49h
+mov     ah,6
+int     49h
+push    gs
+pop     es
+xor     di,di
+call    saveparamto
+add     di,size datablock
+call    savescreento
+add     di,[cs:datablock.pagesize]
+call    savedacto
+pop     gs es ds bp di si dx cx ax
+ret
 
-;data db '/vga',0
+data db '/vga',0
 
 ;R‚cupŠre l'‚tat de la carte depuis son bloc mémoire
-;restorestate:
-;push    ax dx si bp ds gs
-;mov     bp,sp
-;mov     dx,[ss:bp+16]
-;push    cs
-;pop     ds
-;mov     si,offset data
-;mov     ah,9
-;int     49h
-;push    gs
-;pop     ds
-;mov     al,[ds:7]
-;cmp     [cs:mode],al
-;je      nochangemode
-;mov     ah,0
-;call    setvideomode
-;nochangemode:
-;xor     si,si
-;call    restoreparamfrom
-;add     si,datablocksize
-;call    restorescreenfrom
-;add     si,[cs:pagesize]
-;call    restoredacfrom
-;pop     gs ds bp si dx ax
-;ret
+restorestate:
+push    ax dx si bp ds gs
+mov     bp,sp
+mov     dx,[ss:bp+16]
+push    cs
+pop     ds
+mov     si,offset data
+mov     ah,9
+int     49h
+push    gs
+pop     ds
+mov     al,[ds:7]
+cmp     [cs:datablock.mode],al
+je      nochangemode
+mov     ah,0
+call    setvideomode
+nochangemode:
+xor     si,si
+call    restoreparamfrom
+add     si,size datablock
+call    restorescreenfrom
+add     si,[cs:datablock.pagesize]
+call    restoredacfrom
+pop     gs ds bp si dx ax
+ret
 
 ;sauve le DAC dans un bloc de mémoire
-;savedac:
-;push    ax cx dx si di bp ds es gs
-;mov     bp,sp
-;mov     dx,[ss:bp+22]
-;mov     ah,2
-;mov     cx,3*256
-;push    cs
-;pop     ds
-;mov     si,offset data2
-;int     49h
-;mov     ah,6
-;int     49h
-;push    gs
-;pop     es
-;xor     di,di
-;call    savedacto
-;pop     gs es ds bp di si dx cx ax
-;ret
+savedac:
+push    ax cx dx si di bp ds es gs
+mov     bp,sp
+mov     dx,[ss:bp+22]
+mov     ah,2
+mov     cx,3*256
+push    cs
+pop     ds
+mov     si,offset data2
+int     49h
+mov     ah,6
+int     49h
+push    gs
+pop     es
+xor     di,di
+call    savedacto
+pop     gs es ds bp di si dx cx ax
+ret
 
-;data2 db '/vgadac',0
+data2 db '/vgadac',0
 
 ;R‚cupŠre le dac depuis son bloc mémoire
-;restoredac:
-;push    ax dx si bp ds gs
-;mov     bp,sp
-;mov     dx,[ss:bp+16]
-;push    cs
-;pop     ds
-;mov     si,offset data2
-;mov     ah,9
-;int     49h
-;push    gs
-;pop     ds
-;xor     si,si
-;call    restoredacfrom
-;pop     gs ds bp si dx ax
-;ret
+restoredac:
+push    ax dx si bp ds gs
+mov     bp,sp
+mov     dx,[ss:bp+16]
+push    cs
+pop     ds
+mov     si,offset data2
+mov     ah,9
+int     49h
+push    gs
+pop     ds
+xor     si,si
+call    restoredacfrom
+pop     gs ds bp si dx ax
+ret
 
 ;sauve le DAC en es:di
-;savedacto:
-;push ax cx dx di
-;mov dx,3C7h
-;mov cx,256
-;save:
-;mov al,cl
-;dec al
-;out dx,al
-;inc dx
-;inc dx
-;in al,dx
-;mov [es:di],al
-;inc di
-;in al,dx
-;mov [es:di],al
-;inc di
-;in al,dx
-;mov [es:di],al
-;inc di
-;dec dx
-;dec dx
-;dec cx
-;jne save
-;pop di dx cx ax
-;ret
+savedacto:
+push ax cx dx di
+mov dx,3C7h
+mov cx,256
+save:
+mov al,cl
+dec al
+out dx,al
+inc dx
+inc dx
+in al,dx
+mov [es:di],al
+inc di
+in al,dx
+mov [es:di],al
+inc di
+in al,dx
+mov [es:di],al
+inc di
+dec dx
+dec dx
+dec cx
+jne save 
+pop di dx cx ax
+ret
 
 ;restore le DAC depuis ds:si
-;restoredacfrom:
-;push ax cx dx si
-;xor ax,ax
-;mov dx,3C8h
-;mov cx,256
-;save2:
-;mov al,cl
-;dec al
-;out dx,al
-;inc dx
-;mov al,[ds:si]
-;inc si
-;out dx,al
-;mov al,[ds:si]
-;inc si
-;out dx,al
-;mov al,[ds:si]
-;inc si
-;out dx,al
-;dec dx
-;dec cx
-;jne save2
-;pop si dx cx ax
-;ret
+restoredacfrom:
+push ax cx dx si
+xor ax,ax
+mov dx,3C8h
+mov cx,256
+save2:
+mov al,cl
+dec al
+out dx,al
+inc dx 
+mov al,[ds:si]
+inc si
+out dx,al
+mov al,[ds:si]
+inc si 
+out dx,al
+mov al,[ds:si]
+inc si  
+out dx,al
+dec dx
+dec cx
+jne save2
+pop si dx cx ax
+ret
 
 
 font8x8:
