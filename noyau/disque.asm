@@ -1,210 +1,173 @@
-.model tiny
-.486
-smart
-.code
+model tiny,stdcall
+p486
+locals
+jumps
+codeseg
+option procalign:byte
+
+include "..\include\mem.h"
+include "..\include\fat.h"
 
 org 0h
 
-include ..\include\fat.h
-include ..\include\mem.h
+header exe <"CE",1,0,0,offset exports,offset imports,,>
 
-start:
-	jmp	tsr			;Saute à la routine résidente
-id    dw 1234h                ;Identifiant drivers
-Tsr:
-	cli				;Désactive interruptions logiciellement
-	cmp	ax,cs:ID         	;Compare si test de chargement
-	jne 	nomore		;Si pas test alors on continu
-      rol   ax,3*4            ;Rotation de 3 chiffre de l'ID pour montrer que le drivers est chargé
-	jmp 	itsok			;On termine l'int avec notre code d'ID preuve du bon chargement de VIDEO
-nomore:
-      cmp   ah,maxfunc
-      jbe   noerrorint
-      stc
-      jmp   itsok
-noerrorint:
-      clc
-	push 	bx
-	mov 	bl,ah			;On calcule d'aprés le n° de fonction
-	xor 	bh,bh			;quel sera l'entrée dans la table indexée
-	shl 	bx,1			;des adresses fonctions.
-	mov 	bx,cs:[bx+tables]	;On récupère cette adresse depuis la table
-	mov 	cs:current,bx	;On la stocke temporairement pour obtenir les registres d'origine
-	pop 	bx
-      clc
-      call 	cs:current		;Puis on execute la fonction
-itsok:
-	push 	bp		
-	mov 	bp,sp			;On prend sp dans bp pour adresser la pile
-	pushf
-        jnc 	noerror		;La fonction appelée a renvoyer une erreur :  Flag CARRY ?
-      or    byte ptr [bp+6],1b;Si oui on le retranscrit sur le registre FLAG qui sera dépilé lors du IRET
-      ;xor  eax,eax
-      ;mov  ax,cs                   ;On récupère le segment et l'offset puis en renvoie l'adresse physique
-      ;shl  eax,4                   ;de l'erreur.
-      ;add  ax,cs:current
-      jmp  endofscan                ;on termine l'int
-noerror:
-	 and 	byte ptr [bp+6],0FEh;Si pas d'erreur on efface le Bit CARRY du FLAG qui sera dépilé lors du IRET
-endofscan:
-       popf
-       jne    noequal
-       or    byte ptr [bp+6],1000000b
-       jmp  endofint
-noequal:
-       and 	byte ptr [bp+6],0BFh
-endofint:
-       pop 	bp
-	 sti				;On réactive les interruptions logiciellement
-	 iret				;Puis on retourne au programme appelant.
 
-current dw 0			;Mot temporaire qui contient l'adresse de la fonction appelée
-tables  dw readsector
-        dw writesector
-        dw verifysector
-        dw initdrive
-        dw loadfile
-        dw compressrle
-        dw decompressrle
-	dw FindFirstfile
-	dw Findnextfile    
-	dw GetFreeSpace   
-	dw Searchfile
-	dw Getname
-	dw Getserial
-	dw changedir
-	dw readcluster
-	dw writecluster
-	dw getdir
-	dw projfile
-	dw execfile
+exporting		
+declare readsector
+declare writesector
+declare verifysector
+declare initdrive
+declare loadfile
+declare compressrle
+declare decompressrle
+declare findfirstfile
+declare findnextfile
+declare getfreespace
+declare searchfile
+declare getname
+declare getserial
+declare changedir
+declare readcluster
+declare writecluster
+declare getdir
+declare projfile
+declare execfile
+ende
+	
+importing
+use SYSTEME,biosprinth
+use SYSTEME,mbfindsb
+use SYSTEME,mbfree
+use SYSTEME,mbcreate
+use SYSTEME,mbresident
+use SYSTEME,mbfind
+use SYSTEME,mbchown
+use SYSTEME,mbloadfuncs
+endi
 
-maxfunc equ 24
 
 ;DPT disquette 
-mydpt DPT ?
+mydpt dpt <>
 
 ;Secteur de boot
-myboot bootSector ?
+myboot bootinfo <>
+
+;Parametres
+support                 db      0
+nbbuffer                db      0
 
 ;Données Calculée
 clustersize		dw	0
-TracksPerHead 		dw 	0
-DriveSize         	dd     	0
-AdressBoot		dw	0
-AdressFat		dw	0
-AdressParent      	dw     	0
-AdressData		dw	0 
-AddingValue		dw     	0
-CurrentDir		dw	0 ;En cluster
-CurrentDirStr		db      128 dup (0)
+tracksperhead 		dw 	0
+drivesize         	dd     	0
+adressboot		dw	0
+adressfat		dw	0
+adressparent      	dw     	0
+adressdirectory         dw      0
+adressdata		dw	0
+addingvalue		dw     	0
+currentdir		dw	0 ;En cluster
+currentdirstr		db      128 dup (0)
 
-;Pour recherches
-EntryPlace		dw	0 ;En octet
-AdressDirectory		dw	0 ;En cluster
-firstsearch		dw	1 ;Premiere requete ?
 
-getfat:
-	push  	ax bx dx si ds gs
-	mov     dx,cs
-        push    cs
-        pop     ds
-        mov     si,offset datafat
-        mov     ah,9
-        int     49h
+PROC getfat near
+	uses  	ax,bx,dx,si,ds,es
+   push    cs
+   pop     ds
+   
+   push cs
+   pop es
+   ;call    [cs:mbfindsb],offset datafat,cs
+  ; mov     es,ax
 	mov	ax,cx
 	mov	bx,ax
 	and   	bx,0000000000000001b
 	shr   	ax,1
 	mov   	cx,3
-	mul   	cx
-	xor     si,si
+	mul   	cx	
+ mov     si,offset fatter
+        ;xor     si,si
 	add   	si,ax
 	cmp   	bx,0h
 	jnz   	evenfat
 oddfat:	
-	mov	dx,gs:[si]
-      	and   	dx,0FFFh
-    	mov   	cx,dx
+	mov	ax,[es:si]
+      	and   	ax,0FFFh
+    	mov   	cx,ax
       	jmp   	endfat
 evenfat:
-      	mov   	dx,gs:[si+1]
-      	and   	dx,0FFF0h
-      	shr   	dx,4
-      	mov   	cx,dx
+      	mov   	ax,[es:si+1]
+      	and   	ax,0FFF0h
+      	shr   	ax,4
+      	mov   	cx,ax
 endfat:
-	cmp	dx,0FF0h
+	cmp	ax,0FF0h
 	jbe	nocarry
 	stc
-	pop 	gs ds si dx bx ax
 	ret
 nocarry:
 	clc
-	pop 	gs ds si dx bx ax
 	ret
+endp getfat 
 
-;============loadfile (Fonction 4)===============
-;Charge le fichier ds:si en es:di ->ecx taille
+;============loadfile===============
+;Charge le fichier ds:%0 en ds:%1 ->ax taille
 ;-> AH=4
 ;<- Flag Carry si erreur
 ;=====================================================
-loadfile:
-	push	eax bx di
-	push	es di
-	push	cs
-	pop	es
-	mov	di,offset tempfit
-	call	searchfile
-	pop	di es
+PROC loadfile FAR
+        ARG     @name:word,@pointer:word
+	USES	cx,si,di
+	mov     si,[@name]
+	call	searchfile,si
 	jne   	errorload
-	jc	errorload
-	mov	cx,cs:tempfit.FileGroup
-	mov	eax,cs:tempfit.FileSize
-	call	loadway
+	jc	    errorload
+	mov	    cx,[(find si).result.filegroup]
+	mov	    eax,[(find si).result.filesize]
+    call    loadway,cx,eax,[@pointer]
 	jc    	errorload
 	clc
-	mov	ecx,eax
-	pop   	di bx eax
 	ret
 errorload:
 	stc
-	mov	ecx,0
-	pop   	di bx eax
+	xor eax,eax
 	ret
+endp loadfile
 	
 ;============execfile (Fonction 18)===============
 ;Execute le fichier ds:si
 ;-> AH=18
 ;<- Flag Carry si erreur
 ;=====================================================
-execfile:
+PROC execfile FAR
 	pushf
         push    bp dx
         mov     bp,sp
-        mov     dx,ss:[bp+10]
+        mov     dx,[ss:bp+10]
 	pushad
         push    ds es fs gs
         call    projfile
-        jc      reallyerror
+        jc      @@reallyerror
         push    es
         pop     gs
         mov     ah,6
         int     49h
         mov     ah,12
         int     49h
-        jc      reallyerror
+        jc      @@reallyerror
         push    es
         push    cs
-        mov     ax,offset arrive
+        mov     ax,offset @@arrive
         push    ax
         push    es
-        cmp     word ptr gs:[0h],'EC'
-        jne     noce
+        cmp     [word ptr gs:0h],'EC'
+        jne     @@noce
         push    size exe
-        jmp     wasce
- noce:
+        jmp     @@wasce
+@@noce:
         push    0000h
- wasce:
+@@wasce:
         push    es
         push    es
         push    es
@@ -215,7 +178,7 @@ execfile:
         popf
         sti
         db      0CBh
-        arrive:
+@@arrive:
         cli
         pop     gs
         mov     ah,01
@@ -225,439 +188,412 @@ execfile:
         pop     dx bp
         popf
 	ret
-reallyerror:
+@@reallyerror:
         pop     gs fs es ds
 	popad
 	pop     dx bp
         popf
 	stc
 	ret
+endp execfile
 
 ;============projfile (Fonction 17)===============
-;Charge le fichier ds:si sur un bloc mémoire -> ecx taille -> es bloc
-;-> AH=17
+;Charge le fichier ds:%0 sur un bloc mémoire -> eax taille -> es bloc
+;-> 
 ;<- Flag Carry si erreur
 ;=====================================================
-projfile:
-	push	eax bx di ds gs
-	push	cs
-	pop	es
-	call    uppercase
-        mov     ah,5
-	int     49h
-	jnc      errorload2
-	mov	di,offset tempfit
-	call	searchfile
-	jne   	errorload2
-	jc	errorload2
-	mov	eax,cs:tempfit.FileSize
-	mov     ecx,eax
-	push    eax
-	mov     ah,2
-	int     49h
-	pop     eax
-	jc      errorload2
-	push    gs
-	pop     es
-	mov	cx,cs:tempfit.FileGroup
-	mov     di,0h
-	call	loadway
-	jc    	errorload2
+PROC projfile FAR
+ARG     @pointer:word
+USES	cx,si,di,ds,es
+   	push    ds
+	pop     es 
+	mov     si,[@pointer]
+	call	uppercase,si
+    call    [cs:mbfind],si
+    jnc     @@errorload
+	call    searchfile,si
+	jne   	@@errorload
+	jc	    @@errorload	
+	mov	    eax,[es:(find si).result.filesize]
+	call    [cs:mbcreate],si,ax
+	jc      @@errorload
+	mov     ds,ax
+    mov     cx,[es:(find si).result.filegroup]
+   	mov	    eax,[es:(find si).result.filesize]
+    call    loadway,cx,eax,0
+	jc    	@@errorload
 	clc
-	mov	ecx,eax
-	pop   	gs ds di bx eax
 	ret
-errorload2:
+@@errorload:
 	stc
-	mov	ecx,0
-	pop   	gs ds di bx eax
+	xor eax,eax
 	ret
-	
+endp projfile
 
-tempfit db 32 dup (0)
 
-;=============SearchFile (Fonction 10)===============
-;Renvois dans ES:DI la fit du fichier DS:SI et non equal si pas existant
-;-> AH=10
+;=============SearchFile===============
+;Renvois dans ds:%0 et non equal si pas existant
+;->
 ;<- Flag Carry si erreur
-;=====================================================
-SearchFile:
-	push	ax cx ds si di es
-	call	uppercase
-	push	ds si
-	call	findfirstfilez
-	push	ds
-	pop	es
-	mov	di,si
-	pop	si ds
-	jc	errorsearch
-	jmp	founded
-nextsearch:
-	push	ds si
-	call	findnextfilez
-	push	ds
-	pop	es
-	mov	di,si
-	pop	si ds
-founded:
-	cmp	byte ptr cs:[di],0
-	je	notgood
-	cmp	byte ptr cs:[di+FileAttr],0Fh
-	je	nextsearch
-	call	cmpnames
-	jc    	nextsearch
-okfound:
-	push	cs
-	pop	ds
-	mov	si,di
-	pop	es di
-	push	di es
-	mov	cx,32
-	rep	movsb
+;======================================
+PROC searchfile FAR
+ARG     @pointer:word
+	USES	bx,cx,si,di,ds,es
+	mov     si,[@pointer]
+	lea     bx,[es:(find si).result]
+	call	uppercase,si
+	call	findfirstfile,si	
+    jc	    @@errorsearch
+	jmp	    @@founded
+@@nextsearch:
+	call	findnextfile,si
+    jc	    @@errorsearch	
+@@founded:
+	cmp	    [byte ptr bx],0
+	je	    @@notgood
+	cmp	    [byte ptr bx+entries.fileattr],0Fh
+	je	     @@nextsearch	
+	call	cmpnames,si,bx
+    jc    	@@nextsearch
+@@okfound:
 	clc
-	pop	es di si ds cx ax
 	ret
-notgood:
+@@notgood:
 	cmp   	si,0FF5h
-	pop	es di si ds cx ax
 	ret
-errorsearch:
+@@errorsearch:
 	stc
-	pop	es di si ds cx ax
 	ret
+endp searchfile
 
-;Transforme la chaine ds:si en maj
-uppercase: 
-	push 	si ax
-uppercaser:
-	mov 	al,ds:[si]
+;Transforme la chaine ds:%0 en maj
+PROC uppercase far
+        ARG     @strs:word
+	USES 	si,ax
+	mov     si,[@strs]
+@@uppercaser:
+	mov 	al,[si]
 	cmp 	al,0
-	je 	enduppercase
+	je 	@@enduppercase
 	cmp 	al,'a'
-	jb 	nonmaj
+	jb 	@@nonmaj
 	cmp 	al,'z'
-	ja 	nonmaj
+	ja 	@@nonmaj
 	sub 	al,'a'-'A'
-	mov 	ds:[si],al
-nonmaj:
+	mov 	[si],al
+@@nonmaj:
 	inc 	si
-	jmp 	uppercaser
-enduppercase:
+	jmp 	@@uppercaser
+@@enduppercase:
 	clc
-	pop 	ax si
 	ret
+endp uppercase
 
-;Compare le nom ds:si '.' avec es:di 
-CmpNames:
-	push 	ax cx si di
+;Compare le nom ds:%0 '.' avec ds:%1
+PROC cmpnames FAR
+        ARG     @off1:word,@off2:word
+	USES 	ax,cx,si,di,es
+	mov     si,[@off1]
+	mov     di,[@off2]
+	push    ds
+	pop     es              	
 	mov 	cx,8
 	repe 	cmpsb
-	jne 	nequal
+	jne 	@@nequal
 	inc 	si
-	jmp     equal
-nequal:
-        cmp 	byte ptr es:[di-1],' '
-        jne     notequal	
-equal:
-	cmp 	byte ptr [si-1],'.'
-	jne 	trynoext
+	jmp     @@equal
+@@nequal:
+        cmp 	[byte ptr es:di-1],' '
+        jne     @@notequal	
+@@equal:
+	cmp 	[byte ptr si-1],'.'
+	jne 	@@trynoext
 	mov 	al,' '
 	rep 	scasb
 	mov 	cx,3
 	rep 	cmpsb
-	jne 	nequal2
+	jne 	@@nequal2
         inc     si
-        jmp     equal2
-nequal2:
-        cmp 	byte ptr es:[di-1],' '
-        jne     notequal
-equal2:
-	cmp 	byte ptr [si-1],0
-	jne     notequal
-itok:
-        clc
-	pop 	di si cx ax
+        jmp     @@equal2
+@@nequal2:
+        cmp 	[byte ptr es:di-1],' '
+        jne     @@notequal
+@@equal2:
+	cmp 	[byte ptr si-1],0
+	jne     @@notequal
+@@itok:
+    clc
 	ret
-notequal:
+@@notequal:
 	stc
-	pop 	di si cx ax
 	ret	
-trynoext:
-	cmp	byte ptr [si-1],0
-	jne	notequal
-	jmp	itok
+@@trynoext:
+	cmp	[byte ptr si-1],0
+	jne	@@notequal
+	jmp	@@itok
+endp cmpnames
 
 ;charge le fichier de de groupe CX et de taille eax
-LoadWay:
-	push	eax bx dx si di ecx ds es			
-	cmp   	eax,0
-	je	Zeroload
-	rol	eax,16
-	mov	dx,ax
-	ror	eax,16
-	div	cs:clusterSize
-	mov	bx,ax
-	cmp	bx,1
-	jb	adjustlast
-Loadfat:
-	call	readcluster
-	jc 	noway
-	add	di,cs:clusterSize
-	call	getfat
-	dec	bx
-	jnz	loadfat
-AdjustLast:
-	push  	es di
+PROC loadway NEAR
+     ARG     @sector:word,@size:dword,@offset:word
+	USES 	eax,bx,cx,dx,si,di,ds,es
+    push  ds
+    pop   es
+    mov   eax,[@size]		
+	cmp   eax,0
+	je	  @@zeroload
+	rol	  eax,16
+	mov	  dx,ax
+	ror	  eax,16
+	div	  [cs:clustersize]
+	mov	  bx,ax
+	cmp	  bx,1
+	jb	  @@adjustlast
+	mov   cx,[@sector]
+	mov   di,[@offset]
+@@loadfat:
+	call   readcluster,cx,di
+	jc 	   @@noway
+	add	   di,[cs:clustersize]
+	call   getfat
+	dec	   bx
+	jnz	   @@loadfat
+@@adjustlast:
+    cmp     dx,0
+    je      @@zeroload
 	push	cs
-	pop 	es
-	mov	di,offset bufferread
-	mov	si,di
-	call	Readcluster
-	pop   	di es
-	jc	noway
-	mov	cx,dx
-	push	cs
-	pop	ds
+	pop 	ds
+	mov	    si,offset bufferread
+	call	readcluster,cx,si
+	jc	    @@noway
+	mov	    cx,dx   
 	cld
 	rep	movsb
-zeroload:
+@@zeroload:
 	clc
-	pop	es ds ecx di si dx bx eax
 	ret
-noway:	
+@@noway:	
 	stc
-	pop	es ds ebp di si dx bx eax
 	ret
+endp loadway	
 
-;=============INITDRIVE (Fonction 04H)===============
+;=============INITDRIVE===============
 ;Initialise le lecteur pour une utilisation ultérieure
-;-> AH=4
+;->
 ;<- Flag Carry si erreur
-;=====================================================
-InitDrive:
-	push 	eax bx cx edx di ds es gs
+;=====================================
+PROC initdrive FAR
+	USES 	eax,bx,cx,edx,si,di,ds,es
 	push 	cs
 	pop 	ds
 	push	cs
 	pop	es
 	mov	di,3
-againtry:
+@@againtry:
         xor  	ax,ax
-	mov	dx,0000h
+	mov	dl,[support]
+	xor     dh,dh
         int  	13h
-	mov	bx,offset myboot
+	mov	bx,offset bufferread
 	mov	ax,0201h
 	mov	cx,0001h
-	mov	dx,0000h
+        mov     dl,[support]
+        xor     dh,dh
 	int	13h
-	jnc	oknoagaintry
+	jnc	@@oknoagaintry
 	dec	di
-	jnz	againtry
-oknoagaintry:
-	mov	lastseg,0
-	mov	lastoff,0
-	mov 	LastRead,0
-	mov	ax,myboot.sectorsize
-	mov	bl,myboot.SectorsPerCluster
+	jnz	@@againtry
+@@oknoagaintry:
+        mov     si,offset bufferread+3
+        mov     di,offset myboot
+        mov     cx,size myboot
+        cld
+        rep     movsb
+	mov	ax,[myboot.sectorsize]
+	mov	bl,[myboot.sectorspercluster]
 	xor	bh,bh
 	mul	bx
-	mov	clustersize,ax
-	mov 	bx,myboot.HiddenSectorsL
-	adc 	bx,myboot.HiddenSectorsH
-	mov 	AdressBoot,bx
-	add 	bx,myboot.ReservedSectors
-	mov 	AdressFat,bx
+	mov	[clustersize],ax
+	mov 	bx,[myboot.hiddensectorsl]
+	adc 	bx,[myboot.hiddensectorsh]
+	mov 	[adressboot],bx
+	add 	bx,[myboot.reservedsectors]
+	mov 	[adressfat],bx
 	xor 	ax,ax
-	mov 	al,myboot.FatsPerDrive
-	mul 	myboot.SectorsPerFat
+	mov 	al,[myboot.fatsperdrive]
+	mul 	[myboot.sectorsperfat]
 	add 	bx,ax
-	mov 	AdressParent,bx
-	mov 	AdressDirectory,bx
+	mov 	[adressparent],bx
+	mov 	[adressdirectory],bx
 	mov 	ax,32                 
-	mul 	myboot.DirectorySize
-	div 	myboot.SectorSize
+	mul 	[myboot.directorysize]
+	div 	[myboot.sectorsize]
 	add 	bx,ax
-	mov 	AdressData,bx
+	mov 	[adressdata],bx
 	sub	bx,2
-	mov	AddingValue,bx
-	mov 	ax,myboot.SectorsPerDrive
-	div 	myboot.SectorsPerTrack
+	mov	[addingvalue],bx
+	mov 	ax,[myboot.sectorsperdrive]
+	div 	[myboot.sectorspertrack]
 	xor 	dx,dx
-	div 	myboot.HeadsPerDrive     
-	mov 	TracksPerHead,ax
+	div 	[myboot.headsperdrive]
+	mov 	[tracksperhead],ax
 	xor	eax,eax
-	mov	ax,myboot.SectorsPerDrive
-	sub	ax,AdressData
-	mul	myboot.SectorSize
+	mov	ax,[myboot.sectorsperdrive]
+	sub	ax,[adressdata]
+	mul	[myboot.sectorsize]
 	shl   	edx,16
 	add   	edx,eax
-	mov	DriveSize,edx
-	mov	CurrentDir,0
-	mov	EntryPlace,0
-	mov	adressdirectory,0
-	mov	firstsearch,1
-	mov	currentdirstr,0
+	mov	[drivesize],edx
+	mov	[currentdir],0
+	mov	[adressdirectory],0
+	mov	[currentdirstr],0
         xor     eax,eax
-        mov     ax,myboot.SectorsPerFat
-       	mul	myboot.SectorSize
-	shl   	edx,16
-	add   	edx,eax
-        mov     ecx,edx
-       	mov     dx,cs
-        mov     si,offset datafat
-        mov     ah,9
-        int     49h
-        jnc     hadafatbloc
-        mov     si,offset datafat
-        mov     ah,2
-        int     49h
-        mov     ah,3
-        int     49h
-hadafatbloc:
-        xor     di,di
-	mov	dx,myboot.SectorsPerFat
-	mov	cx,AdressFat
-	push    gs
-	pop     es
-SeeFat:
-	call	readsector
-	jc	ErrorInit
-	add	di,myboot.SectorSize
+        mov     ax,[myboot.sectorsperfat]
+       	mul	[myboot.sectorsize]
+        ;call    [cs:mbfindsb],offset datafat,cs
+        ;jnc     @@hadafatbloc
+        ;call    [cs:mbcreate],offset datafat,ax
+        ;jc      @@errorinit
+        ;call    [cs:mbresident],ax
+        ;jc      @@errorinit
+        ;call    [cs:mbchown],ax,cs
+        ;jc      @@errorinit
+@@hadafatbloc:
+	mov	dx,[myboot.sectorsperfat]
+	mov	cx,[adressfat]
+        ;xor     di,di
+        mov      di,offset fatter
+        ;mov     ds,ax
+@@seefat:
+	call	readsector,cx,di
+	jc	@@errorinit
+	add	di,[cs:myboot.sectorsize]
 	inc	cx
 	dec	dx
-	jnz	seefat
+	jnz	@@seefat
 	clc
-	pop 	gs es ds di edx cx bx eax
 	ret
-ErrorInit:
+@@errorinit:
 	stc
-	pop 	gs es ds di edx cx bx eax
 	ret
-	
-datafat db '/fat',0	
+endp initdrive
 
-;=============FindFirstFile (Fonction 7)==============
-;Renvois dans ES:DI un bloc d'info
-;-> AH=7
+datafat db '/fat',0
+
+;=============FindFirstFile==============
+;Renvois dans DS:%1 un bloc d'info
+;->
 ;<- Flag Carry si erreur
-;=====================================================
-FindFirstFile:
-	push	cx ds di si
-	call	FindFirstFileZ
-	mov	cx,32
-	rep	movsb
-	pop	si di ds cx
+;========================================
+PROC findfirstfile FAR
+        ARG     @pointer:word
+	USES	cx,si
+	mov     si,[@pointer]
+	mov 	cx,[cs:currentdir]
+	mov 	[(find si).adressdirectory],cx
+	xor	    cx,cx
+	mov 	[(find si).entryplace],cx
+	mov	    [(find si).firstsearch],1
+	call 	findnextfile,[@pointer]
 	ret
+endp findfirstfile
 
-FindFirstFileZ:
-	push 	cx
-	mov 	cx,cs:CurrentDir
-	mov 	cs:AdressDirectory,cx
-	xor	cx,cx
-	mov 	cs:EntryPlace,cx
-	mov	cs:firstsearch,1
-	call 	findnextfileZ
-	pop 	cx
-	ret
-
-;=============FindnextFile (Fonction 8)==============
-;Renvois dans ES:DI un bloc d'info
-;-> AH=8
+;=============FindnextFile==============
+;Renvois dans DS:%0 un bloc d'info
+;->
 ;<- Flag Carry si erreur
-;=====================================================
-;Renvois dans ES:DI un bloc d'info
-FindnextFile:
-	push	cx ds di si
-	call	FindnextFileZ
-	mov	cx,32
-	rep	movsb
-	pop	si di ds cx
-	ret
-
-;fait pointer ds:si sur la prochaine entrée du repertoire courant
-FindnextFileZ:
-	push	ax bx cx es di
-	push	cs
-	pop	ds
-	mov	cx,cs:AdressDirectory
-	mov	bx,cs:Entryplace
-FindnextFileagain:
-	cmp	cs:firstsearch,1
-	je	first
-	add	bx,32
-	cmp	bx,cs:clusterSize
-	jb	nopop
-first:
-	mov	di,offset bufferentry
-	push	cs
-	pop	es
-	mov	bx,0
-	cmp	cs:currentdir,0
-	jne	notrootdir
-	cmp	cs:firstsearch,1
-	je	noaddfirst1
+;=======================================
+PROC findnextfile FAR
+        ARG     @pointer:word
+	USES	ax,bx,cx,di,si,ds,es
+	push    cs
+	push    ds
+	pop     es
+	pop     ds
+	mov     si,[@pointer]	
+	mov	    cx,[es:(find si).adressdirectory]
+	mov	    bx,[es:(find si).entryplace]
+@@findnextfileagain:
+	cmp	    [es:(find si).firstsearch],1
+	je	    @@first
+	add	    bx,size entries
+	cmp	    bx,[cs:clustersize]
+	jb	    @@nopop
+@@first:
+	mov	    di,offset bufferentry
+	mov	    bx,0
+	cmp	    [cs:currentdir],0
+	jne	@@notrootdir
+	cmp	[es:(find si).firstsearch],1
+	je	@@noaddfirst1
 	inc	cx
-noaddfirst1:
-	add	cx,cs:adressparent
-	mov	al,myboot.sectorspercluster
-readroot:
-	call	readsector
-	jc	notwell
-	add	di,myboot.sectorsize
+@@noaddfirst1:
+	add	cx,[cs:adressparent]
+	mov	al,[cs:myboot.sectorspercluster]
+@@readroot:
+	call	readsector,cx,di
+	jc	@@notwell
+	add	di,[cs:myboot.sectorsize]
 	dec	al
-	jnz	readroot
-	sub	cx,cs:adressparent
-	jmp	nopop
-notrootdir:
-	cmp	cs:firstsearch,1
-	je	noaddfirst2
+	jnz	@@readroot
+	sub	cx,[cs:adressparent]
+	jmp	@@nopop
+@@notrootdir:
+	cmp	[es:(find si).firstsearch],1
+	je	@@noaddfirst2
 	call	getfat
-noaddfirst2:
-	jc	notwell
-	call	readcluster
-	jc	notwell
-nopop:
-	mov	cs:firstsearch,0
-	mov	si,offset bufferentry
-	add	si,bx
-	cmp	byte ptr cs:[si],0
-	je	notwell
-	mov	cs:entryplace,bx
-	mov	cs:AdressDirectory,cx
-	cmp	byte ptr cs:[si],0E5h
-	je	findnextfileagain
-	cmp	byte ptr cs:[si+fileattr],28h
-	je	findnextfileagain
-	cmp	byte ptr cs:[si+fileattr],0Fh
-	je	findnextfileagain
+@@noaddfirst2:
+	jc	@@notwell
+	call	readcluster,cx,di
+	jc	@@notwell
+@@nopop:
+	mov	[es:(find si).firstsearch],0
+	mov di,offset bufferentry
+	add	di,bx
+	cmp	[byte ptr di],0
+	je	@@notwell
+	mov	[es:(find si).entryplace],bx
+	mov	[es:(find si).adressdirectory],cx
+	cmp	[byte ptr di],0E5h
+	je	@@findnextfileagain
+	cmp	[byte ptr di+entries.fileattr],28h
+	je	@@findnextfileagain
+	cmp	[byte ptr di+entries.fileattr],0Fh
+	je	@@findnextfileagain
+	mov si,di
+    mov di,[@pointer]
+    lea di,[es:(find di).result]	
+	mov	cx,size entries
+	cld
+	rep	movsb
 	clc
-	pop	di es cx bx ax
 	ret
-notwell:
+@@notwell:
 	stc
-	pop	di es cx bx ax
 	ret
+endp findnextfile
 
-;=============GetFreeSpace (Fonction 09H)===============
+;=============GetFreeSpace===============
 ;Renvoie en EDX l'espace disque libre du volume
-;-> AH=9
+;->
 ;<- Flag Carry si erreur
-;=====================================================
-GetFreeSpace:
-	push  	eax
+;========================================
+PROC getfreespace FAR
+	USES  	eax,bx
 	xor	eax,eax
 	call	getsector
-	mul	cs:myboot.SectorSize
+	mul	[cs:myboot.sectorsize]
 	shl	edx,16
 	add	edx,eax
 	pop   	eax
 	ret
+endp getfreespace
 
 ;ax=défectueux bx=libre
-GetSector:
+getsector:
 	push	cx dx
-	mov	dx,cs:myboot.SectorsPerDrive
-	sub	dx,cs:AddingValue
+	mov	dx,[cs:myboot.sectorsperdrive]
+	sub	dx,[cs:addingvalue]
 	xor	ax,ax
 	xor	bx,bx
 	mov	cx,0
@@ -684,237 +620,221 @@ errorfree:
 	ret
 
 
-;=============READCLUSTER (Fonction 14)===============
-;Lit le secteur CX et le met en es:di
-;-> AH=14
+;=============READCLUSTER===============
+;Lit le secteur %0 et le met en ds:%1
+;->
 ;<- Flag Carry si erreur
-;=====================================================
-readcluster:
-	push	ax bx cx dx di
-	mov	ax,cx
-	mov	bl,cs:myboot.sectorspercluster
+;=======================================
+PROC readcluster FAR
+        ARG     @sector:word,@pointer:word
+	USES	ax,bx,dx,si
+	mov	bl,[cs:myboot.sectorspercluster]
 	xor	bh,bh
-	mul	bx
-	mov	cx,ax
-	add	cx,cs:addingvalue
-readsectors:
-	call	readsector
-	jc	errorreadincluster
-	add	di,cs:myboot.sectorsize
-	inc	cx
-	dec	bl
-	jnz	readsectors
-	clc
-	pop	di dx cx bx ax
-	ret
-errorreadincluster:
-	stc
-	pop	di dx cx bx ax
-	ret
-
-;=============WRITECLUSTER (Fonction 15)===============
-;Ecrit le cluster CX et le met en es:di
-;-> AH=14
-;<- Flag Carry si erreur
-;=====================================================
-writecluster:
-	push	ax bx cx dx si
-	mov	ax,cx
-	mov	bl,cs:myboot.sectorspercluster
-	xor	bh,bh
-	mul	cx
-	mov	cx,ax
-	add	cx,cs:addingvalue
-writesectors:
-	call	writesector
-	jc	errorwriteincluster
-	add	si,cs:myboot.sectorsize
-	inc	cx
+	mul	[@sector]
+	add	ax,[cs:addingvalue]
+	mov     si,[@pointer]
+@@readsectors:
+	call	readsector,ax,si
+	jc	@@errorreadincluster
+	add	si,[cs:myboot.sectorsize]
+	inc	ax
 	dec	bx
-	jnz	writesectors
+	jnz	@@readsectors
 	clc
-	pop	si dx cx bx ax
 	ret
-errorwriteincluster:
+@@errorreadincluster:
 	stc
-	pop	si dx cx bx ax
 	ret
+endp readcluster
 
-;=============READSECTOR (Fonction 01H)===============
-;Lit le secteur CX et le met en es:di
-;-> AH=1
+;=============WRITECLUSTER===============
+;Ecrit le cluster %0 et le met en ds:%1
+;->
 ;<- Flag Carry si erreur
 ;=====================================================
-ReadSector:
-	push 	ax bx cx dx si
-	cmp 	cx,cs:lastread
-	jne  	gom
-	mov	ax,es
-	cmp	cs:lastseg,ax
-	jne   	gom
-	cmp	di,cs:lastoff
-	jne   	gom
-	jmp	done
-gom:
-	mov	cs:lastseg,ax
-	mov	cs:lastoff,di
-	mov 	cs:LastRead,cx
-	mov	ax,cx
+PROC writecluster FAR
+        ARG     @sector:word,@pointer:word
+	USES	ax,bx,dx,si
+	mov	bl,[cs:myboot.sectorspercluster]
+	xor	bh,bh
+	mul	[@sector]
+	add	ax,[cs:addingvalue]
+	mov     si,[@pointer]
+@@writesectors:
+	call	writesector,ax,si
+	jc	@@errorwriteincluster
+	add	si,[cs:myboot.sectorsize]
+	inc	ax
+	dec	bx
+	jnz	@@writesectors
+	clc
+	ret
+@@errorwriteincluster:
+	stc
+	ret
+endp writecluster
+
+;=============READSECTOR===============
+;Lit le secteur %0 et le met en ds:%1
+;->
+;<- Flag Carry si erreur
+;======================================
+PROC readsector FAR
+        ARG     @sector:word,@pointer:word
+	USES 	ax,bx,cx,dx,si,es
+	push    ds
+	pop     es
+	mov	ax,[@sector]
 	xor   	dx,dx
-	div   	cs:myboot.SectorsPerTrack
+	div   	[cs:myboot.sectorspertrack]
 	inc   	dl
 	mov 	bl,dl           
 	xor 	dx,dx                   
-	div 	cs:myboot.HeadsPerDrive
-	mov 	dh,cs:myboot.bootdrive
+	div 	[cs:myboot.headsperdrive]
+	mov 	dh,[cs:support]
 	xchg 	dl,dh          
 	mov 	cx,ax              
 	xchg 	cl,ch             
 	shl 	cl,6                
 	or 	cl,bl       
-	mov 	bx,di                           
-	mov 	SI,4
-	mov 	AL,1
-TryAgain:
-  	mov 	AH, 2
+	mov 	bx,[@pointer]
+	mov 	si,4
+	mov 	al,1
+@@tryagain:
+  	mov 	ah, 2
   	int 	13h
-  	jnc 	Done
-  	dec 	SI
-  	jnz 	TryAgain
-Done:
-  	pop 	si dx cx bx ax
-ret
-
-lastread dw 0
-lastseg  dw 0
-lastoff  dw 0
+  	jnc 	@@done
+  	dec 	si
+  	jnz 	@@tryagain
+@@done:
+        ret
+endp readsector
    
-;=============WRITESECTOR (Fonction 02H)==============
-;Ecrit le secteur CX pointé par ds:si
-;-> AH=2
+;=============WRITESECTOR============
+;Ecrit le secteur %0 pointé par ds:%0
+;->
 ;<- Flag Carry si erreur
-;=====================================================
-WriteSector:
-	push 	ax bx cx dx si es
-	mov	cs:lastseg,0
-	mov	cs:lastoff,0
-	mov 	cs:LastRead,0FFFFh
-	push 	ds
-  	pop 	es
-	mov	ax,cx
+;====================================
+PROC writesector FAR
+        ARG     @sector:word,@pointer:word
+	USES 	ax,bx,cx,dx,si,es
+	push    ds
+	pop     es
+	mov	ax,[@sector]
 	xor   	dx,dx
-	div   	cs:myboot.SectorsPerTrack
+	div   	[cs:myboot.sectorspertrack]
 	inc   	dl
 	mov 	bl,dl           
 	xor 	dx,dx                   
-	div 	cs:myboot.HeadsPerDrive
-	mov 	dh,cs:myboot.BootDrive
+	div 	[cs:myboot.headsperdrive]
+	mov 	dh,[cs:support]
 	xchg 	dl,dh          
 	mov 	cx,ax              
 	xchg 	cl,ch             
 	shl 	cl,6                
 	or 	cl, bl         
-	mov 	bx,si
-	mov 	SI, 4
-	mov 	AL,1
-TryAgains:
-  	mov 	AH, 3
+	mov 	bx,[@pointer]
+	mov 	si,4
+	mov 	al,1
+@@tryagain:
+  	mov 	ah, 3
   	int 	13h
-  	jnc 	Dones
-  	dec 	SI
-  	jnz 	TryAgains
-Dones:
-  	pop 	es si dx cx bx ax
-ret
+  	jnc 	@@done
+  	dec 	si
+  	jnz 	@@tryagain
+@@done:
+        ret
+endp writesector
 
-;=============Getname (Fonction 11)==============
-;Renvoie le nom en ES:DI
+;=============Getname==============
+;Renvoie le nom en DS:%0
 ;-> AH=11
 ;<- Flag Carry si erreur
-;=====================================================
-getname:
-	push 	ax cx dx si di ds es	
-	push	cs
+;==================================
+PROC getname FAR
+        ARG     @pointer:word
+	USES 	ax,cx,si,di,ds,es	
+	push    ds
+	pop     es
+        push	cs
 	pop	ds
-	mov	dx,di
-	mov	si,offset myboot.DriveName
+	mov	di,[@pointer]
+	mov	si,offset myboot.drivename
 	mov	cx,11
 	rep	movsb
 	mov	al,' '
-	mov	di,dx
+	mov	di,[@pointer]
 	mov	cx,11
 	repne	scasb
-	mov 	byte ptr es:[di],0
-	pop 	es ds di si dx cx ax
+	mov 	[byte ptr es:di],0
 	ret
-
-;=============Getserial (Fonction 12)==============
-;Renvoie le numéro de serie en EDX
-;-> AH=12
+endp getname
+;=============Getserial==============
+;Renvoie le numéro de serie en EAX
+;->
 ;<- Flag Carry si erreur
-;=====================================================
-getserial:
-	mov	edx,cs:myboot.serialnumber
+;====================================
+PROC getserial FAR
+	mov	eax,[cs:myboot.serialnumber]
 	ret
+endp getserial
 
-;=============VERIFYSECTOR (Fonction 03H)==============
-;Vérifie le secteur CX
-;-> AH=3
+;=============VERIFYSECTOR==============
+;Vérifie le secteur %0
+;->
 ;<- Flag Carry si erreur, Flag Equal si secteurs égaux
-;=====================================================
-VerifySector:
-	push 	ecx si di ds es
+;=======================================
+PROC verifysector FAR
+	USES 	ecx,si,di,ds,es
 	push 	cs
 	pop 	es
 	push 	cs
 	pop 	ds
-	mov 	di,offset bufferread
-	call 	ReadSector
 	mov 	si,offset bufferread
-	call 	inverse
-	call 	WriteSector
-	jc 	errorverify
+	call 	readsector,cx,si
+	call 	@@inverse
+	call 	writesector,cx,si
+	jc 	@@errorverify
 
-	mov 	di,offset bufferwrite
-	call 	ReadSector
-	mov 	si,offset bufferwrite	
-	call 	inverse
-	jc 	errorverify
+	mov 	si,offset bufferwrite
+	call 	readsector,cx,si	
+	call 	@@inverse
+	jc 	@@errorverify
 	
 	mov 	si,offset bufferread
-	call 	inverse
-	call 	WriteSector
-	jc 	errorverify
+	call 	@@inverse
+	call 	writesector,cx,si
+	jc 	@@errorverify
 	
 	xor     ecx,ecx
-	mov 	cx,cs:myboot.SectorSize
+	mov 	cx,[cs:myboot.sectorsize]
 	shr	cx,2
 	mov 	si,offset bufferread
 	mov 	di,offset bufferwrite
 	cld
 	rep 	cmpsd
-errorverify:
-	pop 	es ds di si ecx
+@@errorverify:
 	ret
 
-Inverse:
+@@inverse:
         push    si cx
 	xor     cx,cx
-invert:
-	not 	dword ptr [si]
+@@invert:
+	not 	[dword ptr si]
 	add 	si,4
 	add     cx,4
-	cmp     cx,cs:myboot.sectorsize
-	jb 	invert
+	cmp     cx,[cs:myboot.sectorsize]
+	jb 	@@invert
 	pop     cx si
 	ret
+endp verifysector
 
 ;=============DecompressRle (Fonction 05H)==============
 ;decompress ds:si en es:di taille bp d‚compress‚ cx compress‚
 ;-> AH=5
 ;<- Flag Carry si erreur, Flag Equal si secteurs égaux
 ;=====================================================
-DecompressRle:
+decompressrle:
 	push 	cx dx si di
 	mov 	dx,cx
 	mov 	bp,di
@@ -928,7 +848,7 @@ decompression:
 	ror 	ecx,16
 	cmp 	cl,'*'
 	jne 	nocomp
-	cmp 	byte ptr [si+4],'/'
+	cmp 	[byte ptr si+4],'/'
 	jne 	nocomp
 	mov 	al,ch
 	mov 	cl,ah
@@ -941,7 +861,7 @@ decompression:
 	jnz 	decompression
 	jmp 	thenen
 nocomp:
-	mov 	es:[di],al
+	mov 	[es:di],al
 	inc 	si
 	inc 	di
 	dec 	dx
@@ -959,7 +879,7 @@ thenen:
 ;-> AH=6
 ;<- Flag Carry si erreur, Flag Equal si secteurs égaux
 ;=====================================================
-CompressRle:
+compressrle:
 	push 	ax bx cx dx si di ds es
 	mov 	bp,di
 	xchg 	si,di
@@ -971,7 +891,7 @@ CompressRle:
 	;mov 	bp,cx
 againcomp:
 	mov 	bx,di
-	mov 	al,es:[di]
+	mov 	al,[es:di]
 	mov 	cx,dx
 	cmp 	ch,0
 	je 	poo
@@ -988,8 +908,8 @@ poo:
 	neg 	cl
 	cmp 	cl,6
 	jbe 	nocomp2
-	mov 	dword ptr [si],' * /'
-	mov 	byte ptr [si+4],'/'
+	mov 	[dword ptr si],' * /'
+	mov 	[byte ptr si+4],'/'
 	mov 	[si+1],cl
 	mov 	[si+3],al
 	add 	si,5
@@ -1017,93 +937,97 @@ fini:
 ;-> AH=13
 ;<- Flag Carry si erreur, Flag Equal si secteurs égaux
 ;=====================================================
-Changedir:
-	push	ax cx dx si di ds es
+PROC changedir FAR
+	USES	ax,cx,dx,si,di,ds,es
 	push	cs
 	pop	es
 	;cmp	[si],005Ch ;'\',0 (root dir)
 	mov	di,offset tempdir
 	call	searchfile
-	jc	noch
-	mov	cx,cs:tempdir.Filegroup
-	mov	cs:CurrentDir,cx
-	mov	cs:EntryPlace,0
-	mov	cs:adressdirectory,cx
-	mov	cs:firstsearch,1
-	cmp	cs:[di],'  ..'
-	jne	notback
-	cmp	cs:[di],'   .'
-	je	theend
+	jc	@@noch
+	mov	cx,[cs:tempdir.filegroup]
+	mov	[cs:currentdir],cx
+	mov	[cs:adressdirectory],cx
+	cmp	[dword ptr cs:di],'  ..'
+	jne	@@notback
+	cmp	[dword ptr cs:di],'   .'
+	je	@@theend
 	mov	di,offset currentdirstr
 	mov	cx,128
 	mov	al,0
+	cld
 	repne	scasb
 	mov	al,'\'
 	std	
 	repne	scasb
-	cld
 	inc 	di
-	mov	byte ptr es:[di],0
-	jmp	theend
-notback:
+	mov	[byte ptr es:di],0
+	jmp	@@theend
+@@notback:
 	mov	di,offset currentdirstr
 	mov	cx,128
 	mov	al,0
+	cld
 	repne	scasb
 	dec	di
 	mov	al,'\'
-	stosb
+	cld
+        stosb
 	mov	dx,di
 	push	ds
 	pop	es
 	mov	di,si
 	mov	cx,128
 	mov	al,0
-	repne	scasb
+	cld
+        repne	scasb
 	sub	cx,128
 	neg	cx
 	push	cs
 	pop	es
 	mov	di,dx
-	rep	movsb
-theend:
-	pop	es ds di si dx cx ax 
+	cld
+        rep	movsb
+@@theend:
 	clc
 	ret
-noch:
-	pop	es ds di si dx cx ax 
+@@noch:
 	stc
 	ret
+endp changedir
 
-tempdir db 32 dup (0)
+tempdir entries <>
 
-;=============getdir (Fonction 16)==============
-;Recupere le repertoire courant a ES:DI
-;-> AH=16
+;=============getdir==============
+;Recupere le repertoire courant a DS:%0
+;->
 ;<- Flag Carry si erreur
-;=====================================================
-getdir:
-	push	ax cx si di ds es
-	push	es di
+;=================================
+PROC getdir FAR
+        ARG     @pointer:word
+	USES	ax,cx,si,di,ds,es
 	push	cs
 	pop	es
 	mov	di,offset currentdirstr
 	mov	cx,128
 	mov	al,0
+	cld
 	repne	scasb
 	sub	cx,128
 	neg	cx
-	pop	di es
+	push    ds
+	pop     es
 	push	cs
 	pop	ds
 	mov	si,offset currentdirstr
+	mov     di,[@pointer]
+	cld
 	rep	movsb
-	pop	es ds di si cx ax
 	clc
 	ret
+endp getdir
 	
 bufferread  	db 512 dup (0)
 bufferwrite 	db 512 dup (0)
 bufferentry	db 512 dup (0)
-
-end start
+fatter db 9*512 dup (0)
