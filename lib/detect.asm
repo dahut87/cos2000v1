@@ -13,28 +13,18 @@ org 0h
 
 header exe <"CE",1,0,0,offset exports,,,>
 
-exports:
-        db "cpuinfo",0			
-        dw cpuinfo
-        db "setinfo",0
-        dw setinfo
-        db "pciinfo",0
-        dw pciinfo
-        db "getpciclass",0
-        dw getpciclass
-        db "getpcisubclass",0
-        dw getpcisubclass
-        db "getcardinfo",0
-        dw getcardinfo
-        db "pcireadbyte",0
-        dw pcireadbyte
-        db "pcireadword",0
-        dw pcireadword
-        db "pcireaddword",0
-        dw pcireaddword
-        db "detectvmware",0
-        dw detectvmware
-        dd 0
+exporting
+declare cpuinfo
+declare setinfo
+declare pciinfo
+declare getpciclass
+declare getpcisubclass
+declare getcardinfo
+declare pcireadbyte
+declare pcireadword
+declare pcireaddword
+declare detectvmware
+ende
         
 PROC detectvmware FAR
 	USES	eax,ebx,ecx,edx

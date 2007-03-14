@@ -11,40 +11,24 @@ org 0h
 
 header exe <"CE",1,0,0,offset exports,offset imports,,>
 
-exports:
-         db "print",0
-         dw print
-         db "showdate",0
-         dw showdate
-         db "showtime",0
-         dw showtime
-         db "showname",0
-         dw showname
-         db "showattr",0
-         dw showattr
-         db "showsize",0
-         dw showsize
-         db "showspace",0
-         dw showspace
-         db "showint",0
-         dw showint
-         db "showsigned",0
-         dw showsigned
-         db "showhex",0
-         dw showhex
-         db "showbin",0
-         dw showbin
-         db "showbcd",0
-         dw showbcd
-         db "showstring",0
-         dw showstring
-         db "showstring0",0
-         dw showstring0
-         db "showintr",0
-         dw showintr
-         db "showintl",0
-         dw showintl
-         dw 0
+exporting
+declare print
+declare showdate
+declare showtime
+declare showname
+declare showattr
+declare showsize
+declare showspace
+declare showint
+declare showsigned
+declare showhex
+declare showbin
+declare showbcd
+declare showstring
+declare showstring0
+declare showintr
+declare showintl
+ende
          
 imports:
          db "VIDEO::addline",0
