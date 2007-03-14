@@ -9,6 +9,9 @@ include "..\include\mem.h"
 include "..\include\divers.h"
 include "..\include\cpu.h"
 include "..\include\pci.h"
+include "..\include\fat.h"
+
+memorystart equ 0052h             ;premier bloc de la mémoire
 
 org 0h
 
@@ -95,9 +98,9 @@ suite:
         push    eax
         call    [print],offset msg_pci_info
         call    [print],offset msg_pci_enum
-        xor     ebx,ebx
-        xor     ecx,ecx
-        xor     esi,esi
+        xor     bx,bx
+        xor     cx,cx
+        xor     si,si
 searchpci:
         call    [getcardinfo],bx,cx,si,offset temp
         jc      stopthis
@@ -141,12 +144,28 @@ stopthis:
 nopci:
         call    [print],offset msg_echec2
 next:
-        call    [print],offset msg_fini
-;        call    [detectvmware]
-;        jne     novirtual
-;        call    [print],offset msg_vmware
-;novirtual:
+        call    [detectvmware]
+        jne     novirtual
+        call    [print],offset msg_vmware
+novirtual:
+        call    [print],offset msg_flat
+        call    enablea20
+        call    flatmode
+        xor     ax,ax
+        mov     fs,ax
+        mov     esi,0100000h
+        mov     [dword ptr fs:esi],"OKIN"
+        call    [print],offset msg_ok2
+        call    [print],offset msg_disk_init
+        call    [initdrive]
+        jc      error2
+        call    [print],offset msg_ok2
+        
+        call    [projfile],offset tester
+        call    [print],offset msg_ok2
+tester find <"boot2.bin",0,0,0,1,>
 
+        
 error2:
         call    [print],offset msg_error2
         call    bioswaitkey
@@ -165,48 +184,43 @@ return             db 0dh,0ah,0
 msg_memory         db "Initialisation de la memoire",0
 msg_memory_init    db "  -Creation du bloc primordial",0
 msg_memory_section db "  -Developpement des sections",0
-msg_memory_jumps   db "  -Redirection du systeme",0
+msg_memory_jumps   db "Redirection du systeme",0
 msg_video_init     db "Initialisation du pilote VIDEO",0
 msg_cpu_detect     db "Dectection du processeur",0
 msg_cpu_detect_inf db "  -Fondeur  : %0\l  -Modele   : %0\l  -Revision : %u\l  -Version  : %u\l  -Famille  : %u\l  -Technologies: %0\l",0
 msg_pci            db "Detection des systemes PCI",0
-msg_pci_info       db "  -Version  : %yB.%yB\l  -Nombre de bus : %u\l",0
+msg_pci_info       db "  -Version  : %yB.%yB\l  -Numero bus max: %u\l",0
 msg_pci_enum       db "  -Enumeration des peripheriques PCI:\l"
                    db "   |Vendeur|Modele|Bus |Dev.|Func|Classe.Sous-classe\l",0
 msg_pci_card       db "   | %hW  | %hW |%w|%w|%w|%0P.%0P\l",0
-;msg_vmware         db "\c04 VMWare a été detecté !!!\c07",0
-msg_fini           db "\c04Demarrage terminee : c pas encore fini :(:(:( mais c pour l'inspiration !",0
+msg_vmware         db "\c04 VMWare a ete detecte !!!\c07\l",0
+msg_flat           db "Initialisation du Flat Real Mode\l",0
+msg_disk_init      db "Initialisation du pilote DISQUE\l",0
+
 
 msg_error          db " [Erreur]",0dh,0ah,"<Pressez une touche pour redemarrer le systeme>",0
 msg_ok             db " [  Ok  ]",0dh,0ah,0
 msg_error2         db "\h70 [\c04Erreur\c07]\g00,49<Pressez une touche pour redemarrer le systeme>",0
 msg_ok2            db "\h70 [\c02  Ok  \c07]\l",0
 msg_echec2         db "\h70 [\c0CPasser\c07]\l",0
+
+
+
+importing
+use VIDEO,setvideomode
+use VIDEO,clearscreen
+use VIDEO.LIB,print
+use DETECT.LIB,cpuinfo
+use DETECT.LIB,setinfo
+use DETECT.LIB,pciinfo
+use DETECT.LIB,getcardinfo
+use DETECT.LIB,getpcisubclass
+use DETECT.LIB,getpciclass
+use DETECT.LIB,detectvmware
+use DISQUE,initdrive
+use DISQUE,projfile
+endi
         
-imports:
-             db "VIDEO::setvideomode",0
-setvideomode dd 0
-             db "VIDEO::clearscreen",0
-clearscreen  dd 0
-             db "VIDEO.LIB::print",0
-print        dd 0
-             db "DETECT.LIB::cpuinfo",0
-cpuinfo      dd 0
-             db "DETECT.LIB::setinfo",0
-setinfo      dd 0
-             db "DETECT.LIB::pciinfo",0
-pciinfo      dd 0
-             db "DETECT.LIB::getcardinfo",0
-getcardinfo  dd 0
-             db "DETECT.LIB::getpcisubclass",0
-getpcisubclass  dd 0
-             db "DETECT.LIB::getpciclass",0
-getpciclass  dd 0
-             ;db "DETECT.LIB::detectvmware",0
-;detectvmware  dd 0
-             dw 0
-        
-exports:
 include "mcb.asm"
 mb1:
 includebin "video.sys"
@@ -215,6 +229,8 @@ includebin "..\lib\video.lib"
 mb3:
 includebin "..\lib\detect.lib"
 mb4:
+includebin "disque.sys"
+mb5:
 
 section:
 dw offset mb0
@@ -230,8 +246,12 @@ dw offset mb3-offset mb2
 db "VIDEO.LIB",0
 
 dw offset mb3
-dw offset mb4-offset mb
+dw offset mb4-offset mb3
 db "DETECT.LIB",0
+
+dw offset mb4
+dw offset mb5-offset mb4
+db "DISQUE",0
 
 dd 0
         
