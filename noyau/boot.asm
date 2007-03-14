@@ -108,7 +108,7 @@ oksystem:
         mov      si,offset syst
         call     showstr
         mov      cx,[di+26]
-        mov      ax,0900h
+        mov      ax,8000h
         mov      es,ax
         push     es
         mov      di,0000h
