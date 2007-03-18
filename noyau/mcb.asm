@@ -172,8 +172,6 @@ PROC mbloadsection FAR
        	USES    ax,bx,cx,si,di,ds,es
        	LOCAL   @@toresov:word:60
        	mov     ax,[@blocks]
-       	inc     ax
-       	inc     ax
        	mov     es,ax
        	mov     ds,ax
         cmp     [word ptr 0],"EC"
@@ -181,6 +179,8 @@ PROC mbloadsection FAR
         lea     si,[@@toresov]
         mov     [word ptr ss:si],0FFFFh
         mov     bx,[ds:exe.sections]
+        cmp     bx,0
+        je      @@finishloading
 @@loading:
         cmp     [dword ptr bx],0
         je      @@finishloading
