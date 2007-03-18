@@ -11,7 +11,7 @@ all:
 	make
 	cd ..
 
-	cd command
+	cd commande
 	make
 	cd ..
 
@@ -31,6 +31,6 @@ clean:
 	make clean
 	cd ..
 
-	cd command
+	cd commande
 	make clean
 	cd ..
