@@ -36,8 +36,6 @@ start:
         call    biosprint,offset msg_ok
         call    biosprint,offset msg_memory_section
         mov     ax,cs
-        dec     ax
-        dec     ax
         call    mbloadsection,ax
         jc      error
         call    biosprint,offset msg_ok
@@ -160,11 +158,7 @@ novirtual:
         call    [initdrive]
         jc      error2
         call    [print],offset msg_ok2
-        
-        call    [projfile],offset tester
-        call    [print],offset msg_ok2
-tester find <"boot2.bin",0,0,0,1,>
-
+        call    [execfile],offset shell
         
 error2:
         call    [print],offset msg_error2
@@ -176,7 +170,7 @@ error:
         call    bioswaitkey
         jmp     far 0FFFFh:0000h
         
-
+shell find <"commande.ce",0,0,0,1,>
 thepci pciinf <>
 thecpu cpu <>
 temp db 256 dup (0)
@@ -219,6 +213,7 @@ use DETECT.LIB,getpciclass
 use DETECT.LIB,detectvmware
 use DISQUE,initdrive
 use DISQUE,projfile
+use DISQUE,execfile
 endi
         
 include "mcb.asm"
