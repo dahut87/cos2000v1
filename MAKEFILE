@@ -11,9 +11,12 @@ all:
 	make
 	cd ..
 
-copy:
-	make all
-	
+	cd command
+	make
+	cd ..
+
+copy: clean all
+	copy noyau\systeme.sys b:
 
 clean:
 	cd lib
@@ -25,5 +28,9 @@ clean:
 	cd ..
 
 	cd install
+	make clean
+	cd ..
+
+	cd command
 	make clean
 	cd ..
