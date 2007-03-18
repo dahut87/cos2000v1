@@ -44,6 +44,7 @@ use SYSTEME,mbresident
 use SYSTEME,mbfind
 use SYSTEME,mbchown
 use SYSTEME,mbloadfuncs
+use SYSTEME,mbloadsection
 endi
 
 
@@ -147,30 +148,24 @@ PROC execfile FAR
         mov     dx,[ss:bp+10]
 	pushad
         push    ds es fs gs
-        call    projfile
+        call    projfile,dx
         jc      @@reallyerror
-        push    es
-        pop     gs
-        mov     ah,6
-        int     49h
-        mov     ah,12
-        int     49h
+        call    [cs:mbchown],ax,dx
         jc      @@reallyerror
-        push    es
-        push    cs
-        mov     ax,offset @@arrive
+        call    [cs:mbloadfuncs],ax
+        jc      @@reallyerror
+        call    [cs:mbloadsection],ax
+        jc      @@reallyerror
         push    ax
-        push    es
-        cmp     [word ptr gs:0h],'EC'
-        jne     @@noce
-        push    size exe
-        jmp     @@wasce
-@@noce:
-        push    0000h
-@@wasce:
-        push    es
-        push    es
-        push    es
+        push    ax
+        pop     ds
+        push    cs
+        push    offset @@arrive
+        push    ds
+        push    [word ptr (exe).starting]
+        push    ds
+        push    ds
+        push    ds
         pop     ds
         pop     fs
         pop     gs
@@ -180,26 +175,25 @@ PROC execfile FAR
         db      0CBh
 @@arrive:
         cli
-        pop     gs
-        mov     ah,01
-        int     49h
+        pop     ax
+        call    [cs:mbfree],ax
         pop     gs fs es ds
-	popad
+	    popad
         pop     dx bp
         popf
-	ret
+	    ret
 @@reallyerror:
         pop     gs fs es ds
-	popad
-	pop     dx bp
+	    popad
+	    pop     dx bp
         popf
-	stc
-	ret
+	    stc
+	    ret
 endp execfile
 
 ;============projfile (Fonction 17)===============
 ;Charge le fichier ds:%0 sur un bloc mémoire -> eax taille -> es bloc
-;-> 
+;-> ax bloc mémoire
 ;<- Flag Carry si erreur
 ;=====================================================
 PROC projfile FAR
@@ -222,6 +216,7 @@ USES	cx,si,di,ds,es
    	mov	    eax,[es:(find si).result.filesize]
     call    loadway,cx,eax,0
 	jc    	@@errorload
+	mov     ax,ds
 	clc
 	ret
 @@errorload:
