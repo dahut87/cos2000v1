@@ -29,29 +29,20 @@ declare showstring0
 declare showintr
 declare showintl
 ende
+
+importing
+use VIDEO,addline
+use VIDEO,setcolor
+use VIDEO,getxy
+use VIDEO,setxy
+use VIDEO,setvideomode
+use VIDEO,setfont
+use VIDEO,clearscreen
+use VIDEO,enablescroll
+use VIDEO,disablescroll
+use VIDEO,showchar
+endi
          
-imports:
-         db "VIDEO::addline",0
-addline dd 0
-         db "VIDEO::setcolor",0
-setcolor dd 0
-         db "VIDEO::getxy",0
-getxy dd 0
-         db "VIDEO::setxy",0
-setxy dd 0
-         db "VIDEO::setvideomode",0
-setvideomode dd 0
-         db "VIDEO::setfont",0
-setfont dd 0
-         db "VIDEO::clearscreen",0
-clearscreen dd 0
-         db "VIDEO::enablescroll",0
-enablescroll dd 0
-         db "VIDEO::disablescroll",0
-disablescroll dd 0
-         db "VIDEO::showchar",0
-showchar dd 0
-         dw 0
 
 ;================PRINT==============
 ;Affiche la chaine %0 en utilisant les parametres de formatage %x....%x
