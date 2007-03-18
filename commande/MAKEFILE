@@ -1,17 +1,20 @@
-lnk_boot = tlink /x
-asm= tasm /t/m5/zi
-lnk= tlink /x/t
+asm= lzasm
+lnk= elink
 
-all: commande.exe
+all: commande.ce
 
-commande.exe: commande.asm str0.asm
-	$(asm) commande
-	$(lnk) commande
-	ren commande.com commande.exe
+commande.ce: commande.obj 
+	$(lnk) commande.obj commande.ce
+
+commande.obj: commande.asm
+	$(asm) commande.asm
 
 clean:
   del *.obj
   del *.exe
+  del *.bak
+  del *.lib
   del *.com
+  del *.bin
   del *.sys
   del *.err
