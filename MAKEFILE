@@ -24,6 +24,7 @@ copy: clean all
       copy commande\*.ce b:
       copy lib\*.lib b:
       copy programs\*.ce b:
+      copy programs\*.lib b:
 
 clean:
 	cd lib
