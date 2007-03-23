@@ -28,6 +28,7 @@ declare showstring
 declare showstring0
 declare showintr
 declare showintl
+declare showchar
 ende
 
 importing
@@ -40,7 +41,7 @@ use VIDEO,setfont
 use VIDEO,clearscreen
 use VIDEO,enablescroll
 use VIDEO,disablescroll
-use VIDEO,showchar
+use VIDEO,showchars
 endi
          
 
@@ -64,7 +65,7 @@ PROC print FAR
         je      @@special2
 @@showit:
         xor     ch,ch
-        call    [cs:showchar],cx,0FFFFh
+        call    [cs:showchars],cx,0FFFFh
         inc     si
         jmp     @@strinaize0
 @@special:
@@ -75,7 +76,7 @@ PROC print FAR
 @@notshowit:
         mov     cl,[byte ptr si+1]
         cmp     cl,'c'
-        je      @@showchar
+        je      @@showchars
         cmp     cl,'u'
         je      @@showint
         cmp     cl,'v'
@@ -107,10 +108,10 @@ PROC print FAR
         clc
         jmp     @@no0
 
-@@showchar:
+@@showchars:
         cmp     [byte ptr si+2],'M'
         je      @@showmultchar
-        call    [cs:showchar],[word ptr @@pointer+di+2],0FFFFh
+        call    [cs:showchars],[word ptr @@pointer+di+2],0FFFFh
         add     si,2
         add     di,2
         jmp     @@strinaize0
@@ -118,10 +119,10 @@ PROC print FAR
         mov     cx,[offset @@pointer+di+2+2]
         cmp     cx,0
         je      @@nextfunc
-@@showcharx:
-        call    [cs:showchar],[word ptr @@pointer+di+2],0FFFFh
+@@showcharsx:
+        call    [cs:showchars],[word ptr @@pointer+di+2],0FFFFh
         dec     cx
-        jnz     @@showcharx
+        jnz     @@showcharsx
 @@nextfunc:
         add     si,3
         add     di,4
@@ -326,7 +327,7 @@ PROC print FAR
         add     al,[si+3]
         sub     al,'0'
         xor     ah,ah
-        call    [cs:setvideomode]
+        call    [cs:setvideomode],ax
         add     si,4
         jmp     @@strinaize0
 
@@ -414,7 +415,6 @@ PROC print FAR
         pop     di si cx bx ax
         mov     sp,bp
         ret
-
 ENDP print
 
 
@@ -430,12 +430,12 @@ PROC showdate FAR
 	mov	dx,[@dates]
 	and	dx,11111b
 	call	showintl,2,edx	
-	call	[cs:showchar],'/',0FFFFh
+	call	[cs:showchars],'/',0FFFFh
 	mov	dx,[@dates]
 	shr	dx,5
 	and	dx,111b
 	call	showintl,2,edx	
-	call	[cs:showchar],'/',0FFFFh
+	call	[cs:showchars],'/',0FFFFh
 	mov	dx,[@dates]
 	shr	dx,8
 	and	dx,11111111b
@@ -457,12 +457,12 @@ PROC showtime FAR
 	shr	dx,11
 	and	dx,11111b
 	call	showintl,2,edx
-	call	[cs:showchar],':',0FFFFh
+	call	[cs:showchars],':',0FFFFh
 	mov	dx,[@times]
 	shr	dx,5
 	and	dx,111111b
 	call	showintl,2,edx
-	call	[cs:showchar],':',0FFFFh
+	call	[cs:showchars],':',0FFFFh
 	mov	dx,[@times]
 	and	dx,11111b
 	shl	dx,1
@@ -481,12 +481,12 @@ PROC showname FAR
 	mov     si,[@thename]
 	xor	cx,cx
 @@showthename:
-	call	[cs:showchar],[word ptr ds:si],0FFFFh
+	call	[cs:showchars],[word ptr ds:si],0FFFFh
 	inc	si
 	inc	cx
 	cmp	cx,8
 	jne	@@suiteaname
-	call	[cs:showchar],' ',0FFFFh
+	call	[cs:showchars],' ',0FFFFh
 @@suiteaname:
 	cmp	cx,8+3
 	jb	@@showthename
@@ -508,7 +508,7 @@ PROC showattr FAR
 @@noreadonly:
 	push    '-'
 @@readonly:
-	call	[cs:showchar]
+	call	[cs:showchars]
 	push    0FFFFh
 	test 	[@attr],00000010b
 	je	@@nohidden
@@ -517,7 +517,7 @@ PROC showattr FAR
 @@nohidden:
 	push    '-'
 @@hidden:
-	call	[cs:showchar]
+	call	[cs:showchars]
 	push    0FFFFh
 	test 	[@attr],00000100b
 	je	@@nosystem
@@ -526,7 +526,7 @@ PROC showattr FAR
 @@nosystem:
 	push    '-'
 @@system:
-	call	[cs:showchar]
+	call	[cs:showchars]
 	push    0FFFFh
 	test 	[@attr],00100000b
 	je	@@noarchive
@@ -535,7 +535,7 @@ PROC showattr FAR
 @@noarchive:
 	push    '-'
 @@archive:
-	call	[cs:showchar]
+	call	[cs:showchars]
 	push    0FFFFh
 	test 	[@attr],00010000b
 	je	@@nodirectory
@@ -544,7 +544,7 @@ PROC showattr FAR
 @@nodirectory:
 	push    '-'
 @@directory:
-	call	[cs:showchar]
+	call	[cs:showchars]
 	ret
 ENDP showattr
 
@@ -597,7 +597,7 @@ ENDP showsize
 ;<-
 ;==============================
 PROC showspace FAR
-        call	[cs:showchar],' ',0FFFFh
+        call	[cs:showchars],' ',0FFFFh
         clc
 	ret
 ENDP showspace
@@ -628,7 +628,7 @@ PROC showint FAR
 @@showinteger:
 	inc	bx
 	mov	cl,[cs:bx]
-        call	[cs:showchar],cx,0FFFFh
+        call	[cs:showchars],cx,0FFFFh
 	dec	ax
 	jnz	@@showinteger
 	ret
@@ -675,7 +675,7 @@ PROC showintl FAR
 @@showinteger:
 	inc	bx
 	mov     cl,[cs:bx]
-        call	[cs:showchar],cx,0FFFFh
+        call	[cs:showchars],cx,0FFFFh
 	dec	ax
 	jnz	@@showinteger
 	ret
@@ -720,7 +720,7 @@ PROC showintr FAR
 @@showinteger:
 	inc	bx
 	mov	cl,[cs:bx]
-        call	[cs:showchar],cx,0FFFFh
+        call	[cs:showchars],cx,0FFFFh
 	dec	ax
 	jnz	@@showinteger
 	ret
@@ -758,7 +758,7 @@ PROC showsigned FAR
 	jbe	@@notsigned
 	neg 	edx
 @@showminus:
-	call 	[cs:showchar],'-',0FFFFh
+	call 	[cs:showchars],'-',0FFFFh
 @@notsigned:
 	call 	showint,edx,0FFFFh
 	ret
@@ -784,7 +784,7 @@ PROC showhex FAR
        	mov   	bx,dx
        	and   	bx,0fh
        	mov   	cl,[cs:bx+offset Tab]
-        call	[cs:showchar],cx,0FFFFh
+        call	[cs:showchars],cx,0FFFFh
        	dec   	al
        	jnz   	@@Hexaize
        	ret
@@ -810,7 +810,7 @@ PROC showbin FAR
         rol     edx,1
         mov     cl,'0'
         adc     cl,0
-        call	[cs:showchar],cx,0FFFFh
+        call	[cs:showchars],cx,0FFFFh
         dec     al
         jnz     @@binaize
         ret
@@ -836,7 +836,7 @@ PROC showbcd FAR
         mov     cl,dl
         and     cl,0fh
         add     cl,'0'
-        call	[cs:showchar],cx,0FFFFh
+        call	[cs:showchars],cx,0FFFFh
         dec     al
         jnz     @@BCDaize
         ret
@@ -854,11 +854,22 @@ PROC showstring FAR
         mov     bl,[si]
 @@strinaize:
         inc     si
-        call	[cs:showchar],[word ptr si],0FFFFh
+        call	[cs:showchars],[word ptr si],0FFFFh
         dec     bl
         jnz     @@strinaize
         ret
 ENDP showstring
+
+;==========showchars===========
+;Affiche un caractère %0 aprés le curseur
+;-> %0 caractère 
+;<-
+;===============================
+PROC showchar FAR
+        ARG     @pointer:word
+        call	[cs:showchars],[@pointer],0FFFFh
+        ret
+ENDP showchar
 
 ;==========SHOWSTRING0===========
 ;Affiche une chaine de caractère pointée par ds:%1 aprés le curseur
@@ -873,7 +884,7 @@ PROC showstring0 FAR
         mov     cl,[si]
         cmp     cl,0
         je      @@no0
-        call	[cs:showchar],cx,0FFFFh	
+        call	[cs:showchars],cx,0FFFFh	
         inc     si
         jmp     @@strinaize0
 @@no0:
