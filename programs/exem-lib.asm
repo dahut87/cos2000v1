@@ -1,25 +1,24 @@
-.model tiny
-.486
-smart
-.code
+model tiny,stdcall
+p586N
+locals
+jumps
+codeseg
+option procalign:byte
+
+include "..\include\mem.h"
+include "..\include\divers.h"
+
 org 0h
 
-include ..\include\mem.h
-
 start:
-header exe <,1,0,,,offset imports,offset exports,>
+header exe <"CE",1,0,0,offset exports,,,>
 
+waitkey:
+    mov     ax,0
+    int     16h
+    retf
 
-getvar2:
-mov ax,0
-int 16h
-retf
+exporting
 
-
-imports:
-
-exports:
-         db "waitkey",0
-         dw getvar2
-         dw 0
-end start
+declare waitkey
+ende
