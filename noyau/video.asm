@@ -1003,6 +1003,8 @@ ended:
 ;sauve l'ecran dans un bloc de mémoire
 PROC savescreen FAR
 USES    ax,ds
+push    cs
+pop     ds
 call    [cs:mbcreate],offset data3,[cs:datablock.pagesize]
 jc      @@error
 call    [cs:mbchown],ax,[word ptr ss:bp+4]
@@ -1063,6 +1065,7 @@ PROC restoreparamfrom FAR
         xor     ecx,ecx
         mov     cx,size datablock
         mov     si,[@offset]
+        call    setvideomode,[word ptr (vgainf si).mode]
         mov     di,offset datablock
         cld
         rep     movsb
@@ -1078,6 +1081,8 @@ endp restoreparamfrom
 ;restaure l'ecran dans un bloc de mémoire
 PROC restorescreen FAR
 USES    ax,ds
+push    cs
+pop     ds
 call    [cs:mbfindsb],offset data3,[word ptr ss:bp+4]
 jc @@error
 push    ax
@@ -1147,6 +1152,8 @@ endp page1to2
 ;===============================xchgPages============================
 PROC xchgpages FAR
         USES    ax,ecx,si,di,ds,es
+push    cs
+pop     ds
 call    [cs:mbcreate],offset data4,[cs:datablock.pagesize]
 jc      @@error
 call    [cs:mbchown],ax,[word ptr ss:bp+4]
@@ -1183,6 +1190,8 @@ USES    ax,cx,di,ds
 mov     cx,size datablock
 add     cx,[cs:datablock.pagesize]
 add     cx,3*256
+push    cs
+pop     ds
 call    [cs:mbcreate],offset data,cx
 jc      @@error
 call    [cs:mbchown],ax,[word ptr ss:bp+4]
@@ -1210,6 +1219,8 @@ data db '/vga',0
 ;R‚cupŠre l'‚tat de la carte depuis son bloc mémoire
 PROC restorestate FAR
 USES    ax,cx,di,ds
+push    cs
+pop     ds
 call    [cs:mbfindsb],offset data,[word ptr ss:bp+4]
 jc @@error
 push    ax
@@ -1231,6 +1242,8 @@ endp restorestate
 ;sauve le DAC dans un bloc de mémoire
 PROC savedac FAR
 USES    ax,ds
+push    cs
+pop     ds
 call    [cs:mbcreate],offset data3,3*256
 jc      @@error
 call    [cs:mbchown],ax,[word ptr ss:bp+4]
@@ -1268,7 +1281,9 @@ endp restoredac
 
 ;sauve le DAC en ds:%0
 PROC savedacto FAR
+ARG     @offset:word
 USES ax,cx,dx,di
+mov di,[@offset]
 mov dx,3C7h
 mov cx,256
 @@save:
@@ -1295,7 +1310,9 @@ endp savedacto
 
 ;restore le DAC depuis ds:si
 PROC restoredacfrom FAR
+ARG     @offset:word
 USES ax,cx,dx,si
+mov si,[@offset]
 xor ax,ax
 mov dx,3C8h
 mov cx,256
