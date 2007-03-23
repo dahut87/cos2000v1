@@ -1,53 +1,25 @@
-lnk_boot = tlink /x
-asm= tasm /t/m5/zi
-lnk= tlink /x/t
+asm= lzasm
+lnk= elink
 
-all: detect.com editeur.com gestion.com logo.com pmode.com souris.com test.com verifier.com volume.com memoire.com
+pol: detect.ce exem-lib.lib exem-ce.ce memoire.ce pmode.ce isa.ce editeur.ce
 
-memoire.com: memoire.asm
-	$(asm) memoire
-	$(lnk) memoire
+all: detect.ce editeur.ce gestion.ce logo.ce pmode.ce souris.ce test.ce verifier.ce volume.ce memoire.ce
 
-detect.com: detect.asm
-	$(asm) detect
-	$(lnk) detect
+.asm.obj: 
+      $(asm) $<
 
-editeur.com: editeur.asm
-	$(asm) editeur
-	$(lnk) editeur
+.obj.ce:
+	$(lnk) $< $*.ce
 
-gestion.com: gestion.asm
-	$(asm) gestion
-	$(lnk) gestion
-
-logo.com: logo.asm
-	$(asm) logo
-	$(lnk) logo
-
-pmode.com: pmode.asm
-	$(asm) pmode
-	$(lnk) pmode
-
-souris.com: souris.asm
-	$(asm) souris
-	$(lnk) souris
-
-test.com: test.asm
-	$(asm) test
-	$(lnk) test
-
-verifier.com: verifier.asm
-	$(asm) verifier
-	$(lnk) verifier
-
-volume.com: volume.asm
-	$(asm) volume
-	$(lnk) volume
-
+.obj.lib:
+	$(lnk) $< $*.lib
 
 clean:
   del *.obj
+  del *.ce
+  del *.bak
+  del *.lib
   del *.com
-  del *.com
+  del *.bin
   del *.sys
   del *.err
