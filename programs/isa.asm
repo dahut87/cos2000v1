@@ -1,11 +1,19 @@
-.model tiny
-.486
-smart
-.code
+model tiny,stdcall
+p586N
+locals
+jumps
+codeseg
+option procalign:byte
 
-org 0100h
+include "..\include\mem.h"
+include "..\include\divers.h"
+
+org 0h
 
 start:
+header exe <"CE",1,0,0,,,,offset realstart>
+
+realstart:
 
 PNP_ADR_PORT        equ 0x279
 PNP_WRITE_PORT      equ	0xA79
@@ -23,17 +31,15 @@ IDENT_LEN           equ	9
 ;renvoie le timer en ax
 ctc:
     cli
-    mov  dx,043h
-    mov  al,0
-    out  dx,al
-    mov  dx,40h
-    in   al,dx
-    mov  ah,al
-    in   al,dx
+    mov     dx,043h
+    mov     al,0
+    out     dx,al
+    mov     dx,40h
+    in      al,dx
+    mov     ah,al
+    in      al,dx
     sti
     ret
     
 ;attend pendant ax microsecondes
 usleep:
-
-end start
