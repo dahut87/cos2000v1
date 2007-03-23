@@ -55,23 +55,23 @@ suite:
         pop     gs
         call    biosprint,offset msg_ok
         call    biosprint,offset msg_video_init
-        call    [setvideomode],2
+        call    [cs:setvideomode],2
         jc      error
-        call    [clearscreen]
-        call    [print],offset msg_memory
-        call    [print],offset msg_ok2
-        call    [print],offset msg_memory_init
-        call    [print],offset msg_ok2
-        call    [print],offset msg_memory_section
-        call    [print],offset msg_ok2
-        call    [print],offset msg_memory_jumps
-        call    [print],offset msg_ok2
-        call    [print],offset msg_video_init
-        call    [print],offset msg_ok2
-        call    [print],offset msg_cpu_detect
-        call    [cpuinfo],offset thecpu
-        call    [setinfo],offset thecpu,offset temp
-        call    [print],offset msg_ok2
+        call    [cs:clearscreen]
+        call    [cs:print],offset msg_memory
+        call    [cs:print],offset msg_ok2
+        call    [cs:print],offset msg_memory_init
+        call    [cs:print],offset msg_ok2
+        call    [cs:print],offset msg_memory_section
+        call    [cs:print],offset msg_ok2
+        call    [cs:print],offset msg_memory_jumps
+        call    [cs:print],offset msg_ok2
+        call    [cs:print],offset msg_video_init
+        call    [cs:print],offset msg_ok2
+        call    [cs:print],offset msg_cpu_detect
+        call    [cs:cpuinfo],offset thecpu
+        call    [cs:setinfo],offset thecpu,offset temp
+        call    [cs:print],offset msg_ok2
         push    offset temp
         xor     eax,eax
         mov     al,[thecpu.family]
@@ -82,11 +82,11 @@ suite:
         push    eax
         push    offset thecpu.names
         push    offset thecpu.vendor
-        call    [print],offset msg_cpu_detect_inf
-        call    [print],offset msg_pci
-        call    [pciinfo],offset thepci
+        call    [cs:print],offset msg_cpu_detect_inf
+        call    [cs:print],offset msg_pci
+        call    [cs:pciinfo],offset thepci
         jc      nopci
-        call    [print],offset msg_ok2
+        call    [cs:print],offset msg_ok2
         xor     eax,eax
         mov     al,[thepci.maxbus]
         push    eax
@@ -94,25 +94,25 @@ suite:
         push    eax
         mov     al,[thepci.version_major]
         push    eax
-        call    [print],offset msg_pci_info
-        call    [print],offset msg_pci_enum
+        call    [cs:print],offset msg_pci_info
+        call    [cs:print],offset msg_pci_enum
         xor     bx,bx
         xor     cx,cx
         xor     si,si
 searchpci:
-        call    [getcardinfo],bx,cx,si,offset temp
+        call    [cs:getcardinfo],bx,cx,si,offset temp
         jc      stopthis
         mov     al,[(pcidata offset temp).subclass]
         push    ax
         mov     al,[(pcidata offset temp).class]
         push    ax
-        call    [getpcisubclass]
+        call    [cs:getpcisubclass]
         push    dx
         push    ax
         mov     al,[(pcidata offset temp).class]
         xor     ah,ah
         push    ax
-        call    [getpciclass]
+        call    [cs:getpciclass]
         push    dx
         push    ax
         push    4
@@ -125,7 +125,7 @@ searchpci:
         push    eax
         mov     ax,[(pcidata offset temp).vendor]
         push    eax
-        call    [print],offset msg_pci_card
+        call    [cs:print],offset msg_pci_card
         inc     si
         cmp     si,7
         jbe     searchpci
@@ -140,28 +140,28 @@ stopthis:
         jbe     searchpci
         jmp     next
 nopci:
-        call    [print],offset msg_echec2
+        call    [cs:print],offset msg_echec2
 next:
-        call    [detectvmware]
+        call    [cs:detectvmware]
         jne     novirtual
-        call    [print],offset msg_vmware
+        call    [cs:print],offset msg_vmware
 novirtual:
-        call    [print],offset msg_flat
+        call    [cs:print],offset msg_flat
         call    enablea20
         call    flatmode
         xor     ax,ax
         mov     fs,ax
         mov     esi,0100000h
         mov     [dword ptr fs:esi],"OKIN"
-        call    [print],offset msg_ok2
-        call    [print],offset msg_disk_init
-        call    [initdrive]
+        call    [cs:print],offset msg_ok2
+        call    [cs:print],offset msg_disk_init
+        call    [cs:initdrive]
         jc      error2
-        call    [print],offset msg_ok2
-        call    [execfile],offset shell
+        call    [cs:print],offset msg_ok2
+        call    [cs:execfile],offset shell
         
 error2:
-        call    [print],offset msg_error2
+        call    [cs:print],offset msg_error2
         call    bioswaitkey
         jmp     far 0FFFFh:0000h
 
