@@ -10,7 +10,7 @@ include "..\include\graphic.h"
 
 org 0h
 
-header exe <"CE",1,0,0,offset exports,,,>
+header exe <"CE",1,0,0,offset exports,offset imports,,>
 
 exporting
 declare setvideomode		
@@ -20,7 +20,7 @@ declare setfont
 declare loadfont
 declare getfont
 declare addline
-declare showchar
+declare showchars
 declare showpixel
 declare getpixel
 declare setstyle
@@ -46,8 +46,31 @@ declare savestate
 declare restorestate
 declare enablescroll
 declare disablescroll
-declare getchar
+declare getchars
+declare savescreen
+declare savescreento
+declare saveparamto
+declare restoreparamfrom
+declare restorescreen
+declare restorescreenfrom
+declare page2to1
+declare page1to2
+declare xchgpages
+declare savestate
+declare restorestate
+declare savestate
+declare restoredacfrom
+declare restoredac
+declare savedacto
 ende
+
+importing
+use SYSTEME,mbcreate
+use SYSTEME,mbfindsb
+use SYSTEME,mbfree
+use SYSTEME,mbchown
+endi
+
 ;================================Table des modes videos (64 BYTES) ============================================
 ;40*25 16 couleurs
 mode0        DB 67H,00H,  03H,08H,03H,00H,02H
@@ -693,14 +716,12 @@ PROC scrolldown FAR
 endp scrolldown 	
 
 ;==========GETXY=========
-;Met les coordonnées du curseur dans %0 au format point
+;Met les coordonnées du curseur dans ah,al au format point
 ;->
 ;<- ah coordonnées x, al coordonnées y
 ;========================
 PROC getxy FAR
-        ARG     @pointer:word
 	USES 	bx
-	mov     bx,[@pointer]
 	mov 	ah,[cs:datablock.x]
 	mov 	al,[cs:datablock.y]
 	ret
@@ -872,7 +893,7 @@ endp waithretrace
 ;<-
 ;->
 ;==========================	
-PROC getchar FAR
+PROC getchars FAR
         USES    di,es
         mov	ax,0B800h
 	mov	es,ax
@@ -880,14 +901,14 @@ PROC getchar FAR
 	mov	al,[es:di]
 	xor     ah,ah
         ret
-endp getchar
+endp getchars
 
 ;==========SHOWCHAR=========
 ;Ecrit le caractère ASCII %0 attribut %1 aprés le curseur, en le mettant à jours
 ;<-
 ;->
 ;===========================
-PROC showchar FAR
+PROC showchars FAR
         ARG     @char:word,@attr:word
 	USES 	ax,bx,cx,dx,di,es
 	mov     cl,[byte ptr @char]
@@ -915,7 +936,7 @@ PROC showchar FAR
 @@noadjusted:
         call    setcursor
 	ret
-endp showchar
+endp showchars
 
 setcursor:
         push    ax cx dx
@@ -979,107 +1000,121 @@ ended:
         pop     di dx cx bx ax
         ret
 
-
-
 ;sauve l'ecran dans un bloc de mémoire
-savescreen:
-push    ax cx dx si di bp ds es gs
-mov     bp,sp
-mov     dx,[ss:bp+22]
-mov     ah,2
-mov     cx,[cs:datablock.pagesize]
-push    cs
+PROC savescreen FAR
+USES    ax,ds
+call    [cs:mbcreate],offset data3,[cs:datablock.pagesize]
+jc      @@error
+call    [cs:mbchown],ax,[word ptr ss:bp+4]
+jc      @@error
+push    ax
 pop     ds
-mov     si,offset data3
-int     49h
-mov     ah,6
-int     49h
-push    gs
-pop     es
-xor     di,di
-call    savescreento
-pop     gs es ds bp di si dx cx ax
+call    savescreento,0
+clc
 ret
-
+@@error:
+stc
+ret
+endp savescreen
 data3 db '/vgascreen',0
 
 
-;===================================sauve l'ecran rapidement en es:di================
-savescreento:
-        push    cx si di ds 
+;===================================sauve l'ecran rapidement en ds:%1================
+PROC savescreento FAR
+        ARG     @offset:word
+        USES    ecx,si,di,ds,es
+        push    ds
+        pop     es
         mov     cx,0B800h
         mov     ds,cx
         xor     ecx,ecx
         mov     cx,[cs:datablock.pagesize]
+        mov     di,[@offset]
         shr     cx,2
         xor     si,si
         cld
         rep     movsd
-        pop     ds di si cx 
         ret
+endp savescreento
 
-;===================================sauve les parametres en es:di================
-saveparamto:
-        push    ecx si di ds
+;===================================sauve les parametres en ds:%0================
+PROC saveparamto FAR
+        ARG     @offset:word
+        USES   ecx,si,di,ds,es
+        push    ds
+        pop     es
         push    cs
         pop     ds
         xor     ecx,ecx
         mov     cx,size datablock
+        mov     di,[@offset]
         mov     si,offset datablock
         cld
         rep     movsb
-        pop     ds di si ecx
         ret
+endp saveparamto
         
-;===================================restore les parametres depuis en ds:si================
-restoreparamfrom:
-        push    ecx si di es
+;===================================restore les parametres depuis en ds:%0================
+PROC restoreparamfrom FAR
+        ARG     @offset:word
+        USES    ecx,si,di,es
         push    cs
         pop     es
         xor     ecx,ecx
         mov     cx,size datablock
+        mov     si,[@offset]
         mov     di,offset datablock
         cld
         rep     movsb
-        pop     es di si ecx
         ret
+endp restoreparamfrom
 
-;R‚cupŠre l'ecran de la carte depuis son bloc mémoire
-restorescreen:
-push    ax dx si bp ds gs
-mov     bp,sp
-mov     dx,[ss:bp+16]
-push    cs
+
+
+
+
+
+
+;restaure l'ecran dans un bloc de mémoire
+PROC restorescreen FAR
+USES    ax,ds
+call    [cs:mbfindsb],offset data3,[word ptr ss:bp+4]
+jc @@error
+push    ax
 pop     ds
-mov     si,offset data3
-mov     ah,9
-int     49h
-push    gs
-pop     ds
-xor     si,si
-call    restorescreenfrom
-pop     gs ds bp si dx ax
+call    restorescreenfrom,0
+clc
 ret
+@@error:
+stc
+ret
+endp restorescreen
 
-;===================================restore l'ecran rapidement de ds:si================
-restorescreenfrom:
-        push    ecx si di ds es
-        mov     cx,0B800H
+
+;===================================restaure l'ecran rapidement en %1================
+PROC restorescreenfrom FAR
+        ARG     @offset:word
+        USES    ecx,si,di,es
+        mov     cx,0B800h
         mov     es,cx
         xor     ecx,ecx
         mov     cx,[cs:datablock.pagesize]
+        mov     si,[@offset]
         shr     cx,2
         xor     di,di
         cld
         rep     movsd
-        pop     es ds di si ecx
         ret
+endp restorescreenfrom
+
 
 
 
 ;===============================Page2to1============================
-page2to1:
-        push    ecx si di ds es
+
+PROC page2to1 FAR
+        ARG     @offset:word
+        USES    ecx,si,di,ds,es
         mov     cx,0B800H
         mov     es,cx
         mov     ds,cx
@@ -1090,12 +1125,13 @@ page2to1:
         xor     di,di
         cld
         rep     movsd
-        pop     es ds di si ecx
         ret
+endp page2to1
 
 ;===============================Page1to2============================
-page1to2:
-        push    ecx si di ds es
+PROC page1to2 FAR
+        ARG     @offset:word
+        USES    ecx,si,di,ds,es
         mov     cx,0B800H
         mov     es,cx
         mov     ds,cx
@@ -1106,31 +1142,19 @@ page1to2:
         xor     si,si
         cld
         rep     movsd
-        pop     ds es di si ecx
         ret
-
+endp page1to2
 ;===============================xchgPages============================
-xchgpages:
-push    ax cx dx si di bp ds es gs
-mov     bp,sp
-mov     dx,[ss:bp+22]
-mov     ah,2
-mov     cx,size datablock
-add     cx,[cs:datablock.pagesize]
-add     cx,3*256
-push    cs
+PROC xchgpages FAR
+        USES    ax,ecx,si,di,ds,es
+call    [cs:mbcreate],offset data4,[cs:datablock.pagesize]
+jc      @@error
+call    [cs:mbchown],ax,[word ptr ss:bp+4]
+jc      @@error
+push    ax
 pop     ds
-mov     si,offset data4
-int     49h
-mov     ah,6
-int     49h
-push    gs
-pop     es
-xor     di,di
-call    savescreento
+call    savescreento,0
 call    page2to1
-push    gs
-pop     ds
 xor     si,si
 mov     cx,0B800H
 mov     es,cx
@@ -1140,142 +1164,142 @@ mov     cx,[cs:datablock.pagesize]
 shr     cx,2
 cld
 rep     movsd
-mov     ah,01h
-int     49h
-pop     gs es ds bp di si dx cx ax
+clc
 ret
+@@error:
+stc
+ret
+endp xchgpages
 
 data4 db '/vgatemp',0
 
 
+
+
+
 ;Sauve l'‚tat de la carte dans un bloc mémoire
-savestate:
-push    ax cx dx si di bp ds es gs
-mov     bp,sp
-mov     dx,[ss:bp+22]
-mov     ah,2
+PROC savestate FAR
+USES    ax,cx,di,ds
 mov     cx,size datablock
 add     cx,[cs:datablock.pagesize]
 add     cx,3*256
-push    cs
+call    [cs:mbcreate],offset data,cx
+jc      @@error
+call    [cs:mbchown],ax,[word ptr ss:bp+4]
+jc      @@error
+push    ax
 pop     ds
-mov     si,offset data
-int     49h
-mov     ah,6
-int     49h
-push    gs
-pop     es
 xor     di,di
-call    saveparamto
+call    saveparamto,di
 add     di,size datablock
-call    savescreento
+call    savescreento,di
 add     di,[cs:datablock.pagesize]
-call    savedacto
-pop     gs es ds bp di si dx cx ax
+call    savedacto,di
+clc
 ret
+@@error:
+stc
+ret
+endp savestate
 
 data db '/vga',0
 
+
+
+
 ;R‚cupŠre l'‚tat de la carte depuis son bloc mémoire
-restorestate:
-push    ax dx si bp ds gs
-mov     bp,sp
-mov     dx,[ss:bp+16]
-push    cs
+PROC restorestate FAR
+USES    ax,cx,di,ds
+call    [cs:mbfindsb],offset data,[word ptr ss:bp+4]
+jc @@error
+push    ax
 pop     ds
-mov     si,offset data
-mov     ah,9
-int     49h
-push    gs
-pop     ds
-mov     al,[ds:7]
-cmp     [cs:datablock.mode],al
-je      nochangemode
-mov     ah,0
-call    setvideomode
-nochangemode:
-xor     si,si
-call    restoreparamfrom
-add     si,size datablock
-call    restorescreenfrom
-add     si,[cs:datablock.pagesize]
-call    restoredacfrom
-pop     gs ds bp si dx ax
+xor     di,di
+call    restoreparamfrom,di
+add     di,size datablock
+call    restorescreenfrom,di
+add     di,[cs:datablock.pagesize]
+call    restoredacfrom,di
+clc
 ret
+@@error:
+stc
+ret
+endp restorestate
+
 
 ;sauve le DAC dans un bloc de mémoire
-savedac:
-push    ax cx dx si di bp ds es gs
-mov     bp,sp
-mov     dx,[ss:bp+22]
-mov     ah,2
-mov     cx,3*256
-push    cs
+PROC savedac FAR
+USES    ax,ds
+call    [cs:mbcreate],offset data3,3*256
+jc      @@error
+call    [cs:mbchown],ax,[word ptr ss:bp+4]
+jc      @@error
+push    ax
 pop     ds
-mov     si,offset data2
-int     49h
-mov     ah,6
-int     49h
-push    gs
-pop     es
-xor     di,di
-call    savedacto
-pop     gs es ds bp di si dx cx ax
+call    savedacto,0
+clc
 ret
+@@error:
+stc
+ret
+endp savedac
 
 data2 db '/vgadac',0
 
-;R‚cupŠre le dac depuis son bloc mémoire
-restoredac:
-push    ax dx si bp ds gs
-mov     bp,sp
-mov     dx,[ss:bp+16]
-push    cs
-pop     ds
-mov     si,offset data2
-mov     ah,9
-int     49h
-push    gs
-pop     ds
-xor     si,si
-call    restoredacfrom
-pop     gs ds bp si dx ax
-ret
 
-;sauve le DAC en es:di
-savedacto:
-push ax cx dx di
+
+;R‚cupŠre le dac depuis son bloc mémoire
+PROC restoredac FAR
+USES    ax,ds
+call    [cs:mbfindsb],offset data2,[word ptr ss:bp+4]
+jc @@error
+push    ax
+pop     ds
+call    restoredacfrom,0
+clc
+ret
+@@error:
+stc
+ret
+endp restoredac
+
+
+
+;sauve le DAC en ds:%0
+PROC savedacto FAR
+USES ax,cx,dx,di
 mov dx,3C7h
 mov cx,256
-save:
+@@save:
 mov al,cl
 dec al
 out dx,al
 inc dx
 inc dx
 in al,dx
-mov [es:di],al
+mov [ds:di],al
 inc di
 in al,dx
-mov [es:di],al
+mov [ds:di],al
 inc di
 in al,dx
-mov [es:di],al
+mov [ds:di],al
 inc di
 dec dx
 dec dx
 dec cx
-jne save 
-pop di dx cx ax
+jne @@save 
 ret
+endp savedacto
 
 ;restore le DAC depuis ds:si
-restoredacfrom:
-push ax cx dx si
+PROC restoredacfrom FAR
+USES ax,cx,dx,si
 xor ax,ax
 mov dx,3C8h
 mov cx,256
-save2:
+@@save2:
 mov al,cl
 dec al
 out dx,al
@@ -1291,9 +1315,10 @@ inc si
 out dx,al
 dec dx
 dec cx
-jne save2
-pop si dx cx ax
+jne @@save2
 ret
+endp restoredacfrom
+
 
 
 font8x8:
