@@ -601,11 +601,13 @@ endp invert
 PROC cmpstr FAR
         ARG     @src:word,@dest:word
         USES    cx,dx,si,di
+        push    ds
+        pop     es
         mov     si,[@src]
         mov     di,[@dest]
-        call    getlength,si
-        mov     cx,ax
         call    getlength,di
+        mov     cx,ax
+        call    getlength,si
         cmp     cx,ax
         jne     @@notequal
         repe    cmpsb
@@ -617,8 +619,8 @@ endp cmpstr
 PROC evalue FAR
         ARG     @src:word,@dest:word
         USES    cx,si,di,es
-        push    es
-        pop     ds
+        push    ds
+        pop     es
         mov     si,[@src]
         mov     di,[@dest]
         call    getlength ,di 
@@ -633,8 +635,8 @@ PROC evalue FAR
 @@noident:
         sub     ax,cx
         dec     ax
-        clc
         popf
+        clc
         ret
 endp evalue
 
