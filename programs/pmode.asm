@@ -1,15 +1,22 @@
-.model tiny
-.486p
-smart
-.code
+model tiny,stdcall
+p586N
+locals
+jumps
+codeseg
+option procalign:byte
+
+include "..\include\mem.h"
+include "..\include\divers.h"
 
 org 0h
 
 start:
-mov eax,cr0
-or al,1
-mov cr0,eax
+header exe <"CE",1,0,0,,,,offset realstart>
 
-db 0CBh
+realstart:
+    mov     eax,cr0
+    or      al,1
+    mov     cr0,eax
+    retf
 
-end start
+
