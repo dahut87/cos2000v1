@@ -15,8 +15,15 @@ all:
 	make
 	cd ..
 
+	cd programs
+	make
+	cd ..
+
 copy: clean all
 	copy noyau\systeme.sys b:
+      copy commande\*.ce b:
+      copy lib\*.lib b:
+      copy programs\*.ce b:
 
 clean:
 	cd lib
@@ -32,5 +39,9 @@ clean:
 	cd ..
 
 	cd commande
+	make clean
+	cd ..
+
+	cd programs
 	make clean
 	cd ..
