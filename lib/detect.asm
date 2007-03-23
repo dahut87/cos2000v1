@@ -307,6 +307,7 @@ subclass170 db 'dpio',0
 PROC getcardinfo FAR
         ARG     @bus:word,@device:word,@function:word,@pointer:word
         USES    eax,bx,di
+        mov     di,[@pointer]
         cmp     [@function],0
         je      @@amultiorfirst
         call    pcireadbyte,[@bus],[@device],0,offset (pcidata).typed
@@ -317,7 +318,6 @@ PROC getcardinfo FAR
         jmp     @@notexist
 @@amultiorfirst:
         xor     bx,bx
-        mov     di,[@pointer]
 @@goinfos:
         call    pcireadword,[@bus],[@device],[@function],bx
         inc     bl
@@ -341,7 +341,7 @@ PROC getcardinfo FAR
         ret
 endp getcardinfo
 
-;lit un octet du bus %0 device %1 function %2 n° %3 et le met en AL
+;lit un octet du bus %0 device %1 function %2 nø %3 et le met en AL
 PROC pcireadbyte FAR
         ARG     @bus:word,@device:word,@function:word,@pointer:word
         USES    bx,dx
@@ -363,7 +363,7 @@ PROC pcireadbyte FAR
         ret
 endp pcireadbyte
 
-;lit 2 octet du bus %0 device %1 function %2 n° %3 et le met en AX
+;lit 2 octet du bus %0 device %1 function %2 nø %3 et le met en AX
 PROC pcireadword FAR
         ARG     @bus:word,@device:word,@function:word,@pointer:word
         USES    bx,dx
@@ -385,7 +385,7 @@ PROC pcireadword FAR
         ret
 endp pcireadword
 
-;lit 4 octet du bus %0 device %1 function %2 n° %3 et le met en EAX
+;lit 4 octet du bus %0 device %1 function %2 nø %3 et le met en EAX
 PROC pcireaddword FAR
         ARG     @bus:word,@device:word,@function:word,@pointer:word
         USES    bx,dx
