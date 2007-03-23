@@ -667,20 +667,23 @@ PROC mbloadfuncs FAR
 @@loadfuncs:
         cmp     [word ptr si],0
         je      @@endofloading
-pushad
-call biosprint,si
-popad
         call    mbsearchfunc,si
         jnc     @@toendoftext
         mov     bx,si
+pushad
+call biosprint,si
+popad
 @@findend:
         inc     bx
         cmp     [byte ptr bx], ':'
         jne     @@findend
         mov     [byte ptr bx],0
-;call projectfile,bx
+        call    [cs:projfile],si
         jc      @@erroronload
         mov     [byte ptr bx],':'
+pushad
+call biosprint,si
+popad
         call    mbsearchfunc,si
         jc      @@libnotexist
 @@toendoftext:
@@ -710,18 +713,18 @@ popad
 endp mbloadfuncs
 
 
-;Recherche une fonction pointé par DS:SI en mémoire et renvoie son adresse en DX:AX
+;Recherche une fonction pointé par DS:%0 en mémoire et renvoie son adresse en DX:AX
 PROC mbsearchfunc FAR
         ARG     @func:word
         USES    bx,si,di,es
         mov     bx,[@func]
-        push    bx
+        mov     si,bx
 @@findend:
         inc     bx
         cmp     [byte ptr bx], ':'
         jne     @@findend
         mov     [byte ptr bx],0
-        call    mbfind
+        call    mbfind,si
         mov     [byte ptr bx],':'
         jc      @@notfoundattallthesb
         mov     es,ax
