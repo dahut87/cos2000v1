@@ -1,29 +1,26 @@
-.model small
-.486
-smart
-.code
+model tiny,stdcall
+p586N
+locals
+jumps
+codeseg
+option procalign:byte
+
+include "..\include\mem.h"
+include "..\include\divers.h"
+
 org 0h
 
-include ..\include\mem.h
-
 start:
-header exe <,1,0,,,offset imports,offset exports,>
+header exe <"CE",1,0,0,,offset imports,,offset realstart>
 
 realstart:
-push offset message
-call [affiche]
-call [waitkey]
-retf
+    call    [print],offset message
+    call    [waitkey]
+    retf
 
-message db 'Appel de la librairie video !',0
+message db 'Appel de la librairie \c02video\c07 et de la librairie \c02EXEM-LIB.LIB\c07 !',0
 
-
-imports:
-        db "VIDEO.LIB::print",0
-affiche dd 0
-        db "EXEM-LIB.LIB::waitkey",0
-waitkey dd 0
-        dw 0
-exports:
-
-end start
+importing
+use VIDEO.LIB,print
+use EXEM-LIB.LIB,waitkey
+endi
