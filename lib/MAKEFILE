@@ -1,23 +1,17 @@
 asm= lzasm
 lnk= elink
 
-all: detect.lib video.lib
+all: detect.lib video.lib str0.lib
 
-detect.lib: detect.obj 
-	$(lnk) detect.obj detect.lib
+.asm.obj: 
+      $(asm) $<
 
-video.lib: video.obj 
-	$(lnk) video.obj video.lib
-
-detect.obj:
-	$(asm) detect.asm
-
-video.obj:
-	$(asm) video.asm 
+.obj.lib:
+	$(lnk) $< $*.lib
 
 clean:
   del *.obj
-  del *.exe
+  del *.ce
   del *.bak
   del *.lib
   del *.com
