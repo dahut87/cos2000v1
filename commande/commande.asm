@@ -1,50 +1,43 @@
-.model  tiny
-.486
-smart
-.code
+model tiny,stdcall
+p586N
+locals
+jumps
+codeseg
+option procalign:byte
+
+include "..\include\fat.h"
+include "..\include\mem.h"
+include "..\include\divers.h"
 
 org     0h
 
-include ..\include\fat.h
-include ..\include\mem.h
-include ..\include\divers.h
-
 start:
-header  exe     <,1,0,,,offset imports,,>
+header  exe     <,1,0,,,offset imports,,offset realstart>
 
 realstart:
-        push    offset msginit
-        call    [print]
+        call    [cs:print],offset msginit
         xor     bp,bp
-        mov     dl,' '
-        call    setdelimiter0
 replay:
-        mov     ah,6
-        int     47h
+        call    [cs:addline]
 noret:
-        mov     ah,6
-        int     47h
-        mov     ah,16
+        call    [cs:addline]
         mov     di,offset dir
-        int     48h
-        push    offset prompt
-        call    [print]
+        call    [cs:getdir],di
+        call    [cs:print],di
+        call    [cs:print],offset prompt
         mov     di,offset buffer
 waitchar:
-        mov     ax,0
+        xor     ax,ax
         int     16h
         call    convertfr
         cmp     ah,59
         jne     norr
         cmp     bp,0
         je      waitchar
-        push    word ptr cs: [bp-8]
-        call    [print]
-        push    cs
-        pop     es
-        call    copy0
-        call    getlength0
-        add     di,cx
+        call    [print],[word ptr cs: bp]
+        call    [copy],[word ptr cs: bp],di
+        call    [getlength],di
+        add     di,ax
         jmp     waitchar
 norr:
         cmp     al,0dh          ;entrée
@@ -59,132 +52,113 @@ norr:
         je      waitchar
         mov     [di],al
         inc     di
-        push    ax
-        call    [showchar]
+        call    [cs:showchar],ax
         jmp     waitchar
 escape:
         cmp     di,offset buffer
         je      waitchar
-        mov     ah,24
-        int     47h
+        call    [cs:getxy]
         mov     dx,offset buffer
         mov     cx,di
         sub     cx,dx
         js      waitchar
         je      waitchar
-        sub     bh,cl
-        mov     ah,25
-        int     47h
+        sub     ah,cl
+        mov     cl,ah
+        xor     ah,ah
+        xor     ch,ch
+        call    [cs:setxy],cx,ax
         mov     di,offset buffer
-        mov     byte ptr [di],0
+        mov     [byte ptr di],0
+        jmp     waitchar
 backspace:
         cmp     di,offset buffer
         je      waitchar
-        mov     ah,24
-        int     47h
-        dec     bh
-        mov     ah,25
-        int     47h
-        push    ' '
-        call    [showchar]
-        mov     ah,25
-        int     47h
+        call    [cs:getxy]
+        dec     ah
+        mov     cl,ah
+        xor     ah,ah
+        xor     ch,ch        
+        call    [cs:setxy],cx,ax        
+        call    [cs:showchar],' '
+        call    [cs:setxy],cx,ax         
         dec     di
-        mov     byte ptr [di],0
+        mov     [byte ptr di],0
         jmp     waitchar
-
 entere:
-        mov     byte ptr [di],0
-        mov     si,offset buffer
-        cmp     si,di
+        mov     [byte ptr di],0
+        cmp     di,offset buffer
         je      noret
-        mov     ah,6
-        int     47h
-        push    cs
-        pop     es
-        mov     di,offset buffer2
-        xor     cx,cx
-        call    getitem0
-        mov     si,di
-        call    uppercase0
+        mov     si,offset temp
+        call    [cs:addline]
+        call    [cs:getitem],offset buffer,si,0,' '
+        call    [cs:uppercase],si
         mov     bx,offset commands
         xor     bp,bp
+        xor     dx,dx
 tre:
         mov     di,[bx]
-        add     bx,8
         cmp     di,0
         je      error
-        push    cs
-        pop     es
-        call    evalue0
-        cmp     dx,bp
+        call    [cs:evalue],si,di
+        cmp     ax,dx
         jb      noadd
-        mov     bp,dx
-        mov     ax,bx
+        mov     dx,ax
+        mov     bp,bx
 noadd:
-        call    cmpstr0
-        jne     tre
-        mov     si,offset buffer
-        mov     di,offset buffer2
-        call    copy0
-        mov     si,di
-        call    uppercase0
+        call    [cs:cmpstr],si,di
+        je      strisok
+        add     bx,8
+        jmp     tre
+strisok:
+        mov     di,offset temp
+        call    [cs:copy],offset buffer,di
+        call    [cs:uppercase],di
         xor     cx,cx
         inc     cx
-        call    getpointeritem0
-        cmp     byte ptr [di-1],0
+        call    [cs:getpointeritem],di,cx,' '
+        mov     di,ax
+        cmp     [byte ptr di-1],0
         jne     nopod
-        mov     byte ptr [di],0
+        mov     [byte ptr di],0
 nopod:
-        mov     si,di
-        mov     di,[bx-4]
-        call    checksyntax0
+        call    [cs:checksyntax],di,[word ptr bx+4],' '
         jc      errorprec
-        mov     bx,[bx-6]
+        mov     bx,[bx+2]
         call    bx
         jmp     replay
 error:
-        mov     bp,ax
-        push    cs
-        pop     es
-        mov     dl,'.'
-        call    searchchar0
-        je      noaddext
         mov     di,offset buffer
-        mov     si,offset extcom
-        call    concat0
+        call    [cs:searchchar],di,'.'
+        je      noaddext
+        call    [cs:concat],offset extcom,di
 noaddext:
-        mov     si,offset buffer
-        mov     ah,18
-        int     48h
+        call    [cs:execfile],di
         jc      reallyerror
         xor     bp,bp
         jmp     replay
 reallyerror:
+        push    [word ptr cs: bp]
         push    offset error_syntax
-        call    [print]
-        push    word ptr cs: [bp-8]
-        call    [print]
+        call    [cs:print]
         jmp     replay
 errorprec:
         push    offset derror
-        call    [print]
+        call    [cs:print]
         jmp     replay
 
 code_exit:
         pop     ax
         retf
 
-code_version:
-        push    offset version_text
-        call    [print]
+code_version:  
+        call    [cs:print],offset version_text
         ret
 
 version_text db 'Cos 2000 version 1.4Fr par \c04MrNop',0
 
 code_cls:
-        mov     ah,2
-        int     47h
+        call    [cs:clearscreen]
         ret
 
 code_reboot:
@@ -192,70 +166,60 @@ code_reboot:
         push    00000h
         retf
 
-code_command:
-        push    offset def
-        call    [print]
+code_command: 
+        call    [cs:print],offset def
         mov     bx,offset commands
 showalls:
+        push    [word ptr bx+4]
+        push    [word ptr bx+6]
+        push    [word ptr bx]  
+        call    [cs:print],offset commandes
         add     bx,8
-        cmp     word ptr [bx],0
-        je      endoff
-        push    word ptr [bx+4]
-        push    word ptr [bx+6]
-        push    word ptr [bx]
-        push    offset commandes
-        call    [print]
-        jmp     showalls
-        endoff:
+        cmp     [word ptr bx],0
+        jne     showalls
+endoff:
         ret
 
 def       db 'Liste des commandes internes\l\l',0
 commandes db '%0 \h10:\h12%0 \h70%0\l',0
 
 code_mode:
-        mov     cx,0
-        call    gettypeditem0
-        mov     ah,0
-        mov     al,dl
+        call    [cs:gettypeditem],di,0,' '
         and     al,1111b
-        int     47h
-        mov     ah,2
-        int     47h
+        call    [cs:setvideomode],ax
+        call    [cs:clearscreen]
         ret
 
 code_dir:
-        mov     ah,12
-        int     48h
-        push    edx
-        mov     ah,11
-        mov     di,offset nomdisque
-        int     48h
-        push    di
+        call    [cs:getserial] 
+        push    eax
+        mov     si,offset nomdisque
+        call    [cs:getname],si 
+        push    si
         push    offset present
-        call    [print]
-        xor     bp,bp
+        call    [cs:print]
+        xor     ecx,ecx
         mov     di,offset bufferentry
-        mov     ah,7
-        int     48h
+        call    [cs:findfirstfile],di
         jc      nofiles
 go:
-        push    word ptr [di+entries.fileattr]
-        push    dword ptr [di+entries.filesize]
-        push    word ptr [di+entries.filetime]
-        push    word ptr [di+entries.filedate]
-        push    word ptr [di+entries.filetimecrea]
-        push    word ptr [di+entries.filedatecrea]
-        push    di
+        push    [word ptr (find di).result.fileattr]
+        push    [(find di).result.filesize]
+        push    [(find di).result.filetime]
+        push    [(find di).result.filedate]
+        push    [(find di).result.filetimecrea]
+        push    [(find di).result.filedatecrea]
+        lea     bx,[(find di).result.filename]
+        push    bx
         push    offset line
-        call    [print]
-        inc     bp
-        mov     ah,8
-        int     48h
+        call    [cs:print]
+        inc     ecx
+        call    [cs:findnextfile],di
         jnc     go
 nofiles:
-        push    ebp
+        push    ecx
         push    offset filess
-        call    [print]
+        call    [cs:print]
         ret
         
 nomdisque db    13 dup (0)
@@ -263,20 +227,17 @@ bufferentry db  512 dup (0)
 present db      '\c02Le volume insere est nomme %0, Numero de serie : %hD\l\l',0
 
 line    db      '\c07%n   %d   %t   %d   %t   %z   %a\l',0
-filess  db      '\l\l\c02%u Fichier(s) au total\l',0
+filess  db      '\l\l\c02%u Fichier(s) au total\l\c07',0
 
 code_cd:
-        mov     cx,0
-        call    gettypeditem0
-        push    di
+        call    [cs:gettypeditem],di,0,' '
+        push    ax
         push    offset changing
-        call    [print]
-        mov     si,di
-        mov     ah,13
-        int     48h
+        call    [cs:print]
+        call    [cs:changedir],ax
         jnc     okchange
         push    offset errorchanging
-        call    [print]
+        call    [cs:print]
 okchange:
         ret
         
@@ -284,21 +245,17 @@ changing db     'Changement de repertoire vers %0\l',0
 errorchanging db '\c04Impossible d''atteindre ce dossier',0
         
 code_kill:
-        mov     cx,0
-        call    gettypeditem0
-        push    di
+        call    [cs:gettypeditem],di,0,' '
+        push    ax
         push    offset killing
-        call    [print]
-        mov     si,di
-        mov     ah,5
-        int     49h
+        call    [cs:print]
+        call    [cs:mbfind],ax
         jc      nochanged
-        mov     ah,1
-        int     49h
+        call    [cs:mbfree],ax
         jnc     okchanged
 nochanged:
         push    offset errorkilling
-        call    [print]
+        call    [cs:print]
 okchanged:
         ret
         
@@ -306,87 +263,78 @@ killing db     'Fermeture du processus %0\l',0
 errorkilling db '\c04Impossible de fermer ce processus',0
 
 code_refresh:
-        mov     ah,3
-        int     48h
+        call    [cs:initdrive]
         jnc     okrefresh
-        push    offset errorrefreshing
-        call    [print]
+        call    [cs:print],offset errorrefreshing
         ret
 okrefresh:
-        mov     ah,12
-        int     48h
-        push    edx
-        mov     ah,11
-        mov     di,offset nomdisque
-        int     48h
-        push    di
+        call    [cs:getserial] 
+        push    eax
+        mov     si,offset nomdisque
+        call    [cs:getname],si 
+        push    si
         push    offset present
-        call    [print]
+        call    [cs:print]
         ret
         
 errorrefreshing db '\c04Impossible de lire le support',0
 extcom  db      '.CE',0
 
-code_mem:
-        push    offset msg
-        call    [print]
+code_mem:    
+        call    [cs:print],offset msg
         xor     ebx,ebx
         xor     cx,cx
 listmcb:
-        mov     ah,4
-        int     49h
+        call    [cs:mbget],cx
         jc      fino
+        dec     ax
+        dec     ax
+        mov     gs,ax
         inc     cx
-;placement mémoire
         mov     dx,gs
-        inc     dx
-        inc     dx
-        push    edx
+        push    edx          ;Emplacement memoire hex 2
 ;parent
-        cmp     gs: [mb.reference],0
+        cmp     [gs:mb.reference],0
         jne     next
         push    cs
-        push    offset none
-        add     bx,gs:[mb.sizes]
+        push    offset none        ;parent lstr0 2x2 
+        add     bx,[gs:mb.sizes]
         jmp     suitemn
 next:
-        mov     dx,gs: [mb.reference]
+        mov     dx,[gs:mb.reference]
         dec     dx
         dec     dx
-        push    dx
-        push    offset mb.names
+        push    dx                    ;parent lstr0 2x2 
+        push    offset (mb).names
 suitemn:
-;Resident
-        cmp     gs: [mb.isresident],true
+        cmp     [gs: mb.isresident],true
         jne     notresident
-        push    offset resident
+        push    offset resident        ;resident str0 2 
         jmp     suitelistmcb
 notresident:
-        push    offset nonresident
+        push    offset nonresident     ;resident str0 2
 suitelistmcb:
-;taille memoire
         xor     edx,edx
-        mov     dx,gs: [mb.sizes]
+        mov     dx,[gs: mb.sizes]
         shl     edx,4
-        push    6
+        push    6                    ;decimal 4 + type 2
         push    edx
-;nom
-        push    gs
-        push    offset mb.names
-        push    offset line2
-        call    [print]
+        push    gs                   ;nom lstr0 2x2 
+        push    offset (mb).names
+        push    offset line2         ;ligne
+        call    [cs:print]
         jmp     listmcb
 fino:
         shl     ebx,4
         push    ebx
         push    offset fin
-        call    [print]
+        call    [cs:print]
         ret
 resident db     "oui",0
 nonresident db  "non",0
-line2   db      "%0P\h15%w\h24%0\h30%0P\h46%hW\l",0
-fin     db      "\l\l\c02%u octets de memoire disponible\l",0
-msg     db      "Plan de la memoire\l\lNom            Taille   Res   Parent          Mem\l",0
+line2   db      "%0P\h15|%w\h25|%0\h30|%0P\h46|%hW\l",0
+fin     db      "\l\l\c02%u octets de memoire disponible\l\c07",0
+msg     db      "Plan de la memoire\l\lNom            | Taille  |Res |Parent         |Mem\l",0
 none    db      ".",0
 
 
@@ -395,13 +343,13 @@ convertfr:
         push    dx si
         mov     si,offset fr
 searchtouch:
-        mov     dx,cs: [si]
+        mov     dx,[cs: si]
         cmp     dx,0
         je      endofconv
         add     si,4
         cmp     dx,ax
         jne     searchtouch
-        mov     ax,cs: [si-2]
+        mov     ax,[cs: si-2]
 endofconv:
         pop     dx si
         ret
@@ -500,12 +448,12 @@ syn_version db  0
 syn_cls db      0
 syn_reboot db   0
 syn_command db  0
-syn_mode db     'FFH',0
+syn_mode db     'FFh',0
 syn_dir db      0
 syn_refresh db  0
-syn_cd  db      '@',0
+syn_cd  db      '?',0
 syn_mem db      0
-syn_kill  db    '@',0
+syn_kill  db    '?',0
 
 help_exit db    'Permet de quitter l''interpreteur',0
 help_version db 'Affiche la version de COS',0
@@ -520,23 +468,44 @@ help_mem db     'Affiche le plan de la memoire',0
 help_kill db    'Termine le processus cible',0
 
 derror  db      '\c04Erreur de Syntaxe !',0
-error_syntax db '\c04La commande ou l''executable n''existe pas ! F1 pour ',0
+error_syntax db '\c04La commande ou l''executable n''existe pas ! F1 pour %0',0
 prompt  db      '\c07>',0
 msginit db      '\m02\e\c07\l\lInterpreteur de commande COS V1.9\lSous license \c05GPL\c07 - Ecrit par \c04MrNop\l\c07Utilisez la commande CMDS pour connaitres les commandes disponibles\l',0
 
-include str0.asm
 
 dir     db      32 dup (0)
-buffer  db      128 dup (0)
-buffer2 db      128 dup (0)
+buffer  db      256 dup (0)
+temp    db      256 dup (0)
 
-imports:
-        db      "VIDEO.LIB::print",0
-print   dd      0
-        db      "VIDEO.LIB::showhex",0
-showhex dd      0
-        db      "VIDEO.LIB::showchar",0
-showchar dd     0
-        dw      0
-
-end     start
+importing
+use VIDEO,clearscreen
+use VIDEO,setvideomode
+use VIDEO,getxy
+use VIDEO,setxy
+use VIDEO,addline
+use VIDEO.LIB,showhex
+use VIDEO.LIB,print
+use VIDEO.LIB,showchar
+use DISQUE,getdir
+use DISQUE,getserial
+use DISQUE,getname
+use DISQUE,findfirstfile
+use DISQUE,findnextfile
+use DISQUE,execfile
+use DISQUE,initdrive
+use DISQUE,changedir
+use SYSTEME,mbget
+use SYSTEME,mbfind
+use SYSTEME,mbfree
+use STR0.LIB,uppercase
+use STR0.LIB,evalue
+use STR0.LIB,copy
+use STR0.LIB,checksyntax
+use STR0.LIB,searchchar
+use STR0.LIB,concat
+use STR0.LIB,getitem
+use STR0.LIB,cmpstr
+use STR0.LIB,getpointeritem
+use STR0.LIB,getlength
+use STR0.LIB,gettypeditem
+endi
