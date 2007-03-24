@@ -42,6 +42,8 @@ use VIDEO,clearscreen
 use VIDEO,enablescroll
 use VIDEO,disablescroll
 use VIDEO,showchars
+use VIDEO,savestate
+use VIDEO,restorestate
 endi
          
 
@@ -356,14 +358,12 @@ PROC print FAR
         jmp     @@strinaize0
 
 @@savestate:
-        mov     ah,40
-        int     47h
+        call    [cs:savestate]
         add     si,2
         jmp     @@strinaize0
 
 @@restorestate:
-        mov     ah,41
-        int     47h
+        call    [cs:restorestate]
         add     si,2
         jmp     @@strinaize0
 
@@ -398,8 +398,6 @@ PROC print FAR
         sub     bl,'0'
         xor     bh,bh
         call    [cs:setxy],ax,bx
-        mov     ah,25
-        int     47h
         add     si,7
         jmp     @@strinaize0
 
@@ -760,7 +758,7 @@ PROC showsigned FAR
 @@showminus:
 	call 	[cs:showchars],'-',0FFFFh
 @@notsigned:
-	call 	showint,edx,0FFFFh
+	call 	showint,edx
 	ret
 ENDP showsigned
 
