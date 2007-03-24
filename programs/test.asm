@@ -1,160 +1,122 @@
-.model tiny
-.486
-smart
-.code
+model tiny,stdcall
+p586N
+locals
+jumps
+codeseg
+option procalign:byte
+
+include "..\include\mem.h"
+include "..\include\divers.h"
 
 org 0h
 
-include ..\include\mem.h
-
 start:
-header exe <,1,0,,,offset imports,,>
+header exe <"CE",1,0,0,,offset imports,,offset realstart>
 
 realstart:
-mov ah,28h
-int 47h
-
-push word ptr 0FFFFh
-push dword ptr 652201
-push dword ptr 1545454545
-push word ptr 1523
-push word ptr 2041
-push offset zero
-push offset fixe
-push word ptr 5
-push word ptr 'i'
-push word ptr 'a'
-push dword ptr 5041
-push dword ptr 125645
-push dword ptr 5041
-push dword ptr 125645
-push dword ptr 5041
-push dword ptr 125645
-push offset message
-call [print]
-mov ax,0
-int 16h
-
-mov ah,2
-int 47h
-mov ah,30
-int 47h
-mov ah,2
-int 47h
-
-mov cx,200
+    call    [savestate]
+    push    0FFFFh
+    pushd    652201
+    pushd    1545454545
+    push    1523
+    push    2041
+    push    offset zero
+    push    offset fixe
+    push    5
+    push    'i'
+    push    'a'
+    pushd    5041
+    pushd    125645
+    pushd    5041
+    pushd    125645
+    pushd    5041
+    pushd    125645
+    push    offset message
+    call    [print]
+    xor     ax,ax
+    int     16h
+    call    [clearscreen]
+    call    [xchgpages]
+    call    [clearscreen]
+    mov     cx,200
 go1:
-mov ah,30
-int 47h
-mov ah,33
-int 47
-push offset textdemo1
-call [print]
-call put
-mov ah,30
-int 47h
-mov ah,33
-int 47h
-dec cx
-jnz go1
-
-mov cx,200
+    call    [xchgpages]
+    call    [waitretrace]
+    call    [print],offset textdemo1
+    call    put
+    call    [xchgpages]
+    call    [waitretrace]
+    dec     cx
+    jnz     go1
+    mov     cx,200
 go2:
-mov ah,30
-int 47h
-mov ah,33
-int 47h
-push offset textdemo2
-call [print]
-call put
-mov ah,30
-int 47h
-mov ah,33
-int 47h
-dec cx
-jnz go2
-
-mov cx,200
+    call    [xchgpages]
+    call    [waitretrace]
+    call    [print],offset textdemo2
+    call    put
+    call    [xchgpages]
+    call    [waitretrace]
+    dec     cx
+    jnz     go2
+    mov     cx,200
 go3:
-mov ah,30
-int 47h
-mov ah,33
-int 47h
-push offset textdemo3
-call [print]
-call put
-mov ah,30
-int 47h
-mov ah,33
-int 47h
-dec cx
-jnz go3
-
-mov ah,30
-int 47h
-mov ah,2
-int 47h
-push offset texte2
-call [print]
-mov ah,30
-int 47h
-mov ah,2
-int 47h
-mov ah,30
-int 47h
-
-mov bp,255
-xor edx,edx
+    call    [xchgpages]
+    call    [waitretrace]  
+    call    [print],offset textdemo3
+    call    put
+    call    [xchgpages]
+    call    [waitretrace]
+    dec     cx
+    jnz     go3
+    call    [xchgpages]
+    call    [clearscreen] 
+    call    [print],offset texte2
+    call    [xchgpages]
+    call    [clearscreen]
+    call    [xchgpages]
+    mov     bp,255
+    xor     edx,edx
 go4:
-mov ah,30
-int 47h
-mov ah,33
-int 47h
-inc edx
-push edx
-push offset texte3
-call [print]
-mov ah,30
-int 47h
-mov ah,33
-int 47h
-dec bp
-jnz go4
-push offset texte4
-call [print]
-mov ax,0
-int 16h
-mov ah,29h
-int 47h
-retf
-
+    call    [xchgpages]
+    call    [waitretrace]
+    inc     edx
+    push    edx
+    push    offset texte3
+    call    [print]
+    call    [xchgpages]
+    call    [waitretrace]
+    dec     bp
+    jnz     go4
+    push    offset texte4
+    call    [print]
+    mov     ax,0
+    int     16h
+    call    [restorestate]
+    retf
 put:
-call random
-mov di,dx
-and di,4096-2
-mov si,offset fond
-call showstring2
-ret
-
-Random:      
-push ax
-MOV AX,cs:[RandSeed]
-MOV DX,8405h
-MUL DX
-INC AX
-MOV cs:[RandSeed],AX
-pop ax
-ret
-		  
+    call    random
+    mov     di,dx
+    and     di,4096-2
+    mov     si,offset fond
+    call    showstring2
+    ret
+random:      
+    push    ax
+    MOV     AX,[cs:randseed]
+    MOV     DX,8405h
+    MUL     DX
+    INC     AX
+    MOV     [cs:randseed],AX
+    pop     ax
+    ret
 randseed        dw 1234h   
-
 Randomize:        
-push ax	cx dx
-mov ah,0
-int 1ah
-mov cs:randseed,dx
-pop dx cx ax
-ret
+    push    ax	cx dx
+    mov     ah,0
+    int     1ah
+    mov     [cs:randseed],dx
+    pop     dx cx ax
+    ret
 		  
 zero db 'Chaine a z‚ro terminal',0
 fixe db 20,'Chaine a taille fixe'
@@ -179,25 +141,29 @@ texte3     db '\c04%bD\l',0
 texte4     db '\g01,00Sauvegarde et restauration de l''ecran (%%s/%%r)',0
 
 showstring2:
-        push    es bx cx si di
-        add     di,4000
-        mov     bx,0B800h
-        mov     es,bx
-        mov     bl,[si]
-        mov     ch,3
+    push    es bx cx si di
+    add     di,4000
+    mov     bx,0B800h
+    mov     es,bx
+    mov     bl,[si]
+    mov     ch,3
 strinaize4:
-        inc     si
-        mov     cl,[si]
-        mov     es:[di],cx
-        add     di,2
-        dec     bl
-        jnz     strinaize4
-        pop     di si cx bx es
-        ret
+    inc     si
+    mov     cl,[si]
+    mov     [es:di],cx
+    add     di,2
+    dec     bl
+    jnz     strinaize4
+    pop     di si cx bx es
+    ret
 
-imports:
-        db "VIDEO.LIB::print",0
-print   dd 0
-        dw 0
 
-end start
+importing
+use VIDEO.LIB,print
+use VIDEO,xchgpages
+use VIDEO,setvideomode
+use VIDEO,clearscreen
+use VIDEO,savestate
+use VIDEO,restorestate
+use VIDEO,waitretrace
+endi
