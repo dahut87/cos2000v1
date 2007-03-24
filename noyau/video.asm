@@ -1118,7 +1118,6 @@ endp restorescreenfrom
 ;===============================Page2to1============================
 
 PROC page2to1 FAR
-        ARG     @offset:word
         USES    ecx,si,di,ds,es
         mov     cx,0B800H
         mov     es,cx
@@ -1135,7 +1134,6 @@ endp page2to1
 
 ;===============================Page1to2============================
 PROC page1to2 FAR
-        ARG     @offset:word
         USES    ecx,si,di,ds,es
         mov     cx,0B800H
         mov     es,cx
