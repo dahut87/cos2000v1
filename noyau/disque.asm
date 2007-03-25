@@ -818,6 +818,7 @@ endp getserial
 ;<- Flag Carry si erreur, Flag Equal si secteurs égaux
 ;=======================================
 PROC verifysector FAR
+    ARG     @sector:word
 	USES 	ecx,si,di,ds,es
 	push 	cs
 	pop 	es
@@ -825,17 +826,17 @@ PROC verifysector FAR
 	pop 	ds
 	mov 	si,offset bufferread
 	call 	readsector,cx,si
-	call 	@@inverse
+	call 	inverse
 	call 	writesector,cx,si
 	jc 	@@errorverify
 
 	mov 	si,offset bufferwrite
 	call 	readsector,cx,si	
-	call 	@@inverse
+	call 	inverse
 	jc 	@@errorverify
 	
 	mov 	si,offset bufferread
-	call 	@@inverse
+	call 	inverse
 	call 	writesector,cx,si
 	jc 	@@errorverify
 	
@@ -849,18 +850,19 @@ PROC verifysector FAR
 @@errorverify:
 	ret
 
-@@inverse:
-        push    si cx
+endp verifysector
+
+inverse:
+    push    si cx
 	xor     cx,cx
-@@invert:
+invert:
 	not 	[dword ptr si]
 	add 	si,4
 	add     cx,4
 	cmp     cx,[cs:myboot.sectorsize]
-	jb 	@@invert
+	jb 	    invert
 	pop     cx si
 	ret
-endp verifysector
 
 ;=============DecompressRle (Fonction 05H)==============
 ;decompress ds:si en es:di taille bp d‚compress‚ cx compress‚
