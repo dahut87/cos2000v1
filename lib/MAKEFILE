@@ -1,7 +1,7 @@
 asm= lzasm
 lnk= elink
 
-all: detect.lib video.lib str0.lib
+all: detect.lib video.lib str0.lib bmp.lib
 
 .asm.obj: 
       $(asm) $<
