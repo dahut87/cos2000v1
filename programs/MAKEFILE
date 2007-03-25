@@ -1,9 +1,7 @@
 asm= lzasm
 lnk= elink
 
-pol: detect.ce exem-lib.lib exem-ce.ce memoire.ce pmode.ce isa.ce editeur.ce
-
-all: detect.ce editeur.ce gestion.ce logo.ce pmode.ce souris.ce test.ce verifier.ce volume.ce memoire.ce
+all: detect.ce exem-lib.lib exem-ce.ce memoire.ce pmode.ce isa.ce editeur.ce volume.ce test.ce verifier.ce gestion.ce logo.ce souris.ce
 
 .asm.obj: 
       $(asm) $<
