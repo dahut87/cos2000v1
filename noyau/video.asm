@@ -1002,12 +1002,13 @@ ended:
 
 ;sauve l'ecran dans un bloc de mémoire
 PROC savescreen FAR
-USES    ax,ds
+USES    ax,ds,bp
+mov     bp,sp
 push    cs
 pop     ds
 call    [cs:mbcreate],offset data3,[cs:datablock.pagesize]
 jc      @@error
-call    [cs:mbchown],ax,[word ptr ss:bp+4]
+call    [cs:mbchown],ax,[word ptr ss:bp+8]
 jc      @@error
 push    ax
 pop     ds
@@ -1080,10 +1081,11 @@ endp restoreparamfrom
 
 ;restaure l'ecran dans un bloc de mémoire
 PROC restorescreen FAR
-USES    ax,ds
+USES    ax,ds,bp
+mov     bp,sp
 push    cs
 pop     ds
-call    [cs:mbfindsb],offset data3,[word ptr ss:bp+4]
+call    [cs:mbfindsb],offset data3,[word ptr ss:bp+8]
 jc @@error
 push    ax
 pop     ds
@@ -1149,12 +1151,13 @@ PROC page1to2 FAR
 endp page1to2
 ;===============================xchgPages============================
 PROC xchgpages FAR
-        USES    ax,ecx,si,di,ds,es
+        USES    ax,ecx,si,di,ds,es,bp
+mov     bp,sp
 push    cs
 pop     ds
 call    [cs:mbcreate],offset data4,[cs:datablock.pagesize]
 jc      @@error
-call    [cs:mbchown],ax,[word ptr ss:bp+4]
+call    [cs:mbchown],ax,[word ptr ss:bp+18]
 jc      @@error
 push    ax
 pop     ds
@@ -1169,6 +1172,7 @@ mov     cx,[cs:datablock.pagesize]
 shr     cx,2
 cld
 rep     movsd
+call    [cs:mbfree],ax
 clc
 ret
 @@error:
@@ -1184,7 +1188,8 @@ data4 db '/vgatemp',0
 
 ;Sauve l'‚tat de la carte dans un bloc mémoire
 PROC savestate FAR
-USES    ax,cx,di,ds
+USES    ax,cx,di,ds,bp
+mov     bp,sp
 mov     cx,size datablock
 add     cx,[cs:datablock.pagesize]
 add     cx,3*256
@@ -1192,7 +1197,7 @@ push    cs
 pop     ds
 call    [cs:mbcreate],offset data,cx
 jc      @@error
-call    [cs:mbchown],ax,[word ptr ss:bp+4]
+call    [cs:mbchown],ax,[word ptr ss:bp+12]
 jc      @@error
 push    ax
 pop     ds
@@ -1216,10 +1221,11 @@ data db '/vga',0
 
 ;R‚cupŠre l'‚tat de la carte depuis son bloc mémoire
 PROC restorestate FAR
-USES    ax,cx,di,ds
+USES    ax,cx,di,ds,bp
+mov     bp,sp
 push    cs
 pop     ds
-call    [cs:mbfindsb],offset data,[word ptr ss:bp+4]
+call    [cs:mbfindsb],offset data,[word ptr ss:bp+12]
 jc @@error
 push    ax
 pop     ds
@@ -1239,12 +1245,13 @@ endp restorestate
 
 ;sauve le DAC dans un bloc de mémoire
 PROC savedac FAR
-USES    ax,ds
+USES    ax,ds,bp
+mov     bp,sp
 push    cs
 pop     ds
 call    [cs:mbcreate],offset data3,3*256
 jc      @@error
-call    [cs:mbchown],ax,[word ptr ss:bp+4]
+call    [cs:mbchown],ax,[word ptr ss:bp+8]
 jc      @@error
 push    ax
 pop     ds
@@ -1262,8 +1269,9 @@ data2 db '/vgadac',0
 
 ;R‚cupŠre le dac depuis son bloc mémoire
 PROC restoredac FAR
-USES    ax,ds
-call    [cs:mbfindsb],offset data2,[word ptr ss:bp+4]
+USES    ax,ds,bp
+mov     bp,sp
+call    [cs:mbfindsb],offset data2,[word ptr ss:bp+8]
 jc @@error
 push    ax
 pop     ds
