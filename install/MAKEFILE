@@ -1,4 +1,4 @@
-asm= lzasm
+asm= lzasm /z/t
 lnk= elink
 
 all: setup.com
