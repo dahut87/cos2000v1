@@ -1,35 +1,4 @@
 
-exporting
-declare biosprinth
-declare biosprint
-declare mbinit
-declare mbcreate
-declare mbfree
-declare mbclean
-declare mbresident
-declare mbnonresident
-declare mbchown
-declare mballoc
-declare mbfind
-declare mbfindsb
-declare mbget
-declare mbloadfuncs
-declare mbsearchfunc
-declare bioswaitkey
-declare mbloadsection
-declare enableirq
-declare enableirq
-declare readmaskirq
-declare readirr
-declare readisr
-declare seteoi
-declare enablea20
-declare disablea20
-declare flatmode
-declare installirqhandler
-declare irqhandler
-ende
-
 ;Affiche le nombre hexa dans %0[dword]
 PROC biosprinth FAR
         ARG     @num:dword
@@ -158,6 +127,7 @@ endp flatmode
 
 ;Attend l'appuie sur une touche
 PROC bioswaitkey FAR
+        USES   ax
         xor    ax,ax
         int    16h
         ret
