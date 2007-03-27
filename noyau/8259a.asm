@@ -140,3 +140,196 @@ PROC readirr FAR
        in      al,dx
        ret
 endp readirr
+
+interruptionbloc db '/interrupts',0
+
+
+PROC installirqhandler FAR
+       USES    eax,bx,cx,edx,si,di,ds,es
+       push    fs
+       call    mbcreate,offset interruptionbloc,256*size ints
+       mov     es,ax
+       mov     ax,0x0000
+       mov     ds,ax
+       xor     si,si
+@@searchdummypointer:
+       mov     fs,[(vector si).data.seg] 
+       mov     bx,[(vector si).data.off]
+       cmp     [byte ptr fs:bx],0xCF ;iret
+       je      @@founded
+       add     si,size vector
+       cmp     si,256*4
+       jb      @@searchdummypointer
+       xor     edx,edx
+       jmp     @@suite
+@@founded:
+       mov     edx,[(vector si).content]
+@@suite:
+       xor     cx,cx
+       xor     si,si
+       xor     di,di
+       cli
+@@copy:
+       mov     [es:(ints di).number],cl
+       mov     [es:(ints di).locked],0
+       mov     [es:(ints di).vector1.content],0
+       mov     [es:(ints di).vector3.content],0
+       mov     [es:(ints di).vector4.content],0
+       mov     [es:(ints di).vector5.content],0
+       mov     [es:(ints di).vector6.content],0
+       mov     [es:(ints di).vector7.content],0
+       mov     [es:(ints di).vector8.content],0
+       mov     [es:(ints di).launchedlow],0
+       mov     [es:(ints di).launchedhigh],0
+       mov     [es:(ints di).calledlow],0
+       mov     [es:(ints di).calledhigh],0
+       mov     eax,[(vector si).content]
+       cmp     eax,edx
+       je      @@notarealvector
+       mov     [es:(ints di).vector1.content],eax
+       mov     [es:(ints di).activated],1
+       jmp     @@copynext
+@@notarealvector:
+       mov     [es:(ints di).vector1.content],0
+       mov     [es:(ints di).activated],0
+@@copynext:
+       mov     bx,cx
+       shl     bx,3
+       sub     bx,cx
+       add     bx,offset coupling
+       mov     [(vector si).data.seg],cs
+       mov     [(vector si).data.off],bx
+       add     si,size vector
+       add     di,size ints
+       inc     cl
+       cmp     cl,0
+       jne     @@copy
+@@end:
+       pop     fs
+       sti
+       ret
+endp installirqhandler
+
+
+PROC savecontext far
+ARG     @pointer:word
+USES    si
+push   [ss:bp]
+push    esi
+pushfd 
+mov     si,[@pointer]
+pop [dword ptr cs:(regs si).seflags]
+pop [dword ptr cs:(regs si).sesi]
+pop bp
+mov [cs:(regs si).seax],eax
+mov [cs:(regs si).sebx],ebx
+mov [cs:(regs si).secx],ecx
+mov [cs:(regs si).sedx],edx
+mov [cs:(regs si).sedi],edi
+mov [cs:(regs si).sebp],ebp
+mov [cs:(regs si).sesp],esp
+mov [cs:(regs si).scs],cs
+mov [cs:(regs si).sds],ds
+mov [cs:(regs si).ses],es
+mov [cs:(regs si).sfs],fs
+mov [cs:(regs si).sgs],gs
+mov [cs:(regs si).sss],ss
+ret
+endp savecontext
+
+PROC restorecontextg FAR
+ARG     @pointer:word
+mov     si,[@pointer]
+pushd [cs:(regs si).sesi]
+pushd [cs:(regs si).seflags]
+mov eax,[cs:(regs si).seax]
+mov ebx,[cs:(regs si).sebx]
+mov ecx,[cs:(regs si).secx]
+mov edx,[cs:(regs si).sedx]
+mov edi,[cs:(regs si).sedi]
+mov ebp,[cs:(regs si).sebp]
+mov es,[cs:(regs si).ses]
+mov fs,[cs:(regs si).sfs]
+mov gs,[cs:(regs si).sgs]
+mov ds,[cs:(regs si).sds]
+popfd
+pop esi
+pop [cs:dummy]
+db 0xCA,0x02,0x00 ;retf 2
+endp restorecontextg
+
+
+
+coupling:
+counter = 0
+REPEAT 256 
+push counter+256
+push offset irqhandlers
+ret
+counter = counter + 1 
+ENDM
+
+interrupt dw 0
+dummy dw 0
+calling_reg regs <>
+function_reg regs <>
+
+irqhandlers:
+cli
+pop     [cs:interrupt]
+call    savecontext,offset calling_reg
+call    irqhandler,[cs:interrupt]
+call    restorecontextg,offset calling_reg
+sti
+iret
+
+PROC    irqhandler NEAR
+ARG     @int:word
+push    cs
+pop     ds
+call    mbfindsb,offset interruptionbloc,cs
+jc      @@end
+mov     es,ax
+mov     ax,[@int] 
+sub     ax,256
+mov     cx,size ints
+mul     cx
+mov     si,ax
+add     [es:(ints si).calledlow],1
+adc     [es:(ints si).calledhigh],0
+cmp     [es:(ints si).activated],1
+jne     @@end
+add     [es:(ints si).launchedlow],1
+adc     [es:(ints si).launchedhigh],0
+lea     si,[es:(ints si).vector1]
+mov     cl,8
+@@launchall:
+cmp     [es:(vector si).content],0
+je      @@end
+push    [word ptr cs:calling_reg.seflags]
+push    cs
+push    offset @@back
+push    [es:(vector si).data.seg]
+push    [es:(vector si).data.off]
+call    savecontext,offset function_reg
+call    restorecontextg,offset calling_reg
+db 0xCB
+@@back:
+cli
+call    savecontext,offset calling_reg
+call    restorecontextg,offset function_reg
+@@next:
+add     si,size vector
+dec     cl
+jnz     @@launchall
+@@end:
+ret
+endp irqhandler
+
+PROC 
+
+
+
+
+
+
