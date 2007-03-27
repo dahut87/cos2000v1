@@ -1,27 +1,32 @@
-.model tiny
-.486
-smart
-.code
+model tiny,stdcall
+p586N
+locals
+jumps
+codeseg
+option procalign:byte
+
+include "..\include\mem.h"
+include "..\include\divers.h"
 
 org 0h
 
-include ..\include\mem.h
-
 start:
-header exe <,1,0,,,offset imports,,>
+header exe <"CE",1,0,0,,offset imports,,offset realstart>
 
-realstart:
-mov ah,2
-int 74h
-push offset message
-call [print]
-retf
+realstart:  
+    call    [mouseon]
+    jc      errormouse
+    call    [print],offset message
+    retf
 
-message db 'Activation de la souris',0
+errormouse:
+    call    [print],offset errormessage
+    retf
 
-imports:
-        db "VIDEO.LIB::print",0
-print   dd 0
-        dw 0
+message db 'Activation de la souris\l',0
+errormessage db 'impossible d''activer la souris\l',0
 
-end start
+importing
+use VIDEO.LIB,print
+use MOUSE.SYS,mouseon
+endi
