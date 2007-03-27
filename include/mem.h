@@ -1,3 +1,50 @@
+struc regs
+seip dd 0
+seax dd 0
+sebx dd 0
+secx dd 0
+sedx dd 0
+sesi dd 0
+sedi dd 0
+sebp  dd 0
+sesp  dd 0
+scs  dw 0
+sds  dw 0
+ses  dw 0
+sfs  dw 0
+sgs  dw 0
+sss  dw 0
+seflags dd 0
+ends regs
+
+struc tuple   ;vecteur d'interruption
+off dw 0   ;adresse
+seg dw 0   ;segment
+ends tuple
+
+union vector
+data tuple <>
+content dd 0
+ends
+
+struc ints      ;bloc interruption
+number db 0    ;numero de l'interruption
+activated db 0     ;activé ou non
+locked db 0    ;verrouillée
+launchedlow dd 0
+launchedhigh dd 0
+calledlow dd 0
+calledhigh dd 0
+vector1 vector ?
+vector2 vector ?
+vector3 vector ?
+vector4 vector ?
+vector5 vector ?
+vector6 vector ?
+vector7 vector ?
+vector8 vector ?
+ends ints
+ 
 struc mb	                    ;Bloc de mémoire
 check 	        db "NH"         ;signature du bloc de mémoire
 isnotlast 	db 0             ;flag indiquant le dernier bloc
