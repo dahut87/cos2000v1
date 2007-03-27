@@ -26,9 +26,9 @@ declare seteoi
 declare enablea20
 declare disablea20
 declare flatmode
+declare installirqhandler
+declare irqhandler
 ende
-
-include "8259a.asm"
 
 ;Affiche le nombre hexa dans %0[dword]
 PROC biosprinth FAR
@@ -260,7 +260,16 @@ PROC mbcreate FAR
         ARG     @blocks:word,@size:word
         USES	bx,cx,dx,si,di,ds,es
         push    gs
-        mov     gs,[ss:bp+4]
+        mov     ax,[ss:bp+4]
+        mov     dx,ax
+        dec     dx
+        dec     dx
+        mov     gs,dx
+        cmp     [word ptr gs:0x0],'NH'
+        je      @@oktoset
+        mov     ax,memorystart
+@@oktoset:
+        mov     gs,ax
         mov     cx,[@size]	
 	shr	cx,4
 	inc	cx
@@ -508,11 +517,11 @@ endp mbchown
 ;Alloue un bloc /data de CX caractere pour le process appelant -> ax
 PROC mballoc FAR
         ARG     @size:word
-        USES    ax,si,ds	
+        USES    si,ds	
 	push    cs
 	pop     ds
 	call    mbcreate,offset @@data,[@size]
-	call    mbchown,ax,[word ptr ss:bp+4]
+	call    mbchown,ax,[word ptr ss:bp+2]
 	ret
 
 @@data db '/data',0
