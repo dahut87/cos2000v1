@@ -68,6 +68,9 @@ suite:
         call    [cs:print],offset msg_ok2
         call    [cs:print],offset msg_video_init
         call    [cs:print],offset msg_ok2
+        call    [cs:print],offset msg_handler
+        call    installirqhandler
+        call    [cs:print],offset msg_ok2
         call    [cs:print],offset msg_cpu_detect
         call    [cs:cpuinfo],offset thecpu
         call    [cs:setinfo],offset thecpu,offset temp
@@ -158,6 +161,8 @@ novirtual:
         call    [cs:initdrive]
         jc      error2
         call    [cs:print],offset msg_ok2
+xor ax,ax
+int 16h
         call    [cs:execfile],offset shell
         
 error2:
@@ -180,6 +185,7 @@ msg_memory_init    db "  -Creation du bloc primordial",0
 msg_memory_section db "  -Developpement des sections",0
 msg_memory_jumps   db "Redirection du systeme",0
 msg_video_init     db "Initialisation du pilote VIDEO",0
+msg_handler        db "Initialisation du gestionnaire d'interruption",0
 msg_cpu_detect     db "Dectection du processeur",0
 msg_cpu_detect_inf db "  -Fondeur  : %0\l  -Modele   : %0\l  -Revision : %u\l  -Version  : %u\l  -Famille  : %u\l  -Technologies: %0\l",0
 msg_pci            db "Detection des systemes PCI",0
@@ -217,6 +223,8 @@ use DISQUE,execfile
 endi
         
 include "mcb.asm"
+include "8259a.asm"
+
 mb1:
 includebin "video.sys"
 mb2:
