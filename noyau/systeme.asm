@@ -205,6 +205,40 @@ msg_ok2            db "\h70 [\c02  Ok  \c07]\l",0
 msg_echec2         db "\h70 [\c0CPasser\c07]\l",0
 
 
+exporting
+declare biosprinth
+declare biosprint
+declare mbinit
+declare mbcreate
+declare mbfree
+declare mbclean
+declare mbresident
+declare mbnonresident
+declare mbchown
+declare mballoc
+declare mbfind
+declare mbfindsb
+declare mbget
+declare mbloadfuncs
+declare mbsearchfunc
+declare bioswaitkey
+declare mbloadsection
+declare enableirq
+declare enableirq
+declare readimr
+declare readirr
+declare readisr
+declare seteoi
+declare enablea20
+declare disablea20
+declare flatmode
+declare installirqhandler
+declare irqhandler
+declare isenableirq
+declare isrequestirq
+declare isinserviceirq
+ende
+
 
 importing
 use VIDEO,setvideomode
