@@ -91,7 +91,7 @@ endp seteoi
 
 
 ;Lit les masques d'un contr“leur IRQ dans ax, 0 master ou slave 1 ds %1
-PROC readmaskirq FAR
+PROC readimr FAR
        ARG     @controleur:word
        USES    bx,dx
        mov     bx,[@controleur]
@@ -104,7 +104,7 @@ PROC readmaskirq FAR
        in      al,dx
        pop     dx
        ret
-endp readmaskirq
+endp readimr
 
 ;Lit le registre d'‚tat d'un contr“leur IRQ dans ax, 0 master ou slave 1 ds %1
 PROC readisr FAR
@@ -141,7 +141,65 @@ PROC readirr FAR
        ret
 endp readirr
 
-interruptionbloc db '/interrupts',0
+;carry si enable et pas carry si pas enable
+PROC isenableirq FAR
+        ARG     @irq:word
+        USES    ax,cx,dx
+        mov     ax,[@irq]
+        mov     dx,MASTERPIC+IRQMASK
+        cmp     al,7
+        jbe     @@master
+        mov     dx,SLAVEPIC+IRQMASK
+@@master:
+        mov    cl,al
+        and    cx,7        
+        in     al,dx
+        neg    al
+        bt     ax,cx
+        ret
+endp isenableirq
+
+
+;carry si enable et pas carry si pas enable
+PROC isinserviceirq FAR
+        ARG     @irq:word
+        USES    ax,cx,dx
+        mov     ax,[@irq]
+        mov     dx,MASTERPIC
+        cmp     al,7
+        jbe     @@master
+        mov     dx,SLAVEPIC
+@@master:
+        mov    cl,al
+        mov    al,ISR
+        out    dx,al
+        and    cx,7        
+        in     al,dx
+        neg    al
+        bt     ax,cx
+        ret
+endp isinserviceirq
+
+
+;carry si enable et pas carry si pas enable
+PROC isrequestirq FAR
+        ARG     @irq:word
+        USES    ax,cx,dx
+        mov     ax,[@irq]
+        mov     dx,MASTERPIC
+        cmp     al,7
+        jbe     @@master
+        mov     dx,SLAVEPIC
+@@master:
+        mov    cl,al
+        mov    al,IRR
+        out    dx,al
+        and    cx,7        
+        in     al,dx
+        neg    al
+        bt     ax,cx
+        ret
+endp isrequestirq
 
 
 PROC installirqhandler FAR
@@ -211,10 +269,13 @@ PROC installirqhandler FAR
 endp installirqhandler
 
 
+interruptionbloc db '/interrupts',0
+
+
 PROC savecontext far
 ARG     @pointer:word
 USES    si
-push   [ss:bp]
+push   [word ptr ss:bp]
 push    esi
 pushfd 
 mov     si,[@pointer]
@@ -326,7 +387,6 @@ jnz     @@launchall
 ret
 endp irqhandler
 
-PROC 
 
 
 
