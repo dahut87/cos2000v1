@@ -253,14 +253,157 @@ code_kill:
         jc      nochanged
         call    [cs:mbfree],ax
         jnc     okchanged
-nochanged:
-        push    offset errorkilling
-        call    [cs:print]
+nochanged:   
+        call    [cs:print],offset errorkilling
 okchanged:
         ret
-        
+
 killing db     'Fermeture du processus %0\l',0
 errorkilling db '\c04Impossible de fermer ce processus',0
+
+code_irq:
+call    [cs:mbfind],offset interruptionbloc
+jc      erroronint
+call [cs:print],offset irqmsg1
+mov     es,ax
+xor     ebx,ebx
+intoirq:
+xor     eax,eax
+mov     al,[bx+offset irqmap]
+mov     dx,size ints
+mul     dx
+mov     si,ax
+pushd  [dword ptr es:(ints si).vector1.data.off]
+pushd  [dword ptr es:(ints si).vector1.data.seg]
+call   [cs:isrequestirq],bx
+jc     requested
+push   ' '
+jmp    suiterequested
+requested:
+push   'X'
+suiterequested:
+call   [cs:isinserviceirq],bx
+jc     inservice
+push   ' '
+jmp    suiteinservice
+inservice:
+push   'X'
+suiteinservice:
+call   [cs:isenableirq],bx
+jc     activatemat
+push   ' '
+jmp    suiteactivatemat
+activatemat:
+push   'X'
+suiteactivatemat:
+cmp    [es:(ints si).activated],1
+je     activate2
+push   ' '
+jmp    suiteactivate2
+activate2:
+push   'X'
+suiteactivate2:
+cmp    [es:(ints si).locked],1
+je     verrouille2
+push   ' '
+jmp    suiteverrouille2
+verrouille2:
+push   'X'
+suiteverrouille2:
+pushd  [dword ptr es:(ints si).calledlow]
+pushd  [dword ptr es:(ints si).calledhigh]
+pushd  [dword ptr es:(ints si).launchedlow]
+pushd  [dword ptr es:(ints si).launchedhigh]
+push  3
+xor   eax,eax
+mov   al,[bx+offset irqmap]
+push  eax
+push  3
+push  ebx
+call [cs:print],offset irqmsg2
+inc   bl
+cmp   bl,16
+jb    intoirq
+ret
+
+
+irqmap db 8,9,10,11,12,13,14,15,0x70,0x71,0x72,0x73,0x74,0x75,0x76,0x77
+irqmsg1 db '\l\c02Listes des IRQs\c07\l\l'
+       db 'IRQ | Int | Appels         | Executions     |Ver|Act|IMR|ISR|IRR| Vecteur 1 \l',0
+irqmsg2 db '%w | %w | 0x%hW%hD | 0x%hW%hD | %c | %c | %c | %c | %c | 0x%hW:0x%hW\l',0
+
+code_int:
+call    [cs:mbfind],offset interruptionbloc
+jc      erroronint
+mov     es,ax
+call    [cs:gettypeditem],di,0,' '
+xor     edi,edi
+mov     di,ax
+mov     cx,size ints
+mul     cx
+mov     si,ax
+pushd  [dword ptr es:(ints si).vector8.data.off]
+pushd  [dword ptr es:(ints si).vector8.data.seg]
+pushd  [dword ptr es:(ints si).vector7.data.off]
+pushd  [dword ptr es:(ints si).vector7.data.seg]
+pushd  [dword ptr es:(ints si).vector6.data.off]
+pushd  [dword ptr es:(ints si).vector6.data.seg]
+pushd  [dword ptr es:(ints si).vector5.data.off]
+pushd  [dword ptr es:(ints si).vector5.data.seg]
+pushd  [dword ptr es:(ints si).vector4.data.off]
+pushd  [dword ptr es:(ints si).vector4.data.seg]
+pushd  [dword ptr es:(ints si).vector3.data.off]
+pushd  [dword ptr es:(ints si).vector3.data.seg]
+pushd  [dword ptr es:(ints si).vector2.data.off]
+pushd  [dword ptr es:(ints si).vector2.data.seg]
+pushd  [dword ptr es:(ints si).vector1.data.off]
+pushd  [dword ptr es:(ints si).vector1.data.seg]
+pushd  [dword ptr es:(ints si).calledlow]
+pushd  [dword ptr es:(ints si).calledhigh]
+pushd  [dword ptr es:(ints si).launchedlow]
+pushd  [dword ptr es:(ints si).launchedhigh]
+cmp    [es:(ints si).activated],1
+je     activate
+push   offset resident
+jmp    suiteactivate
+activate:
+push   offset nonresident
+suiteactivate:
+cmp    [es:(ints si).locked],1
+je     verrouille
+push   offset resident
+jmp    suiteverrouille
+verrouille:
+push   offset nonresident
+suiteverrouille:
+push    esi
+push    es
+push    es
+push    edi
+call    [cs:print],offset infosint
+ret
+erroronint:   
+        call    [cs:print],offset errorint
+okint:
+        ret
+       
+interruptionbloc db '/interrupts',0
+errorint db '\c04Le gestionnaire d''interruption n''est pas actif\l\c07',0
+infosint db '\c07Le bloc d''interruption est charge en memoire et le gestionnaire est actif\l\l'
+         db 'Interruption %u\l'
+         db 'Pointeur : 0x%hW:0x%hW\l\c07'
+         db 'Active : %0\l'
+         db 'Verrouillage : %0\l'
+         db 'Nombre d''appels : 0x%hD%hD\l'
+         db 'Nombre de lancements : 0x%hD%hD\l'
+         db '\c02Vecteur 1 : 0x%hW:0x%hW\l'
+         db 'Vecteur 2 : 0x%hW:0x%hW\l'
+         db 'Vecteur 3 : 0x%hW:0x%hW\l'
+         db 'Vecteur 4 : 0x%hW:0x%hW\l'
+         db 'Vecteur 5 : 0x%hW:0x%hW\l'
+         db 'Vecteur 6 : 0x%hW:0x%hW\l'
+         db 'Vecteur 7 : 0x%hW:0x%hW\l'
+         db 'Vecteur 8 : 0x%hW:0x%hW\l\c07',0
 
 code_refresh:
         call    [cs:initdrive]
@@ -276,7 +419,7 @@ okrefresh:
         push    offset present
         call    [cs:print]
         ret
-        
+
 errorrefreshing db '\c04Impossible de lire le support',0
 extcom  db      '.CE',0
 
@@ -429,6 +572,8 @@ commands dw     str_exit ,code_exit ,syn_exit ,help_exit
         dw      str_cd ,code_cd ,syn_cd ,help_cd
         dw      str_mem ,code_mem ,syn_mem ,help_mem
         dw      str_kill ,code_kill ,syn_kill ,help_kill
+        dw      str_int ,code_int ,syn_int ,help_int
+        dw      str_irq ,code_irq,syn_irq ,help_irq
         dw      0
 
 str_exit db     'QUIT',0
@@ -441,7 +586,9 @@ str_dir db      'DIR',0
 str_refresh db  'DISK',0
 str_cd  db      'CD',0
 str_mem db      'MEM',0
-str_kill db      'KILL',0
+str_kill db     'KILL',0
+str_int db      'INT',0
+str_irq db      'IRQS',0
 
 syn_exit db     0
 syn_version db  0
@@ -454,6 +601,8 @@ syn_refresh db  0
 syn_cd  db      '?',0
 syn_mem db      0
 syn_kill  db    '?',0
+syn_int db     'FFh',0
+syn_irq db      0
 
 help_exit db    'Permet de quitter l''interpreteur',0
 help_version db 'Affiche la version de COS',0
@@ -466,6 +615,8 @@ help_refresh db 'Lit le support disquette insere',0
 help_cd db      'Change le repertoire courant',0
 help_mem db     'Affiche le plan de la memoire',0
 help_kill db    'Termine le processus cible',0
+help_int  db    'Affiche des informations sur l''interruption',0
+help_irq  db    'Affiche des informations sur les IRQs',0
 
 derror  db      '\c04Erreur de Syntaxe !',0
 error_syntax db '\c04La commande ou l''executable n''existe pas ! F1 pour %0',0
@@ -496,7 +647,11 @@ use DISQUE,initdrive
 use DISQUE,changedir
 use SYSTEME,mbget
 use SYSTEME,mbfind
+use SYSTEME,mbfindsb
 use SYSTEME,mbfree
+use SYSTEME,isenableirq
+use SYSTEME,isinserviceirq
+use SYSTEME,isrequestirq
 use STR0.LIB,uppercase
 use STR0.LIB,evalue
 use STR0.LIB,copy
