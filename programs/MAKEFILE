@@ -1,4 +1,4 @@
-asm= lzasm
+asm= lzasm /z/t
 lnk= elink
 
 all: detect.ce exem-lib.lib exem-ce.ce memoire.ce pmode.ce isa.ce editeur.ce volume.ce test.ce verifier.ce gestion.ce logo.ce souris.ce
