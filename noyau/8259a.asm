@@ -272,29 +272,49 @@ endp installirqhandler
 interruptionbloc db '/interrupts',0
 
 
-PROC savecontext far
+PROC savecontext FAR
 ARG     @pointer:word
-USES    si
-push   [word ptr ss:bp]
-push    esi
-pushfd 
-mov     si,[@pointer]
-pop [dword ptr cs:(regs si).seflags]
-pop [dword ptr cs:(regs si).sesi]
-pop bp
-mov [cs:(regs si).seax],eax
-mov [cs:(regs si).sebx],ebx
-mov [cs:(regs si).secx],ecx
-mov [cs:(regs si).sedx],edx
-mov [cs:(regs si).sedi],edi
-mov [cs:(regs si).sebp],ebp
-mov [cs:(regs si).sesp],esp
-mov [cs:(regs si).scs],cs
-mov [cs:(regs si).sds],ds
-mov [cs:(regs si).ses],es
-mov [cs:(regs si).sfs],fs
-mov [cs:(regs si).sgs],gs
-mov [cs:(regs si).sss],ss
+USES    eax,si,ds
+pushfd
+push eax
+push ebx
+push ecx
+push edx
+push esi
+push edi
+push  ds
+push  es
+push  fs
+push  gs
+push  ss
+mov   si,[@pointer]
+mov   ds,[ss:bp+4]
+mov   eax,ebp
+mov   ax,[word ptr ss:bp]
+push  eax
+push  [word ptr ss:bp+4]
+xor   eax,eax
+mov   ax,[word ptr ss:bp+2]
+push  eax  
+mov   ax,bp
+add   ax,4
+push  eax 
+pop   [(regs si).sesp]
+pop   [(regs si).seip]
+pop   [(regs si).scs]
+pop   [(regs si).sebp]
+pop   [(regs si).sss]
+pop   [(regs si).sgs]
+pop   [(regs si).sfs]
+pop   [(regs si).ses]
+pop   [(regs si).sds]
+pop   [(regs si).sedi]
+pop   [(regs si).sesi]
+pop   [(regs si).sedx]
+pop   [(regs si).secx]
+pop   [(regs si).sebx]
+pop   [(regs si).seax]
+pop   [(regs si).seflags]
 ret
 endp savecontext
 
