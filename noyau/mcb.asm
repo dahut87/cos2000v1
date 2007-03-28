@@ -349,6 +349,8 @@ PROC mbfree FAR
 	jne     @@nottofree
 	mov	[es:mb.isresident],false
 	mov	[es:mb.reference],free
+	mov     si,offset @@isfree
+	lea     di,[es:mb.names]
         mov     cx,6
         cld
         rep     movsb
@@ -491,7 +493,7 @@ PROC mballoc FAR
 	push    cs
 	pop     ds
 	call    mbcreate,offset @@data,[@size]
-	call    mbchown,ax,[word ptr ss:bp+2]
+	call    mbchown,ax,[word ptr ss:bp+4]
 	ret
 
 @@data db '/data',0
