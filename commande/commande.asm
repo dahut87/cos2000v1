@@ -155,7 +155,7 @@ code_version:
         call    [cs:print],offset version_text
         ret
 
-version_text db 'Cos 2000 version 1.4Fr par \c04MrNop',0
+version_text db 'Cos 2000 version 1.4Fr par \c04MrNop\c07',0
 
 code_cls:
         call    [cs:clearscreen]
@@ -180,7 +180,7 @@ showalls:
 endoff:
         ret
 
-def       db 'Liste des commandes internes\l\l',0
+def       db '\c02Liste des commandes internes\l\l\c07',0
 commandes db '%0 \h10:\h12%0 \h70%0\l',0
 
 code_mode:
@@ -242,7 +242,7 @@ okchange:
         ret
         
 changing db     'Changement de repertoire vers %0\l',0
-errorchanging db '\c04Impossible d''atteindre ce dossier',0
+errorchanging db '\c04Impossible d''atteindre ce dossier\c07',0
         
 code_kill:
         call    [cs:gettypeditem],di,0,' '
@@ -259,7 +259,7 @@ okchanged:
         ret
 
 killing db     'Fermeture du processus %0\l',0
-errorkilling db '\c04Impossible de fermer ce processus',0
+errorkilling db '\c04Impossible de fermer ce processus\c07',0
 
 code_stack:
 
@@ -327,14 +327,14 @@ ret
 
 registershow db '\l\c02Liste des registres du Microprocesseur\l\l\c07'
              db '\c04CPU\h30FPU\c07\l'
-             db 'EFGS: 0x%hD : %w |\h32ST(0) :\l'
-             db 'EAX : 0x%hD : %w |\h32ST(1) :\l'
-             db 'EBX : 0x%hD : %w |\h32ST(2) :\l'
-             db 'ECX : 0x%hD : %w |\h32ST(3) :\l'
-             db 'EDX : 0x%hD : %w |\h32ST(4) :\l'
-             db 'ESI : 0x%hD : %w |\h32ST(5) :\l'
-             db 'EDI : 0x%hD : %w |\h32ST(6) :\l'
-             db 'EBP : 0x%hD : %w |\h32ST(7) :\l'
+             db 'EFGS: 0x%hD : %w |\h32ST(0) ??:\l'
+             db 'EAX : 0x%hD : %w |\h32ST(1) ??:\l'
+             db 'EBX : 0x%hD : %w |\h32ST(2) ??:\l'
+             db 'ECX : 0x%hD : %w |\h32ST(3) ??:\l'
+             db 'EDX : 0x%hD : %w |\h32ST(4) ??:\l'
+             db 'ESI : 0x%hD : %w |\h32ST(5) ??:\l'
+             db 'EDI : 0x%hD : %w |\h32ST(6) ??:\l'
+             db 'EBP : 0x%hD : %w |\h32ST(7) ??:\l'
              db 'ESP : 0x%hD : %w |\h32\l'
              db 'EIP : 0x%hD : %w |\h32\l'
              db 'CS  :     0x%hW :     %w |\h32\l'
@@ -511,16 +511,25 @@ extcom  db      '.CE',0
 
 code_mem:    
         call    [cs:print],offset msg
+        xor     edx,edx
         xor     ebx,ebx
         xor     cx,cx
 listmcb:
         call    [cs:mbget],cx
         jc      fino
+        mov     fs,ax
         dec     ax
         dec     ax
         mov     gs,ax
         inc     cx
-        mov     dx,gs
+        cmp     [fs:0x0],'EC'
+        jne     notace
+        push    offset resident ;CE? str0 2 
+        jmp     suitelikeace
+notace:
+        push    offset nonresident
+suitelikeace:
+        mov     dx,fs
         push    edx          ;Emplacement memoire hex 2
 ;parent
         cmp     [gs:mb.reference],0
@@ -561,9 +570,9 @@ fino:
         ret
 resident db     "oui",0
 nonresident db  "non",0
-line2   db      "%0P\h15|%w\h25|%0\h30|%0P\h46|%hW\l",0
+line2   db      "%0P\h15| %w\h24| %0\h30| %0P\h47| 0x%hW\h56| %0\l",0
 fin     db      "\l\l\c02%u octets de memoire disponible\l\c07",0
-msg     db      "Plan de la memoire\l\lNom            | Taille  |Res |Parent         |Mem\l",0
+msg     db      "\l\c02Plan de la memoire\c07\l\lNom            | Taille | Res | Parent         | Mem    | CE \l",0
 none    db      ".",0
 
 
