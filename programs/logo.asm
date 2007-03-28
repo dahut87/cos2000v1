@@ -22,6 +22,7 @@ realstart:
     jc      problem
     mov     ecx,eax
     call    [cs:mbfind],offset logo
+    jc      problem
     call    [cs:decompressrle],ax,0,es,0,cx
     jc      problem2
     push    es
@@ -34,8 +35,7 @@ realstart:
     jc      problem4
     push    cs
     pop     ds
-    push    offset poper
-    call    [cs:print]
+    call    [cs:print],offset poper
 endofit:
     xor     ax,ax
     int     16h
@@ -67,7 +67,7 @@ problem4:
     jmp     endofit
 
 poper db '\c0BC\c0CO\c0DS\c0E2\c0E0\c0E0\c0F0 en mode graphique',0
-logo db 'cos.rip',0
+logo db 'COS.RIP',0
 ok1 db 'Chargement de l''image OK',0
 ok2 db 'Decompression de l''image OK',0
 error3 db '\c04Une erreur est apparue lors de l''allocation de mémoire',0
