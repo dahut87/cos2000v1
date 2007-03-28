@@ -69,7 +69,7 @@ suite:
         call    [cs:print],offset msg_video_init
         call    [cs:print],offset msg_ok2
         call    [cs:print],offset msg_handler
-        call    installirqhandler
+        ;call    installirqhandler
         call    [cs:print],offset msg_ok2
         call    [cs:print],offset msg_cpu_detect
         call    [cs:cpuinfo],offset thecpu
@@ -237,6 +237,8 @@ declare irqhandler
 declare isenableirq
 declare isrequestirq
 declare isinserviceirq
+declare savecontext
+declare restorecontextg
 ende
 
 
