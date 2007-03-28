@@ -158,17 +158,19 @@ PROC execfile FAR
         ARG     @file:word
         pushad
         push    ds es fs gs
-        call    projfile,[@file]
-        jc      @@reallyerrornoblock
+        mov     di,[@file]
+	    call	uppercase,di
+        call    projfile,di
+        ;jc      @@reallyerrornoblock
+        call    [cs:mbfind],di
+        jc      @@reallyerror
         call    [cs:mbchown],ax,[word ptr ss:bp+4]
         jc      @@reallyerror
-        call    [cs:mbloadfuncs],ax
-        jc      @@reallyerror
-        call    [cs:mbloadsection],ax
-        jc      @@reallyerror
-        push    ax
         push    ax
         pop     ds
+        cmp     [ds:0x0],'EC'
+        jne     @@reallyerror
+        push    ax
         push    cs
         push    offset @@arrive
         push    ds
@@ -191,9 +193,10 @@ PROC execfile FAR
         sti
         db      0CBh
 @@arrive:
-        cli
-        pop     ax
-        call    [cs:mbfree],ax
+        ;cli
+        ;pop     ax
+        ;call    [cs:mbfree],ax
+        call    [cs:mbfree]
         pop     gs fs es ds
 	    popad
         clc
@@ -208,8 +211,8 @@ PROC execfile FAR
 endp execfile
 
 ;============projfile (Fonction 17)===============
-;Charge le fichier ds:%0 sur un bloc mémoire -> eax taille -> es bloc
-;-> ax bloc mémoire
+;Charge le fichier ds:%0 sur un bloc mémoire -> eax taille 
+;-> eax taille fichier
 ;<- Flag Carry si erreur
 ;=====================================================
 PROC projfile FAR
@@ -236,12 +239,20 @@ USES	cx,si,di,ds,es
 	mov	    eax,[es:(find di).result.filesize]
 	call    [cs:mbcreate],di,ax
 	jc      @@errorload
+    call    [cs:mbchown],ax,[word ptr ss:bp+4]
+    jc      @@errorload
 	mov     ds,ax
     mov     cx,[es:(find di).result.filegroup]
    	mov	    eax,[es:(find di).result.filesize]
     call    loadway,cx,eax,0
 	jc    	@@errorload
-	mov     ax,ds
+    cmp     [ds:0x0],'EC'
+    jne     @@notace
+        call    [cs:mbloadfuncs],ds
+        jc      @@errorload
+        call    [cs:mbloadsection],ds
+        jc      @@errorload
+ @@notace:
 	clc
 	ret
 @@errorload:
@@ -364,7 +375,7 @@ PROC cmpnames FAR
 	jmp	@@itok
 endp cmpnames
 
-;charge le fichier de de groupe CX et de taille eax
+;charge le fichier de de groupe %0 et de taille %1
 PROC loadway NEAR
      ARG     @sector:word,@size:dword,@offset:word
 	USES 	eax,bx,cx,dx,si,di,ds,es
@@ -871,7 +882,7 @@ invert:
 ;=====================================================
 PROC decompressrle FAR
     ARG     @seg1:word,@off1:word,@seg2:word,@off2:word,@size:word
-	USES 	ax,cx,dx,si,di,ds,es
+	USES 	ecx,dx,si,di,ds,es
     mov     ds,[@seg1]
     mov     es,[@seg2]
     mov     si,[@off1]
@@ -906,6 +917,7 @@ PROC decompressrle FAR
 	dec 	dx
 	jnz 	@@decompression
 @@thenen:
+    xor     eax,eax
 	mov 	ax,di
 	sub 	ax,[@off2]  
 	clc
