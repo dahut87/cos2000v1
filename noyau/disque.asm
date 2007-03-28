@@ -869,22 +869,26 @@ invert:
 ;-> AH=5
 ;<- Flag Carry si erreur, Flag Equal si secteurs égaux
 ;=====================================================
-decompressrle:
-	push 	cx dx si di
-	mov 	dx,cx
-	mov 	bp,di
-decompression:
-	mov 	eax,[si]
+PROC decompressrle FAR
+    ARG     @seg1:word,@off1:word,@seg2:word,@off2:word,@size:word
+	USES 	ax,cx,dx,si,di,ds,es
+    mov     ds,[@seg1]
+    mov     es,[@seg2]
+    mov     si,[@off1]
+    mov     di,[@off2]
+	mov 	dx,[@size]
+@@decompression:
+	mov 	eax,[ds:si]
 	cmp 	al,'/'
-	jne 	nocomp
+	jne 	@@nocomp
 	cmp 	si,07FFFh-6
-	jae 	thenen
+	jae 	@@thenen
 	mov 	ecx,eax
 	ror 	ecx,16
 	cmp 	cl,'*'
-	jne 	nocomp
-	cmp 	[byte ptr si+4],'/'
-	jne 	nocomp
+	jne 	@@nocomp
+	cmp 	[byte ptr ds:si+4],'/'
+	jne 	@@nocomp
 	mov 	al,ch
 	mov 	cl,ah
 	xor 	ah,ah
@@ -893,48 +897,45 @@ decompression:
 	rep 	stosb
 	add 	si,5
 	sub 	dx,5
-	jnz 	decompression
-	jmp 	thenen
-nocomp:
+	jnz 	@@decompression
+	jmp 	@@thenen
+@@nocomp:
 	mov 	[es:di],al
 	inc 	si
 	inc 	di
 	dec 	dx
-	jnz 	decompression
-thenen:
-	mov 	ax,dx
-	sub 	bp,di
-	neg 	bp
+	jnz 	@@decompression
+@@thenen:
+	mov 	ax,di
+	sub 	ax,[@off2]  
 	clc
-	pop 	di si dx cx
 	ret
+endp decompressrle
 
 ;=============CompressRle (Fonction 06H)==============
 ;compress ds:si en es:di taille cx d‚compress‚ BP compress‚
 ;-> AH=6
 ;<- Flag Carry si erreur, Flag Equal si secteurs égaux
 ;=====================================================
-compressrle:
-	push 	ax bx cx dx si di ds es
-	mov 	bp,di
-	xchg 	si,di
-	push 	es
-	push 	ds
-	pop 	es
-	pop 	ds
-	mov 	dx,cx
-	;mov 	bp,cx
-againcomp:
+PROC compressrle FAR
+    ARG     @seg1:word,@off1:word,@seg2:word,@off2:word,@size:word
+	USES 	ax,bx,cx,dx,si,di,ds,es
+    mov     es,[@seg1]
+    mov     ds,[@seg2]
+    mov     di,[@off1]
+    mov     si,[@off2]
+	mov 	dx,[@size]
+@@againcomp:
 	mov 	bx,di
 	mov 	al,[es:di]
 	mov 	cx,dx
 	cmp 	ch,0
-	je 	poo
+	je 	    @@poo
 	mov 	cl,0ffh
 	;mov 	cx,bp
 	;sub 	cx,di
 	;mov 	ah,cl
-poo:
+@@poo:
 	mov 	ah,cl
 	inc 	di
 	xor 	ch,ch
@@ -942,7 +943,7 @@ poo:
 	sub 	cl,ah
 	neg 	cl
 	cmp 	cl,6
-	jbe 	nocomp2
+	jbe 	@@nocomp2
 	mov 	[dword ptr si],' * /'
 	mov 	[byte ptr si+4],'/'
 	mov 	[si+1],cl
@@ -951,21 +952,21 @@ poo:
 	dec 	di
 	xor 	ch,ch
 	sub 	dx,cx
-	jnz 	againcomp
-	jmp 	fini
-nocomp2:
+	jnz 	@@againcomp
+	jmp 	@@fini
+@@nocomp2:
 	mov 	[si],al
 	inc 	si
 	inc 	bx
 	mov 	di,bx
 	dec 	dx
-	jnz 	againcomp
-fini:
-	sub 	bp,si
-	neg 	bp
+	jnz 	@@againcomp
+@@fini:
+    mov     ax,si
+	sub 	ax,[@off2]
 	clc
-	pop 	es ds di si dx cx bx ax
 	ret
+endp compressrle
 
 ;=============Changedir (Fonction 13)==============
 ;Change le repertoire courant a DS:SI
