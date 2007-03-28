@@ -261,7 +261,93 @@ okchanged:
 killing db     'Fermeture du processus %0\l',0
 errorkilling db '\c04Impossible de fermer ce processus',0
 
-code_irq:
+code_stack:
+
+code_dump:
+
+code_regs:
+call [cs:savecontext],offset allregs
+push 6
+push eax
+push eax
+mov ax,[word ptr allregs.sss]
+push 6
+push eax
+push eax
+mov ax,[word ptr allregs.sgs]
+push 6
+push eax
+push eax
+mov ax,[word ptr allregs.sfs]
+push 6
+push eax
+push eax
+mov ax,[word ptr allregs.ses]
+push 6
+push eax
+push eax
+mov ax,[word ptr allregs.sds]
+push 6
+push eax
+push eax
+mov ax,[word ptr allregs.scs]
+xor eax,eax
+push 10
+pushd [dword ptr allregs.seip]
+pushd [dword ptr allregs.seip]
+push 10
+pushd [dword ptr allregs.sesp]
+pushd [dword ptr allregs.sesp]
+push 10
+pushd [dword ptr allregs.sebp]
+pushd [dword ptr allregs.sebp]
+push 10
+pushd [dword ptr allregs.sedi]
+pushd [dword ptr allregs.sedi]
+push 10
+pushd [dword ptr allregs.sesi]
+pushd [dword ptr allregs.sesi]
+push 10
+pushd [dword ptr allregs.sedx]
+pushd [dword ptr allregs.sedx]
+push 10
+pushd [dword ptr allregs.secx]
+pushd [dword ptr allregs.secx]
+push 10
+pushd [dword ptr allregs.sebx]
+pushd [dword ptr allregs.sebx]
+push 10
+pushd [dword ptr allregs.seax]
+pushd [dword ptr allregs.seax]
+push 10
+pushd [dword ptr allregs.seflags]
+pushd [dword ptr allregs.seflags]
+call [cs:print],offset registershow
+ret
+
+registershow db '\l\c02Liste des registres du Microprocesseur\l\l\c07'
+             db '\c04CPU\h30FPU\c07\l'
+             db 'EFGS: 0x%hD : %w |\h32ST(0) :\l'
+             db 'EAX : 0x%hD : %w |\h32ST(1) :\l'
+             db 'EBX : 0x%hD : %w |\h32ST(2) :\l'
+             db 'ECX : 0x%hD : %w |\h32ST(3) :\l'
+             db 'EDX : 0x%hD : %w |\h32ST(4) :\l'
+             db 'ESI : 0x%hD : %w |\h32ST(5) :\l'
+             db 'EDI : 0x%hD : %w |\h32ST(6) :\l'
+             db 'EBP : 0x%hD : %w |\h32ST(7) :\l'
+             db 'ESP : 0x%hD : %w |\h32\l'
+             db 'EIP : 0x%hD : %w |\h32\l'
+             db 'CS  :     0x%hW :     %w |\h32\l'
+             db 'DS  :     0x%hW :     %w |\h32\l'
+             db 'ES  :     0x%hW :     %w |\h32\l'
+             db 'FS  :     0x%hW :     %w |\h32\l'
+             db 'GS  :     0x%hW :     %w |\h32\l'
+             db 'SS  :     0x%hW :     %w |\h32\l',0
+
+
+allregs regs <>
+
+code_irqs:
 call    [cs:mbfind],offset interruptionbloc
 jc      erroronint
 call [cs:print],offset irqmsg1
@@ -562,19 +648,22 @@ fr:     db      '1', 02, '&', 02
         db      00, 00, 00, 00
 
 commands dw     str_exit ,code_exit ,syn_exit ,help_exit
-        dw      str_version,code_version,syn_version,help_version
-        dw      str_cls ,code_cls ,syn_cls ,help_cls
-        dw      str_reboot ,code_reboot ,syn_reboot ,help_reboot
-        dw      str_command,code_command,syn_command,help_command
-        dw      str_mode ,code_mode ,syn_mode ,help_mode
-        dw      str_dir ,code_dir ,syn_dir ,help_dir
-        dw      str_refresh ,code_refresh ,syn_refresh ,help_refresh
-        dw      str_cd ,code_cd ,syn_cd ,help_cd
-        dw      str_mem ,code_mem ,syn_mem ,help_mem
-        dw      str_kill ,code_kill ,syn_kill ,help_kill
-        dw      str_int ,code_int ,syn_int ,help_int
-        dw      str_irq ,code_irq,syn_irq ,help_irq
-        dw      0
+dw      str_version,code_version,syn_version,help_version
+dw      str_cls ,code_cls ,syn_cls ,help_cls
+dw      str_reboot ,code_reboot ,syn_reboot ,help_reboot
+dw      str_command,code_command,syn_command,help_command
+dw      str_mode ,code_mode ,syn_mode ,help_mode
+dw      str_dir ,code_dir ,syn_dir ,help_dir
+dw      str_refresh ,code_refresh ,syn_refresh ,help_refresh
+dw      str_cd ,code_cd ,syn_cd ,help_cd
+dw      str_mem ,code_mem ,syn_mem ,help_mem
+dw      str_kill ,code_kill ,syn_kill ,help_kill
+dw      str_int ,code_int ,syn_int ,help_int
+dw      str_irqs ,code_irqs,syn_irqs ,help_irqs
+dw      str_regs ,code_regs,syn_regs ,help_regs
+dw      str_stack,code_stack,syn_stack,help_stack
+dw      str_dump,code_dump,syn_dump,help_dump
+dw      0
 
 str_exit db     'QUIT',0
 str_version db  'VERS',0
@@ -588,7 +677,10 @@ str_cd  db      'CD',0
 str_mem db      'MEM',0
 str_kill db     'KILL',0
 str_int db      'INT',0
-str_irq db      'IRQS',0
+str_irqs db      'IRQS',0
+str_regs db     'REGS',0
+str_stack db    'STACK',0
+str_dump db     'DUMP',0
 
 syn_exit db     0
 syn_version db  0
@@ -602,7 +694,10 @@ syn_cd  db      '?',0
 syn_mem db      0
 syn_kill  db    '?',0
 syn_int db     'FFh',0
-syn_irq db      0
+syn_irqs db      0
+syn_regs db     0
+syn_stack db    0
+syn_dump db     '?',0
 
 help_exit db    'Permet de quitter l''interpreteur',0
 help_version db 'Affiche la version de COS',0
@@ -616,7 +711,10 @@ help_cd db      'Change le repertoire courant',0
 help_mem db     'Affiche le plan de la memoire',0
 help_kill db    'Termine le processus cible',0
 help_int  db    'Affiche des informations sur l''interruption',0
-help_irq  db    'Affiche des informations sur les IRQs',0
+help_irqs  db    'Affiche des informations sur les IRQs',0
+help_regs db    'Affiche les registres du microprocesseur',0
+help_stack db   'Affiche la pile systeme',0
+help_dump db    'Affiche le contenu de la memoire',0
 
 derror  db      '\c04Erreur de Syntaxe !',0
 error_syntax db '\c04La commande ou l''executable n''existe pas ! F1 pour %0',0
@@ -652,6 +750,7 @@ use SYSTEME,mbfree
 use SYSTEME,isenableirq
 use SYSTEME,isinserviceirq
 use SYSTEME,isrequestirq
+use SYSTEME,savecontext
 use STR0.LIB,uppercase
 use STR0.LIB,evalue
 use STR0.LIB,copy
