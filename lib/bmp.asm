@@ -35,28 +35,29 @@ PROC showbmp  FAR
 	cmp	[word ptr (bmp_file si).bmp_filetype],"MB"
 	jne     @@errorshowing
 	mov     edi,[(bmp_file si).bmp_bitmapoffset]
+    add   di,400h
 	add     di,si
        	xor 	ebx,ebx
         mov     ecx,[(bmp_file si).bmp_height]
        	mov 	edx,[(bmp_file si).bmp_width]
-        and     dx,11111100b
+        ;and     dx,11111100b
        	cmp     edx,[(bmp_file si).bmp_width]
-       	jae     @@noadjust
-       	add     dx,4
+       	;jae     @@noadjust
+       	;add     dx,4
 @@noadjust:
         sub     edx,[(bmp_file si).bmp_width]
 @@bouclette:
 	push 	bx cx
 	add 	bx,[@x]
 	add 	cx,[@y]
-    call    [showpixel],bx,cx,[word ptr di]
+    call    [cs:showpixel],bx,cx,[word ptr di]
 	pop 	cx bx
 	inc 	bx
 	inc     di
 	cmp 	ebx,[(bmp_file si).bmp_width]
 	jb 	  @@bouclette
 	xor 	bx,bx
-	add     di,dx
+	;add     di,dx
 	dec 	cx
 	cmp 	cx,0
 	jne 	@@bouclette
