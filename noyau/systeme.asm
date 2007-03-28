@@ -175,7 +175,7 @@ error:
         call    bioswaitkey
         jmp     far 0FFFFh:0000h
         
-shell find <"commande.ce",0,0,0,1,>
+shell find <"COMMANDE.CE",0,0,0,1,>
 thepci pciinf <>
 thecpu cpu <>
 temp db 256 dup (0)
