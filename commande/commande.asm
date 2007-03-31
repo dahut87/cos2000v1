@@ -8,6 +8,8 @@ option procalign:byte
 include "..\include\fat.h"
 include "..\include\mem.h"
 include "..\include\divers.h"
+include "..\include\pci.h"
+include "..\include\cpu.h"
 
 org     0h
 
@@ -183,6 +185,101 @@ endoff:
 def       db '\c02Liste des commandes internes\l\l\c07',0
 commandes db '%0 \h10:\h12%0 \h70%0\l',0
 
+code_detect:
+        call    [cs:print],offset msg_cpu_detect
+        call    [cs:cpuinfo],offset thecpu
+        call    [cs:setinfo],offset thecpu,offset temp
+        call    [cs:print],offset msg_ok2
+        push    offset temp
+        xor     eax,eax
+        mov     al,[thecpu.family]
+        push    eax
+        mov     al,[thecpu.models]
+        push    eax
+        mov     al,[thecpu.stepping]
+        push    eax
+        push    offset thecpu.names
+        push    offset thecpu.vendor
+        call    [cs:print],offset msg_cpu_detect_inf
+        call    [cs:print],offset msg_pci
+        call    [cs:pciinfo],offset thepci
+        jc      nopci
+        call    [cs:print],offset msg_ok2
+        xor     eax,eax
+        mov     al,[thepci.maxbus]
+        push    eax
+        mov     al,[thepci.version_minor]
+        push    eax
+        mov     al,[thepci.version_major]
+        push    eax
+        call    [cs:print],offset msg_pci_info
+        call    [cs:print],offset msg_pci_enum
+        xor     bx,bx
+        xor     cx,cx
+        xor     si,si
+searchpci:
+        call    [cs:getcardinfo],bx,cx,si,offset temp
+        jc      stopthis
+        mov     al,[(pcidata offset temp).subclass]
+        push    ax
+        mov     al,[(pcidata offset temp).class]
+        push    ax
+        call    [cs:getpcisubclass]
+        push    dx
+        push    ax
+        mov     al,[(pcidata offset temp).class]
+        xor     ah,ah
+        push    ax
+        call    [cs:getpciclass]
+        push    dx
+        push    ax
+        push    4
+        push    esi
+        push    4
+        push    ecx
+        push    4
+        push    ebx
+        mov     ax,[(pcidata offset temp).device]
+        push    eax
+        mov     ax,[(pcidata offset temp).vendor]
+        push    eax
+        call    [cs:print],offset msg_pci_card
+        inc     si
+        cmp     si,7
+        jbe     searchpci
+stopthis:
+        xor     si,si
+        inc     cx
+        cmp     cx,31
+        jbe     searchpci
+        xor     cx,cx
+        inc     bx
+        cmp     bx,16
+        jbe     searchpci
+        jmp     next
+nopci:
+        call    [cs:print],offset msg_echec2
+next:
+        call    [cs:detectvmware]
+        jne     novirtual
+        call    [cs:print],offset msg_vmware
+novirtual:
+        ret
+
+thepci pciinf <>
+thecpu cpu <>
+
+msg_ok2            db "\h70 [\c02  Ok  \c07]\l",0
+msg_echec2         db "\h70 [\c0CPasser\c07]\l",0
+msg_cpu_detect     db "Dectection du processeur",0
+msg_cpu_detect_inf db "  -Fondeur  : %0\l  -Modele   : %0\l  -Revision : %u\l  -Version  : %u\l  -Famille  : %u\l  -Technologies: %0\l",0
+msg_pci            db "Detection des systemes PCI",0
+msg_pci_info       db "  -Version  : %yB.%yB\l  -Numero bus max: %u\l",0
+msg_pci_enum       db "  -Enumeration des peripheriques PCI:\l"
+                   db "   |Vendeur|Modele|Bus |Dev.|Func|Classe.Sous-classe\l",0
+msg_pci_card       db "   | %hW  | %hW |%w|%w|%w|%0P.%0P\l",0
+msg_vmware         db "\c04 VMWare a ete detecte !!!\c07\l",0
+
 code_mode:
         call    [cs:gettypeditem],di,0,' '
         and     al,1111b
@@ -262,8 +359,302 @@ killing db     'Fermeture du processus %0\l',0
 errorkilling db '\c04Impossible de fermer ce processus\c07',0
 
 code_stack:
+push ebp
+push esp
+push ss
+push ss
+call [cs:print],offset stackshow
+mov cx,12 ;12 derniers éléments
+xor esi,esi
+mov si,sp
+sub si,2*12
+showloop:
+push [dword ptr ss:si]
+push esi
+push ss
+push ss
+call [cs:print],offset itemshow
+inc si
+inc si
+cmp si,sp
+jne notspshow
+call [cs:print],offset stresp
+notspshow:
+cmp si,bp
+jne nextshow
+call [cs:print],offset strebp
+nextshow:
+dec cx
+jnz showloop
+ret
+
+stackshow db '\l\c02Vidage de la pile systeme\l\l\c07'
+             db 'Segment  SS  : 0x%hW\l'
+             db 'Pointeur ESP : 0x%hD\l'
+             db 'Pointeur EBP : 0x%hD\l'
+             db 'Seg   :Adr    | Donnees',0
+itemshow     db '\l0x%hW:0x%hW | 0x%hW',0
+
+strebp db '<-- BP',0
+stresp db '<-- SP',0
 
 code_dump:
+        call    [cs:gettypeditem],di,0,' '     
+        call    [cs:mbfind],di
+        jc      notmbfind
+        mov     fs,ax 
+        dec     ax
+        dec     ax
+        mov     gs,ax 
+        cmp     [word ptr fs:0x0],'EC'
+        jne     notace2
+        push    offset oui ;CE? str0 2 
+        jmp     suitelikeace2
+notace2:
+        push    offset non
+suitelikeace2:
+        cmp     [word ptr gs:mb.isnotlast],true
+        je      notlast2
+        push    offset oui ;CE? str0 2 
+        jmp     suitelikelast2
+notlast2:
+        push    offset non
+suitelikelast2:
+        mov     dx,gs
+        push    edx          ;Emplacement memoire hex 2
+;parent
+        cmp     [gs:mb.reference],0
+        jne     nextdetect2
+        push    cs
+        push    offset none        ;parent lstr0 2x2 
+        add     bx,[gs:mb.sizes]
+        jmp     suitemn2
+nextdetect2:
+        mov     dx,[gs:mb.reference]
+        dec     dx
+        dec     dx
+        push    dx                    ;parent lstr0 2x2 
+        push    offset (mb).names
+suitemn2:
+        cmp     [gs: mb.isresident],true
+        jne     notresident2
+        push    offset oui        ;resident str0 2 
+        jmp     suitelistmcb2
+notresident2:
+        push    offset non     ;resident str0 2
+suitelistmcb2:
+        xor     edx,edx
+        mov     dx,[gs: mb.sizes]
+        shl     edx,4
+        push    edx
+        push    gs                   ;nom lstr0 2x2 
+        push    offset (mb).names
+        push    offset dumpshow        ;ligne
+        call    [cs:print]
+        cmp     [word ptr fs:0x0],'EC'
+        jne     endofdumpformoment
+        push    [dword ptr fs:exe.starting]
+        push    fs
+        push    fs
+        push    [dword ptr fs:exe.sections]
+        push    fs
+        push    fs
+        push    [dword ptr fs:exe.imports]
+        push    fs
+        push    fs
+        push    [dword ptr fs:exe.exports]
+        push    fs
+        push    fs
+        cmp     [fs: exe.compressed],true
+        jne     notcompressed
+        push    offset oui
+        jmp     suiteiscompressed
+notcompressed:
+        push    offset non
+suiteiscompressed:
+        push    [dword ptr fs:exe.checksum]
+        push    [dword ptr fs:exe.major]
+        call    [cs:print],offset dumpshowce
+endofdumpformoment:
+        ret
+notmbfind:
+        call    [cs:print],offset errornotmbfind
+        ret
+
+errornotmbfind db '\c04Impossible de trouver le bloc specifie\l\l\c07',0
+        
+
+dumpshow db '\l\c02Dump du bloc de memoire nomme %0P\l\l'
+          db '\c02-----------------------------\l'
+          db '\c02Informations du bloc memoire\c07\l'
+          db 'Taille du bloc reserve   : %u\l'
+          db 'Bloc resident en memoire : %0\l'
+          db 'Parent du bloc           : %0P\l'
+          db 'Adresse du bloc memoire  : 0x%hW:0x0000\l'
+          db 'Dernier bloc en memoire  : %0\l'
+          db 'Heberge un format CE     : %0\l',0
+dumpshowce db '\c02-----------------------------\l'
+           db 'Informations du bloc executable\c07\l'
+           db 'Version de l''executable  : %u\l'
+           db 'Somme de controle        : %hD\l'
+           db 'Compression du code      : %0\l'
+           db 'Exportation de fonctions : 0x%hW:0x%hW\l'
+           db 'Importation de fonctions : 0x%hW:0x%hW\l'
+           db 'Sections de donnees      : 0x%hW:0x%hW\l'
+           db 'Point d''entree du code   : 0x%hW:0x%hW\l',0
+
+
+code_sections:
+        call    [cs:gettypeditem],di,0,' '     
+        call    [cs:mbfind],di
+        jc      notmbfindssections
+        jmp     haveatargetsections
+notmbfindssections:
+        call    [cs:searchfile],di
+        jc      notmbfindall
+        call    [cs:projfile],di
+        jc      notmbfindall
+        call    [cs:mbfind],di
+        jc      notmbfindall
+haveatargetsections:
+        mov     fs,ax 
+        cmp     [word ptr fs:0x0],'EC'
+        jne     errornotace2
+        mov     si,[fs:exe.sections]
+        cmp     si,0
+        je      errornosections
+        xor     edx,edx
+        call    [cs:print],offset rets
+showallsections: 
+        add     si,4       
+        push    fs
+        push    si
+        call    [cs:print],offset functions
+        inc     edx
+findnextsections:
+        inc     si
+        cmp     [byte ptr fs:si],0
+        jne     findnextsections
+        cmp     [dword ptr fs:si],0
+        je      finishsections
+        inc     si
+        jmp     showallsections
+finishsections:
+        push    edx
+        call    [cs:print],offset allsections
+        ret
+
+errornosections:
+        call    [cs:print],offset errornosection
+        ret
+
+allsections           db '\c02\lIl y avait %u sections dans le bloc ou fichier\l\c07',0 
+errornosection        db '\c02Aucune section dans le bloc ou fichier\l\c07',0 
+
+code_exports:
+        call    [cs:gettypeditem],di,0,' '     
+        call    [cs:mbfind],di
+        jc      notmbfindsimports
+        jmp     haveatargetexports
+notmbfindsexports:
+        call    [cs:searchfile],di
+        jc      notmbfindall
+        call    [cs:projfile],di
+        jc      notmbfindall
+        call    [cs:mbfind],di
+        jc      notmbfindall
+haveatargetexports:
+        mov     fs,ax 
+        cmp     [word ptr fs:0x0],'EC'
+        jne     errornotace2
+        mov     si,[fs:exe.exports]
+        cmp     si,0
+        je      errornoexports
+        xor     edx,edx
+        call    [cs:print],offset rets
+showallexports: 
+        push    fs
+        push    si
+        call    [cs:print],offset functions
+        inc     edx
+findnextexports:
+        inc     si
+        cmp     [byte ptr fs:si],0
+        jne     findnextexports
+        add     si,3
+        cmp     [dword ptr fs:si],0
+        je      finishexports
+        jmp     showallexports
+finishexports:
+        push    edx
+        call    [cs:print],offset allexports
+        ret
+
+errornoexports:
+        call    [cs:print],offset errornoexport
+        ret
+
+allexports           db '\c02\lIl y avait %u exportations dans le bloc ou fichier\l\c07',0 
+errornoexport        db '\c02Aucune exportation dans le bloc ou fichier\l\c07',0  
+
+
+code_imports:
+        call    [cs:gettypeditem],di,0,' '     
+        call    [cs:mbfind],di
+        jc      notmbfindsimports
+        jmp     haveatargetimports
+notmbfindsimports:
+        call    [cs:searchfile],di
+        jc      notmbfindall
+        call    [cs:projfile],di
+        jc      notmbfindall
+        call    [cs:mbfind],di
+        jc      notmbfindall
+haveatargetimports:
+        mov     fs,ax 
+        cmp     [word ptr fs:0x0],'EC'
+        jne     errornotace2
+        mov     si,[fs:exe.imports]
+        cmp     si,0
+        je      errornoimports
+        xor     edx,edx
+        call    [cs:print],offset rets
+showallimports: 
+        push    fs
+        push    si
+        call    [cs:print],offset functions
+        inc     edx
+findnextimports:
+        inc     si
+        cmp     [byte ptr fs:si],0
+        jne     findnextimports
+        add     si,5
+        cmp     [dword ptr fs:si],0
+        je      finishimports
+        jmp     showallimports
+finishimports:
+        push    edx
+        call    [cs:print],offset allimports
+        ret
+
+errornoimports:
+        call    [cs:print],offset errornoimport
+        ret
+
+notmbfindall:
+        call    [cs:print],offset errornotmborfilefind
+        ret
+
+errornotace2:
+        call    [cs:print],offset errornotcefind
+        ret
+
+functions db '%0P\l',0
+rets                 db '\l\l',0
+allimports           db '\c02\lIl y avait %u importations dans le bloc ou fichier\l\c07',0 
+errornoimport        db '\c02Aucune importation dans le bloc ou fichier\l\c07',0  
+errornotcefind       db '\c04Le bloc ou le fichier spécifié n''est pas CE\l\c07',0       
+errornotmborfilefind db '\c04Impossible de trouver le bloc ou le fichier specifie\l\c07',0
 
 code_regs:
 call [cs:savecontext],offset allregs
@@ -327,14 +718,14 @@ ret
 
 registershow db '\l\c02Liste des registres du Microprocesseur\l\l\c07'
              db '\c04CPU\h30FPU\c07\l'
-             db 'EFGS: 0x%hD : %w |\h32ST(0) ??:\l'
-             db 'EAX : 0x%hD : %w |\h32ST(1) ??:\l'
-             db 'EBX : 0x%hD : %w |\h32ST(2) ??:\l'
-             db 'ECX : 0x%hD : %w |\h32ST(3) ??:\l'
-             db 'EDX : 0x%hD : %w |\h32ST(4) ??:\l'
-             db 'ESI : 0x%hD : %w |\h32ST(5) ??:\l'
-             db 'EDI : 0x%hD : %w |\h32ST(6) ??:\l'
-             db 'EBP : 0x%hD : %w |\h32ST(7) ??:\l'
+             db 'EFGS: 0x%hD : %w |\h32ST(0): ??\l'
+             db 'EAX : 0x%hD : %w |\h32ST(1): ??\l'
+             db 'EBX : 0x%hD : %w |\h32ST(2): ??\l'
+             db 'ECX : 0x%hD : %w |\h32ST(3): ??\l'
+             db 'EDX : 0x%hD : %w |\h32ST(4): ??\l'
+             db 'ESI : 0x%hD : %w |\h32ST(5): ??\l'
+             db 'EDI : 0x%hD : %w |\h32ST(6): ??\l'
+             db 'EBP : 0x%hD : %w |\h32ST(7): ??\l'
              db 'ESP : 0x%hD : %w |\h32\l'
              db 'EIP : 0x%hD : %w |\h32\l'
              db 'CS  :     0x%hW :     %w |\h32\l'
@@ -450,17 +841,17 @@ pushd  [dword ptr es:(ints si).launchedlow]
 pushd  [dword ptr es:(ints si).launchedhigh]
 cmp    [es:(ints si).activated],1
 je     activate
-push   offset resident
+push   offset oui
 jmp    suiteactivate
 activate:
-push   offset nonresident
+push   offset non
 suiteactivate:
 cmp    [es:(ints si).locked],1
 je     verrouille
-push   offset resident
+push   offset oui
 jmp    suiteverrouille
 verrouille:
-push   offset nonresident
+push   offset non
 suiteverrouille:
 push    esi
 push    es
@@ -509,6 +900,7 @@ okrefresh:
 errorrefreshing db '\c04Impossible de lire le support',0
 extcom  db      '.CE',0
 
+
 code_mem:    
         call    [cs:print],offset msg
         xor     edx,edx
@@ -522,23 +914,23 @@ listmcb:
         dec     ax
         mov     gs,ax
         inc     cx
-        cmp     [fs:0x0],'EC'
+        cmp     [word ptr fs:0x0],'EC'
         jne     notace
-        push    offset resident ;CE? str0 2 
+        push    offset oui ;CE? str0 2 
         jmp     suitelikeace
 notace:
-        push    offset nonresident
+        push    offset non
 suitelikeace:
         mov     dx,fs
         push    edx          ;Emplacement memoire hex 2
 ;parent
         cmp     [gs:mb.reference],0
-        jne     next
+        jne     nextdetect
         push    cs
         push    offset none        ;parent lstr0 2x2 
         add     bx,[gs:mb.sizes]
         jmp     suitemn
-next:
+nextdetect:
         mov     dx,[gs:mb.reference]
         dec     dx
         dec     dx
@@ -547,10 +939,10 @@ next:
 suitemn:
         cmp     [gs: mb.isresident],true
         jne     notresident
-        push    offset resident        ;resident str0 2 
+        push    offset oui        ;resident str0 2 
         jmp     suitelistmcb
 notresident:
-        push    offset nonresident     ;resident str0 2
+        push    offset non     ;resident str0 2
 suitelistmcb:
         xor     edx,edx
         mov     dx,[gs: mb.sizes]
@@ -568,12 +960,12 @@ fino:
         push    offset fin
         call    [cs:print]
         ret
-resident db     "oui",0
-nonresident db  "non",0
+oui db     "oui",0
+non db     "non",0
 line2   db      "%0P\h15| %w\h24| %0\h30| %0P\h47| 0x%hW\h56| %0\l",0
 fin     db      "\l\l\c02%u octets de memoire disponible\l\c07",0
 msg     db      "\l\c02Plan de la memoire\c07\l\lNom            | Taille | Res | Parent         | Mem    | CE \l",0
-none    db      ".",0
+none    db      "?????",0
 
 
 ;converti le jeux scancode/ascii en fr ax->ax
@@ -672,6 +1064,10 @@ dw      str_irqs ,code_irqs,syn_irqs ,help_irqs
 dw      str_regs ,code_regs,syn_regs ,help_regs
 dw      str_stack,code_stack,syn_stack,help_stack
 dw      str_dump,code_dump,syn_dump,help_dump
+dw      str_detect,code_detect,syn_detect,help_detect
+dw      str_exports,code_exports,syn_exports,help_exports
+dw      str_imports,code_imports,syn_imports,help_imports
+dw      str_sections,code_sections,syn_sections,help_sections
 dw      0
 
 str_exit db     'QUIT',0
@@ -690,6 +1086,10 @@ str_irqs db      'IRQS',0
 str_regs db     'REGS',0
 str_stack db    'STACK',0
 str_dump db     'DUMP',0
+str_detect db   'DETECT',0
+str_exports db   'EXPORTS',0
+str_imports db   'IMPORTS',0
+str_sections db   'SECTIONS',0
 
 syn_exit db     0
 syn_version db  0
@@ -707,6 +1107,10 @@ syn_irqs db      0
 syn_regs db     0
 syn_stack db    0
 syn_dump db     '?',0
+syn_detect db    0
+syn_exports db    '?',0
+syn_imports db    '?',0
+syn_sections  db    '?',0
 
 help_exit db    'Permet de quitter l''interpreteur',0
 help_version db 'Affiche la version de COS',0
@@ -724,6 +1128,10 @@ help_irqs  db    'Affiche des informations sur les IRQs',0
 help_regs db    'Affiche les registres du microprocesseur',0
 help_stack db   'Affiche la pile systeme',0
 help_dump db    'Affiche le contenu de la memoire',0
+help_detect db  'Detecte et Affiche les peripheriques PCI et le CPU',0
+help_exports db 'Affiche toutes les exportations du fichier specifie',0
+help_imports db 'Affiche toutes les importations du fichier specifie',0
+help_sections db 'Affiche toutes les sections du fichier specifie',0
 
 derror  db      '\c04Erreur de Syntaxe !',0
 error_syntax db '\c04La commande ou l''executable n''existe pas ! F1 pour %0',0
@@ -736,6 +1144,13 @@ buffer  db      256 dup (0)
 temp    db      256 dup (0)
 
 importing
+use DETECT.LIB,cpuinfo
+use DETECT.LIB,setinfo
+use DETECT.LIB,pciinfo
+use DETECT.LIB,getcardinfo
+use DETECT.LIB,getpcisubclass
+use DETECT.LIB,getpciclass
+use DETECT.LIB,detectvmware
 use VIDEO,clearscreen
 use VIDEO,setvideomode
 use VIDEO,getxy
@@ -752,6 +1167,8 @@ use DISQUE,findnextfile
 use DISQUE,execfile
 use DISQUE,initdrive
 use DISQUE,changedir
+use DISQUE,searchfile
+use DISQUE,projfile
 use SYSTEME,mbget
 use SYSTEME,mbfind
 use SYSTEME,mbfindsb
