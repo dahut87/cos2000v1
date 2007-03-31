@@ -24,3 +24,9 @@ adress     	dw 0
 base 		dw 0
 scrolling       db 1
 ends vgainf
+
+
+struc vertex2d 
+px dw ?
+py dw ?
+ends vertex2d 
