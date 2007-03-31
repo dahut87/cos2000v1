@@ -79,7 +79,7 @@ push    offset spaces2
 call    [print]
 mov     al,[sizex]
 doaline2:
-push [dword ptr di+offset buffer]
+push [word ptr di+offset buffer]
 call    [showchar]
 inc     edi
 dec     al
@@ -130,7 +130,6 @@ call    [print],offset menu
      suit5:
      cmp ax,4000h
      jne suit6
-     mov cx,[sect]
 call    [writesector],[sect],offset buffer
      jnc waitkey
      jmp errtr
