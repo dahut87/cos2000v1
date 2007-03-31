@@ -651,9 +651,9 @@ PROC mbloadfuncs FAR
         call    mbsearchfunc,si
         jnc     @@toendoftext
         mov     bx,si
-pushad
-call biosprint,si
-popad
+;pushad
+;call biosprint,si
+;popad
 @@findend:
         inc     bx
         cmp     [byte ptr bx], ':'
@@ -662,9 +662,9 @@ popad
         call    [cs:projfile],si
         jc      @@erroronload
         mov     [byte ptr bx],':'
-pushad
-call biosprint,si
-popad
+;pushad
+;call biosprint,si
+;popad
         call    mbsearchfunc,si
         jc      @@libnotexist
 @@toendoftext:
