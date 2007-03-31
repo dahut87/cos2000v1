@@ -19,6 +19,17 @@ all:
 	make
 	cd ..
 
+install: 
+      if not exist data mkdir data
+      copy noyau\systeme.sys data
+      copy noyau\boot.bin data
+      copy commande\commande.ce data
+      copy lib\*.lib data      
+      copy programs\*.ce data
+      copy programs\exem-lib.lib data
+      copy programs\cos.rip data
+      copy install\setup.com .
+
 copy: clean all
 	copy noyau\systeme.sys b:
       copy commande\*.ce b:
