@@ -161,7 +161,7 @@ PROC execfile FAR
         mov     di,[@file]
 	    call	uppercase,di
         call    projfile,di
-        ;jc      @@reallyerrornoblock
+        jc      @@reallyerrornoblock
         call    [cs:mbfind],di
         jc      @@reallyerror
         call    [cs:mbchown],ax,[word ptr ss:bp+4]
@@ -232,7 +232,7 @@ USES	cx,si,di,ds,es
     pop     di 
 	call	uppercase,di
     call    [cs:mbfind],di
-    jnc     @@errorload
+    jnc     @@notace
 	call    searchfile,di
 	jne   	@@errorload
 	jc	    @@errorload	
@@ -742,10 +742,9 @@ PROC readsector FAR
 	shl 	cl,6                
 	or 	cl,bl       
 	mov 	bx,[@pointer]
-	mov 	si,4
-	mov 	al,1
+	mov 	si,5
 @@tryagain:
-  	mov 	ah, 2
+	mov 	ax,0201h
   	int 	13h
   	jnc 	@@done
   	dec 	si
@@ -778,10 +777,9 @@ PROC writesector FAR
 	shl 	cl,6                
 	or 	cl, bl         
 	mov 	bx,[@pointer]
-	mov 	si,4
-	mov 	al,1
+	mov 	si,5
 @@tryagain:
-  	mov 	ah, 3
+	mov 	ax,0301h
   	int 	13h
   	jnc 	@@done
   	dec 	si
