@@ -4,7 +4,7 @@ lnk= elink
 all: setup.com
 
 setup.com: setup.obj
-	$(lnk) setup.obj setup.com
+	$(lnk) setup.obj setup.com /c
 
 setup.obj:
 	$(asm) setup.asm
