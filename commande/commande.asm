@@ -157,7 +157,7 @@ code_version:
         call    [cs:print],offset version_text
         ret
 
-version_text db 'Cos 2000 version 1.4Fr par \c04MrNop\c07',0
+version_text db 'Cos 2000 version 1.3.2Fr par \c04MrNop\c07',0
 
 code_cls:
         call    [cs:clearscreen]
@@ -1136,7 +1136,7 @@ help_sections db 'Affiche toutes les sections du fichier specifie',0
 derror  db      '\c04Erreur de Syntaxe !',0
 error_syntax db '\c04La commande ou l''executable n''existe pas ! F1 pour %0',0
 prompt  db      '\c07>',0
-msginit db      '\m02\e\c07\l\lInterpreteur de commande COS V1.9\lSous license \c05GPL\c07 - Ecrit par \c04MrNop\l\c07Utilisez la commande CMDS pour connaitres les commandes disponibles\l',0
+msginit db      '\m02\e\c07\l\lInterpreteur de commande COS V1.10\lSous license \c05GPL\c07 - Ecrit par \c04MrNop\l\c07Utilisez la commande CMDS pour connaitres les commandes disponibles\l',0
 
 
 dir     db      32 dup (0)
