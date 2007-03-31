@@ -161,8 +161,6 @@ novirtual:
         call    [cs:initdrive]
         jc      error2
         call    [cs:print],offset msg_ok2
-xor ax,ax
-int 16h
         call    [cs:execfile],offset shell
         
 error2:
@@ -261,16 +259,6 @@ endi
 include "mcb.asm"
 include "8259a.asm"
 
-mb1:
-includebin "video.sys"
-mb2:
-includebin "..\lib\video.lib"
-mb3:
-includebin "..\lib\detect.lib"
-mb4:
-includebin "disque.sys"
-mb5:
-
 section:
 dw offset mb0
 dw offset mb1-offset mb0
@@ -293,5 +281,17 @@ dw offset mb5-offset mb4
 db "DISQUE",0
 
 dd 0
+
+mb1:
+includebin "video.sys"
+mb2:
+includebin "..\lib\video.lib"
+mb3:
+includebin "..\lib\detect.lib"
+mb4:
+includebin "disque.sys"
+mb5:
+
+
         
 
