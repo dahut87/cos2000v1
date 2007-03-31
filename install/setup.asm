@@ -11,7 +11,7 @@ ent equ 32h
 
 jmp copycos
 
-message db 0Dh,0Ah,'COS 2000 V1.3.1BetaFr programme d''installation',0Dh,0AH,'Inserez une disquette formatee et appuyez sur entre...',0Dh,0AH,'Attention le contenu de celle ci peut etre altere !!!',0Dh,0AH,'$'
+message db 0Dh,0Ah,'COS 2000 V1.4Fr programme d''installation',0Dh,0AH,'Inserez une disquette formatee et appuyez sur entre...',0Dh,0AH,'Attention le contenu de celle ci peut etre altere !!!',0Dh,0AH,'$'
 message2 db 0Dh,0AH,'Creation du secteur de demarrage...',0Dh,0Ah,'$'
 message3 db  0Dh,0AH,'Copie des fichiers systeme...',0Dh,0Ah,'$'
 errormsg db 0Dh,0AH,'Erreur d''installation, contactez moi a COS2000@MULTIMANIA.COM !',0Dh,0AH,'$'
