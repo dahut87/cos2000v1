@@ -11,7 +11,7 @@ commande.obj: commande.asm
 
 clean:
   del *.obj
-  del *.exe
+  del *.ce
   del *.bak
   del *.lib
   del *.com
