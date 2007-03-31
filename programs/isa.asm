@@ -14,6 +14,7 @@ start:
 header exe <"CE",1,0,0,,,,offset realstart>
 
 realstart:
+retf
 
 PNP_ADR_PORT        equ 0x279
 PNP_WRITE_PORT      equ	0xA79
