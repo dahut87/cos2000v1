@@ -1,0 +1,20 @@
+asm= lzasm /z/t
+lnk= elink
+
+all: setup.com
+
+setup.com: setup.obj
+	$(lnk) setup.obj setup.com /c
+
+setup.obj:
+	$(asm) setup.asm
+
+clean:
+  del *.obj
+  del *.exe
+  del *.bak
+  del *.lib
+  del *.com
+  del *.bin
+  del *.sys
+  del *.err
