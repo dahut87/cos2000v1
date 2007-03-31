@@ -1,0 +1,23 @@
+asm= lzasm /z/t
+lnk= elink
+
+all: exem-lib.lib exem-ce.ce pmode.ce isa.ce editeur.ce volume.ce test.ce verifier.ce gestion.ce logo.ce souris.ce
+
+.asm.obj: 
+      $(asm) $<
+
+.obj.ce:
+	$(lnk) $< $*.ce
+
+.obj.lib:
+	$(lnk) $< $*.lib
+
+clean:
+  del *.obj
+  del *.ce
+  del *.bak
+  del *.lib
+  del *.com
+  del *.bin
+  del *.sys
+  del *.err
