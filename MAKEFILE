@@ -1,0 +1,59 @@
+all:
+	cd lib
+	make
+	cd ..
+
+	cd noyau
+	make
+	cd ..
+
+	cd install
+	make
+	cd ..
+
+	cd commande
+	make
+	cd ..
+
+	cd programs
+	make
+	cd ..
+
+install: 
+      if not exist data mkdir data
+      copy noyau\systeme.sys data
+      copy noyau\boot.bin data
+      copy commande\commande.ce data
+      copy lib\*.lib data      
+      copy programs\*.ce data
+      copy programs\exem-lib.lib data
+      copy programs\cos.rip data
+      copy install\setup.com .
+
+copy: clean all
+	copy noyau\systeme.sys b:
+      copy commande\*.ce b:
+      copy lib\*.lib b:
+      copy programs\*.ce b:
+      copy programs\*.lib b:
+
+clean:
+	cd lib
+	make clean
+	cd ..
+
+	cd noyau
+	make clean
+	cd ..
+
+	cd install
+	make clean
+	cd ..
+
+	cd commande
+	make clean
+	cd ..
+
+	cd programs
+	make clean
+	cd ..
