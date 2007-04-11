@@ -1,3 +1,9 @@
+struc diskbuffer
+size  dw 12
+current dw 0FFFFh
+chain   dw 128 dup (0FFFFh)
+ends diskbuffer
+
 struc dpt
 steprate&headunload db 0DFh ;Vitesse de progression & mont‚e de la tˆte
 dmaflag&headload    db 002h ;Etat Dma et temps de descente de la tˆte
