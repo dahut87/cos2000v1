@@ -99,8 +99,8 @@ suite:
         push    eax
         call    [cs:print],offset msg_pci_info
         call    [cs:print],offset msg_pci_enum
-        xor     bx,bx
-        xor     cx,cx
+        xor     ebx,ebx
+        xor     ecx,ecx
         xor     si,si
 searchpci:
         call    [cs:getcardinfo],bx,cx,si,offset temp
@@ -145,24 +145,25 @@ stopthis:
 nopci:
         call    [cs:print],offset msg_echec2
 next:
-        call    [cs:detectvmware]
-        jne     novirtual
-        call    [cs:print],offset msg_vmware
+        ;call    [cs:detectvmware]
+        ;jne     novirtual
+        ;call    [cs:print],offset msg_vmware
 novirtual:
-        call    [cs:print],offset msg_flat
-        call    enablea20
-        call    flatmode
-        xor     ax,ax
-        mov     fs,ax
-        mov     esi,0100000h
-        mov     [dword ptr fs:esi],"OKIN"
+        ;call    [cs:print],offset msg_flat
+        ;call    enablea20
+        ;call    flatmode
+        ;xor     ax,ax
+        ;mov     fs,ax
+        ;mov     esi,0100000h
+        ;mov     [dword ptr fs:esi],"OKIN"
         call    [cs:print],offset msg_ok2
         call    [cs:print],offset msg_disk_init
         call    [cs:initdrive]
         jc      error2
         call    [cs:print],offset msg_ok2
+        call    [cs:print],offset msg_launchcommand
         call    [cs:execfile],offset shell
-        
+        jc      error2
 error2:
         call    [cs:print],offset msg_error2
         call    bioswaitkey
@@ -189,12 +190,12 @@ msg_cpu_detect_inf db "  -Fondeur  : %0\l  -Modele   : %0\l  -Revision : %u\l  -
 msg_pci            db "Detection des systemes PCI",0
 msg_pci_info       db "  -Version  : %yB.%yB\l  -Numero bus max: %u\l",0
 msg_pci_enum       db "  -Enumeration des peripheriques PCI:\l"
-                   db "   |Vendeur|Modele|Bus |Dev.|Func|Classe.Sous-classe\l",0
-msg_pci_card       db "   | %hW  | %hW |%w|%w|%w|%0P.%0P\l",0
+                   db "   | Vendeur | Modele |Bus |Dev.|Func|Classe.Sous-classe\l",0
+msg_pci_card       db "   | 0x%hW  | 0x%hW |%w|%w|%w|%0P.%0P\l",0
 msg_vmware         db "\c04 VMWare a ete detecte !!!\c07\l",0
 msg_flat           db "Initialisation du Flat Real Mode\l",0
 msg_disk_init      db "Initialisation du pilote DISQUE\l",0
-
+msg_launchcommand  db "Execution du SHELL\l",0
 
 msg_error          db " [Erreur]",0dh,0ah,"<Pressez une touche pour redemarrer le systeme>",0
 msg_ok             db " [  Ok  ]",0dh,0ah,0
