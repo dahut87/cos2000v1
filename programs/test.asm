@@ -14,7 +14,6 @@ start:
 header exe <"CE",1,0,0,,offset imports,,offset realstart>
 
 realstart:
-    call    [savestate]
     push    0FFFFh
     pushd    652201
     pushd    1545454545
@@ -68,12 +67,10 @@ go3:
     call    [waitretrace]
     dec     cx
     jnz     go3
+    call    [clearscreen] 
     call    [xchgpages]
     call    [clearscreen] 
     call    [print],offset texte2
-    call    [xchgpages]
-    call    [clearscreen]
-    call    [xchgpages]
     mov     bp,255
     xor     edx,edx
 go4:
@@ -120,7 +117,7 @@ Randomize:
 		  
 zero db 'Chaine a z‚ro terminal',0
 fixe db 20,'Chaine a taille fixe'
-message db "\m01\e\c07\h01D‚monstration de la librairie VIDEO.LIB\l\l"
+message db "\s\m01\e\c07\h01D‚monstration de la librairie VIDEO.LIB\l\l"
         db "\c01Nombres entiers ou sign‚s (%%u/%%i):\l%u\l%iD\l"
         db "\c02Nombre hexad‚cimaux (%%h):\l%hD\l%hW\l"
         db "\c03Nombres Binaires (%%b):\l%bD\l%bB\l"
@@ -138,7 +135,7 @@ texte1     db 'Echange rapide de pages Vid‚o',0
 texte2     db '\g04,13Routine d''affichage Ultra Rapide Agissant sur le Mat‚riel'
            db '\g04,14Possibilit‚ de r‚aliser des effets de superposition',0
 texte3     db '\c04%bD\l',0
-texte4     db '\g01,00Sauvegarde et restauration de l''ecran (%%s/%%r)',0
+texte4     db '\g01,00Sauvegarde et restauration de l''ecran (\\s/\\r)',0
 
 showstring2:
     push    es bx cx si di
