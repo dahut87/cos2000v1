@@ -33,9 +33,12 @@ declare writecluster
 declare getdir
 declare projfile
 declare execfile
+declare getbuffer
+declare setbuffer
 ende
 	
 importing
+use SYSTEME,biosprint
 use SYSTEME,biosprinth
 use SYSTEME,mbfindsb
 use SYSTEME,mbfree
@@ -168,7 +171,7 @@ PROC execfile FAR
         jc      @@reallyerror
         push    ax
         pop     ds
-        cmp     [ds:0x0],'EC'
+        cmp     [word ptr ds:0x0],'EC'
         jne     @@reallyerror
         push    ax
         push    cs
@@ -230,6 +233,9 @@ USES	cx,si,di,ds,es
    	push    ss
 	pop     ds
     pop     di 
+pushad
+call [cs:biosprint],di
+popad
 	call	uppercase,di
     call    [cs:mbfind],di
     jnc     @@notace
@@ -246,7 +252,7 @@ USES	cx,si,di,ds,es
    	mov	    eax,[es:(find di).result.filesize]
     call    loadway,cx,eax,0
 	jc    	@@errorload
-    cmp     [ds:0x0],'EC'
+    cmp     [word ptr ds:0x0],'EC'
     jne     @@notace
         call    [cs:mbloadfuncs],ds
         jc      @@errorload
@@ -489,6 +495,24 @@ PROC initdrive FAR
 	mov	[currentdir],0
 	mov	[adressdirectory],0
 	mov	[currentdirstr],0
+       xor     eax,eax
+        mov     ax,[buffer.size]
+       	mul	[myboot.sectorsize]
+        call    [cs:mbfindsb],offset databuffer,cs
+        jnc     @@hadabufferblock
+        call    [cs:mbcreate],offset databuffer,ax
+        jc      @@errorinit
+        call    [cs:mbresident],ax
+        jc      @@errorinit
+        call    [cs:mbchown],ax,cs
+        jc      @@errorinit
+@@hadabufferblock:
+    mov  [buffer.current],0FFFFh
+    mov  ax,0FFFFh
+    mov  cx,[buffer.size]
+    mov  di,offset buffer.chain
+    cld
+    rep  stosw
         xor     eax,eax
         mov     ax,[myboot.sectorsperfat]
        	mul	[myboot.sectorsize]
@@ -521,6 +545,9 @@ PROC initdrive FAR
 endp initdrive
 
 datafat db '/fat',0
+databuffer db '/buffer',0
+
+buffer diskbuffer <>
 
 ;=============FindFirstFile==============
 ;Renvois dans DS:%1 un bloc d'info
@@ -718,17 +745,62 @@ PROC writecluster FAR
 	ret
 endp writecluster
 
+
 ;=============READSECTOR===============
 ;Lit le secteur %0 et le met en ds:%1
 ;->
 ;<- Flag Carry si erreur
 ;======================================
 PROC readsector FAR
-        ARG     @sector:word,@pointer:word
-	USES 	ax,bx,cx,dx,si,es
-	push    ds
-	pop     es
-	mov	ax,[@sector]
+    ARG     @sector:word,@pointer:word
+	USES 	ax,bx,cx,dx,si,di,ds,es
+    LOCAL   @tempsec
+    push    ds
+    push    cs
+    pop     ds
+    call    [cs:mbfindsb],offset databuffer,cs
+    pop     ds
+    mov     es,ax
+    jc      @@error
+    mov     si,offset buffer.chain
+    xor     cx,cx
+    mov     ax,[@sector]
+    mov     bx,0FFFFh
+@@searchbuffer:
+    cmp     [cs:si],ax
+    je      @@preprepcopy
+    cmp     [word ptr cs:si],0FFFEh
+    jne     @@notfree
+    mov     bx,cx
+@@notfree: 
+    cmp     [word ptr cs:si],0FFFFh
+    je      @@theend
+    inc     si
+    inc     si
+    inc     cx
+    cmp     cx,[cs:buffer.size]
+    jb      @@searchbuffer
+@@theend:
+    cmp     bx,0FFFFh
+    jnz     @@prepread
+    cmp     cx,[cs:buffer.size]
+    jb      @@read 
+    mov     cx,[cs:buffer.current]
+@@searchnext:
+    inc     cx
+    cmp     cx,[cs:buffer.size]
+    jb      @@read
+    xor     cx,cx
+    jmp     @@read
+@@prepread:
+    mov     cx,bx
+@@read: 
+    mov     [cs:buffer.current],cx   
+    mov     [@tempsec],cx
+    mov     ax,[cs:myboot.sectorsize]
+    mul     cx
+    mov     di,ax
+	mov	    ax,[@sector]
 	xor   	dx,dx
 	div   	[cs:myboot.sectorspertrack]
 	inc   	dl
@@ -740,21 +812,106 @@ PROC readsector FAR
 	mov 	cx,ax              
 	xchg 	cl,ch             
 	shl 	cl,6                
-	or 	cl,bl       
-	mov 	bx,[@pointer]
-	mov 	si,5
+	or 	    cl,bl       
+	mov 	bx,di
+	mov 	si,3
 @@tryagain:
 	mov 	ax,0201h
   	int 	13h
-  	jnc 	@@done
+  	jnc 	@@prepcopy
   	dec 	si
   	jnz 	@@tryagain
+    mov     bx,[@tempsec]
+    shl     bx,1
+    mov     [word ptr bx+offset buffer.chain],0FFFEh
+@@error:
+    stc
+    ret
+@@preprepcopy:
+    mov     [@tempsec],cx
+@@prepcopy:
+    mov     bx,[@tempsec]
+    mov     ax,[@tempsec]
+    mov     cx,[@sector]
+    shl     bx,1
+    mov     [cs:bx+offset buffer.chain],cx
+    mov     cx,[cs:myboot.sectorsize]
+    mul     cx
+    mov     di,ax
+@@copy:
+    push    ds
+    push    es
+    pop     ds
+    pop     es
+    mov     si,di
+    mov     di,[@pointer]
+    cld 
+    rep     movsb
 @@done:
-        ret
+    ret
 endp readsector
+
+;=============SETBUFFER============
+;change la taille des buffers a %0
+;->
+;<- Flag Carry si erreur
+;====================================
+PROC setbuffer FAR
+        ARG     @size:word
+	USES 	ax,cx,di,ds,es
+    push    cs
+    push    cs
+    pop     ds
+    pop     es
+    call    [cs:mbfindsb],offset databuffer,cs
+    jc      @@nodatabuffer
+    call    [cs:mbfree],ax
+@@nodatabuffer:
+    mov  ax,[@size]
+    mov  cx,ax
+    mov  [buffer.size],ax
+       	mul	[myboot.sectorsize]
+        call    [cs:mbcreate],offset databuffer,ax
+        jc      @@errorinit
+        call    [cs:mbresident],ax
+        jc      @@errorinit
+        call    [cs:mbchown],ax,cs
+        jc      @@errorinit
+    mov  [buffer.current],0FFFFh
+    mov  ax,0FFFFh
+    mov  di,offset buffer.chain
+    cld
+    rep  stosw
+    clc
+    ret
+@@errorinit:
+    stc
+    ret
+endp setbuffer
+
+;=============GETBUFFER============
+;renvoie la structure de buffer en %0
+;->
+;<- Flag Carry si erreur
+;====================================
+PROC getbuffer FAR
+    ARG     @pointer:word
+	USES 	ax,cx,di,ds,es
+    push    cs
+    push    ds
+    pop     es
+    pop     ds
+    mov     si,offset buffer
+    mov     di,[@pointer]
+    mov     cx,size buffer
+    cld
+    rep     movsb
+    clc
+    ret
+endp getbuffer
    
 ;=============WRITESECTOR============
-;Ecrit le secteur %0 pointé par ds:%0
+;Ecrit le secteur %0 pointé par ds:%1
 ;->
 ;<- Flag Carry si erreur
 ;====================================
@@ -777,7 +934,7 @@ PROC writesector FAR
 	shl 	cl,6                
 	or 	cl, bl         
 	mov 	bx,[@pointer]
-	mov 	si,5
+	mov 	si,3
 @@tryagain:
 	mov 	ax,0301h
   	int 	13h
