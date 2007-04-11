@@ -660,8 +660,8 @@ PROC mbloadfuncs FAR
         jne     @@findend
         mov     [byte ptr bx],0
         call    [cs:projfile],si
-        jc      @@erroronload
         mov     [byte ptr bx],':'
+        jc      @@erroronload
 ;pushad
 ;call biosprint,si
 ;popad
