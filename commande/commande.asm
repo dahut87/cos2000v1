@@ -214,8 +214,8 @@ code_detect:
         push    eax
         call    [cs:print],offset msg_pci_info
         call    [cs:print],offset msg_pci_enum
-        xor     bx,bx
-        xor     cx,cx
+        xor     ebx,ebx
+        xor     ecx,ecx
         xor     si,si
 searchpci:
         call    [cs:getcardinfo],bx,cx,si,offset temp
@@ -276,8 +276,8 @@ msg_cpu_detect_inf db "  -Fondeur  : %0\l  -Modele   : %0\l  -Revision : %u\l  -
 msg_pci            db "Detection des systemes PCI",0
 msg_pci_info       db "  -Version  : %yB.%yB\l  -Numero bus max: %u\l",0
 msg_pci_enum       db "  -Enumeration des peripheriques PCI:\l"
-                   db "   |Vendeur|Modele|Bus |Dev.|Func|Classe.Sous-classe\l",0
-msg_pci_card       db "   | %hW  | %hW |%w|%w|%w|%0P.%0P\l",0
+                   db "   | Vendeur | Modele |Bus |Dev.|Func|Classe.Sous-classe\l",0
+msg_pci_card       db "   | 0x%hW  | 0x%hW |%w|%w|%w|%0P.%0P\l",0
 msg_vmware         db "\c04 VMWare a ete detecte !!!\c07\l",0
 
 code_mode:
@@ -397,6 +397,60 @@ itemshow     db '\l0x%hW:0x%hW | 0x%hW',0
 
 strebp db '<-- BP',0
 stresp db '<-- SP',0
+
+
+code_setbuffer:
+        call    [cs:gettypeditem],di,0,' '
+        call    [cs:setbuffer],ax
+
+code_getbuffer:
+        mov     si,offset diskbuffers
+        call    [cs:getbuffer],si
+        xor     ecx,ecx
+        mov     cx,[diskbuffers.current]
+        push    ecx
+        mov     cx,[diskbuffers.size]
+        push    ecx
+        call    [cs:print],offset showbuffers
+        mov     si,offset diskbuffers.chain
+        xor     bx,bx
+showbuffer:
+        cmp     [word ptr si],0FFFFh
+        jne     notnoted
+        push    offset noted
+        jmp     islikeit
+notnoted:
+        cmp     [word ptr si],0FFFEh
+        jne     notempty
+        push    offset empty
+        jmp     islikeit
+notempty: 
+        push    [dword ptr si]
+        push    offset occup
+islikeit:
+        cmp     bx,[diskbuffers.current]
+        jne     notthecurrent
+        call    [cs:showchar],'*'
+        jmp     okletsgo
+notthecurrent:
+        call    [cs:showchar],' '
+okletsgo:
+        call    [cs:print]
+        inc     si
+        inc     si
+        inc     bx
+        dec     cx
+        jnz     showbuffer
+        ret
+
+empty db '\c06------',0
+noted db '\c07------',0
+occup db '\c170x%hW',0
+showbuffers db '\l\c02Contenu des tampons disquette\l\l\c07'
+            db 'Nombre de tampons alloues : %u\l'
+            db 'Dernier element du tampon : %u\l\l',0
+
+diskbuffers diskbuffer <>
 
 code_dump:
         call    [cs:gettypeditem],di,0,' '     
@@ -962,9 +1016,9 @@ fino:
         ret
 oui db     "oui",0
 non db     "non",0
-line2   db      "%0P\h15| %w\h24| %0\h30| %0P\h47| 0x%hW\h56| %0\l",0
+line2   db      "%0P\h15| %w\h24| %0\h30| %0P\h47| 0x%hW\h57| %0\l",0
 fin     db      "\l\l\c02%u octets de memoire disponible\l\c07",0
-msg     db      "\l\c02Plan de la memoire\c07\l\lNom            | Taille | Res | Parent         | Mem    | CE \l",0
+msg     db      "\l\c02Plan de la memoire\c07\l\lNom du bloc    | Taille | Res | Bloc parent    | Adresse | CE \l",0
 none    db      "?????",0
 
 
@@ -1068,6 +1122,8 @@ dw      str_detect,code_detect,syn_detect,help_detect
 dw      str_exports,code_exports,syn_exports,help_exports
 dw      str_imports,code_imports,syn_imports,help_imports
 dw      str_sections,code_sections,syn_sections,help_sections
+dw      str_getbuffer,code_getbuffer,syn_getbuffer,help_getbuffer
+dw      str_setbuffer,code_setbuffer,syn_setbuffer,help_setbuffer
 dw      0
 
 str_exit db     'QUIT',0
@@ -1090,6 +1146,8 @@ str_detect db   'DETECT',0
 str_exports db   'EXPORTS',0
 str_imports db   'IMPORTS',0
 str_sections db   'SECTIONS',0
+str_getbuffer db 'GETBUFFER',0
+str_setbuffer db 'SETBUFFER',0
 
 syn_exit db     0
 syn_version db  0
@@ -1111,6 +1169,8 @@ syn_detect db    0
 syn_exports db    '?',0
 syn_imports db    '?',0
 syn_sections  db    '?',0
+syn_getbuffer db 0
+syn_setbuffer db 'FFh',0
 
 help_exit db    'Permet de quitter l''interpreteur',0
 help_version db 'Affiche la version de COS',0
@@ -1132,6 +1192,8 @@ help_detect db  'Detecte et Affiche les peripheriques PCI et le CPU',0
 help_exports db 'Affiche toutes les exportations du fichier specifie',0
 help_imports db 'Affiche toutes les importations du fichier specifie',0
 help_sections db 'Affiche toutes les sections du fichier specifie',0
+help_getbuffer db 'Renvoi le contenu et la configuration des tampons disquette',0
+help_setbuffer db 'Fixe la taille des tampons disquette',0
 
 derror  db      '\c04Erreur de Syntaxe !',0
 error_syntax db '\c04La commande ou l''executable n''existe pas ! F1 pour %0',0
@@ -1169,6 +1231,8 @@ use DISQUE,initdrive
 use DISQUE,changedir
 use DISQUE,searchfile
 use DISQUE,projfile
+use DISQUE,getbuffer
+use DISQUE,setbuffer
 use SYSTEME,mbget
 use SYSTEME,mbfind
 use SYSTEME,mbfindsb
