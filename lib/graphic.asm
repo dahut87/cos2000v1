@@ -15,7 +15,7 @@ header exe <"CE",1,0,0,offset exports,offset imports,,>
 exporting
 declare hline
 declare line
-declare polyFill
+declare polyfill
 ende
 
 importing
@@ -115,7 +115,7 @@ endp absolute
 ymax equ 200
 
 ; initialise un segment 2
-PROC polyFill FAR
+PROC polyfill FAR
          ARG     @pointer:word,@nbfaces:word,@color:word;
          LOCAL   @@startx:word:200,@@endx:word:200,@@pas:dword,@@miny:word,@@maxy:word
          USES    eax,ebx,ecx,edx,si,di,es
@@ -226,5 +226,5 @@ PROC polyFill FAR
          cmp    cx,[@@maxy]
          jna    @@drawboucle
          ret
-endp polyFill        
+endp polyfill        
  
