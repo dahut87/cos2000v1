@@ -18,7 +18,7 @@ declare draw3d_point
 declare draw3d_line
 declare draw3d_hidden
 declare draw3d_hidden_fill
-;declare load3ds
+declare load3ds
 declare translate
 declare translatex
 declare translatey
@@ -39,7 +39,7 @@ ende
 
 importing
 use GRAPHIC.LIB,line
-use GRAPHIC.LIB,polyFill
+use GRAPHIC.LIB,polyfill
 use VIDEO,showpixel
 endi
 
@@ -62,7 +62,7 @@ endp draw3d_point
         
 ;affiche liste vertex %0
 PROC draw3d_line FAR
-        ARG     @nbfaces:word,@faces:word,@vertex3d:word,@vertex2d:word,@camera:word,@color:word
+        ARG     @type:word,@faces:word,@vertex3d:word,@vertex2d:word,@camera:word,@color:word
         USES    ax,bx,cx,dx,si,di
         mov     di,[@faces]
         mov     si,[@vertex2d]
@@ -73,7 +73,7 @@ PROC draw3d_line FAR
         inc     di
         inc     di
 @@draw:
-        mov     ax,[@nbfaces]
+        mov     ax,[@type]
         dec     al
         mov     dx,di
 @@drawset:
@@ -111,7 +111,7 @@ endp draw3d_line
 
 ;affiche liste vertex %0
 PROC draw3d_hidden FAR
-        ARG     @nbfaces:word,@faces:word,@vertex3d:word,@vertex2d:word,@camera:word,@color:word
+        ARG     @type:word,@faces:word,@vertex3d:word,@vertex2d:word,@camera:word,@color:word
         LOCAL   @@a1:word,@@a2:word,@@b1:word
         USES    ax,bx,cx,dx,si,di
         mov     di,[@faces]
@@ -162,14 +162,14 @@ PROC draw3d_hidden FAR
         sub     ecx,eax
         pop     cx
         jge     @@nohidden
-        mov    ax,[@nbfaces]
+        mov    ax,[@type]
         shl    ax,1
         add    di,ax
         dec    cx
         jnz    @@draw
         jmp    @@endof
 @@nohidden:
-        mov     ax,[@nbfaces]
+        mov     ax,[@type]
         dec     al
         mov     dx,di
 @@drawset:
@@ -208,7 +208,7 @@ endp draw3d_hidden
 
 ;creer table pour face caché %0
 PROC draw3d_hidden_fill FAR
-        ARG     @nbfaces:word,@faces:word,@vertex3d:word,@vertex2d:word,@camera:word,@color:word
+        ARG     @type:word,@faces:word,@vertex3d:word,@vertex2d:word,@camera:word,@color:word
         USES    eax,bx,ecx,edx,si,di
         LOCAL   @@a1:word,@@a2:word,@@b1:word
         mov     di,[@faces]
@@ -254,7 +254,7 @@ PROC draw3d_hidden_fill FAR
         sub     ecx,eax
         pop     cx
         jl      @@hidden
-        mov     ax,[@nbfaces]
+        mov     ax,[@type]
         mov     si,[@vertex3d]
         inc     si
         inc     si
@@ -270,7 +270,7 @@ PROC draw3d_hidden_fill FAR
         dec     al
         jnz     @@calcz
 @@hidden:
-        mov    ax,[@nbfaces]
+        mov    ax,[@type]
         shl    ax,1
         add    di,ax
 @@enofvalue:
@@ -281,120 +281,139 @@ endp draw3d_hidden_fill
 
 
 ;charge un fichier 3ds logé en %0 renvoie error
+;sauvegarde en :
+;- %1 le nom de l'objet
+;- %2 les vertex 3D de l'objet
+;- %3 la matrice de transformation de l'objet
+;- %4 les faces de l'objet
+;- %5 le type de face de l'objet
 ;1 non 3ds
 ;2 non 3 et >
-;PROC load3ds FAR
-        ;ARG     @pointer:word
-        ;USES    eax,bx,cx,si,di
-;        
-        ;mov     si,[@pointer]
-        ;cmp     [word ptr si],main
-        ;jne     @@error1
-        ;cmp     [word ptr si+28],3
-        ;jb      @@error2
-;@@reading:
-        ;mov     ax,[si]
-        ;mov     bx,[si+2]
-        ;cmp     ax,main
-        ;je      @@enter
-        ;cmp     ax,edit
-        ;je      @@enter
-        ;cmp     ax,mesh
-        ;je      @@enter
-        ;cmp     ax,object
-        ;je      @@readobject
-        ;cmp     ax,vertex
-        ;je      @@readvertex
-        ;cmp     ax,locale
-        ;je      @@readmatrix
-        ;cmp     ax,face
-        ;je      @@readfaces
-;@@next:
-        ;add     si,bx
-        ;jmp     @@reading        
-;@@enter:
-        ;add     si,6
-        ;jmp     @@reading       
-;@@readobject:
-        ;add     si,6
-        ;mov     di,si
-        ;mov     al,0
-        ;cld
-        ;repne   scasb
-        ;mov     cx,di
-        ;sub     cx,si
-        ;mov     di,offset objectnamep
-        ;rep     movsb
-        ;jmp     @@reading        
-;@@readvertex:
-        ;add     si,6
-        ;mov     ax,[si]
-        ;mov     vertexnbp,ax
-        ;inc     si
-        ;inc     si
-        ;mov     cx,ax
-        ;shl     ax,1
-        ;add     cx,ax
-        ;mov     di,offset vertexp
-        ;cld
-        ;rep     movsd
-        ;jmp     @@reading
-;@@readmatrix:
-        ;add     si,6
-        ;mov     di,offset matrixp
-        ;mov     eax,[si]
-        ;mov     [(mat di).p1],eax
-        ;mov     eax,[si+4*1]
-        ;mov     [(mat di).p5],eax
-        ;mov     eax,[si+4*2]
-        ;mov     [(mat di).p9],eax
-        ;mov     eax,[si+4*3]
-        ;mov     [(mat di).p2],eax
-        ;mov     eax,[si+4*4]
-        ;mov     [(mat di).p6],eax
-        ;mov     eax,[si+4*5]
-        ;mov     [(mat di).p10],eax
-        ;mov     eax,[si+4*6]
-        ;mov     [(mat di).p3],eax
-        ;mov     eax,[si+4*7]
-        ;mov     [(mat di).p7],eax
-        ;mov     eax,[si+4*8]
-        ;mov     [(mat di).p11],eax
-        ;mov     eax,[si+4*9]
-        ;mov     [(mat di).p4],eax
-        ;mov     eax,[si+4*10]
-        ;mov     [(mat di).p8],eax
-        ;mov     eax,[si+4*11]
-        ;mov     [(mat di).p12],eax
-        ;mov     eax,[cs:un]
-        ;mov     [(mat di).p16],eax
-        ;mov     eax,0
-        ;mov     [(mat di).p13],eax
-        ;mov     [(mat di).p14],eax
-        ;mov     [(mat di).p15],eax
-        ;add     si,12*4
-        ;jmp     @@reading        
-;@@readfaces:
-        ;add     si,6
-        ;mov     ax,[si]
-        ;mov     facenbp,ax
-        ;inc     si
-        ;inc     si
-        ;mov     di,offset facep
-        ;cld
-;@@readall:
-        ;mov     cx,3
-        ;rep     movsw
-        ;inc     si
-        ;inc     si
-        ;dec     ax
-        ;jnz     @@readall
+PROC load3ds FAR
+        ARG     @seg:word,@add:word,@objectname:word,@vertex:word,@matrix:word,@face:word
+        USES    eax,bx,cx,si,di,ds,es,fs
+        push    ds
+        pop     fs
+        mov     si,[@add]
+        mov     ds,[@seg]
+        cmp     [word ptr si],main
+        jne     @@error1
+        cmp     [word ptr si+28],3
+        jb      @@error2
+@@reading:
+        mov     ax,[si]
+        mov     bx,[si+2]
+        cmp     ax,main
+        je      @@enter
+        cmp     ax,edit
+        je      @@enter
+        cmp     ax,mesh
+        je      @@enter
+        cmp     ax,object
+        je      @@readobject
+        cmp     ax,vertex
+        je      @@readvertex
+        cmp     ax,locale
+        je      @@readmatrix
+        cmp     ax,face
+        je      @@readfaces
+@@next:
+        add     si,bx
+        jmp     @@reading        
+@@enter:
+        add     si,6
+        jmp     @@reading       
+@@readobject:
+        add     si,6
+        mov     di,si
+        mov     al,0
+        mov     es,[@seg]
+        mov     cx,12
+        cld
+        repne   scasb
+        mov     cx,di
+        sub     cx,si
+        mov     di,[@objectname]
+        push    fs
+        pop     es
+        cld
+        rep     movsb
+        jmp     @@reading        
+@@readvertex:
+        add     si,6
+        mov     ax,[si]
+        mov     di,[@vertex]
+        mov     [fs:di],ax
+        inc     si
+        inc     si
+        mov     cx,ax
+        shl     ax,1
+        add     cx,ax
+        add     di,2
+        cld
+        push    fs
+        pop     es
+        cld
+        rep     movsd
+        jmp     @@reading
+@@readmatrix:
+        add     si,6
+        mov     di,[@matrix]
+        mov     eax,[si]
+        mov     [fs:(mat di).p1],eax
+        mov     eax,[si+4*1]
+        mov     [fs:(mat di).p5],eax
+        mov     eax,[si+4*2]
+        mov     [fs:(mat di).p9],eax
+        mov     eax,[si+4*3]
+        mov     [fs:(mat di).p2],eax
+        mov     eax,[si+4*4]
+        mov     [fs:(mat di).p6],eax
+        mov     eax,[si+4*5]
+        mov     [fs:(mat di).p10],eax
+        mov     eax,[si+4*6]
+        mov     [fs:(mat di).p3],eax
+        mov     eax,[si+4*7]
+        mov     [fs:(mat di).p7],eax
+        mov     eax,[si+4*8]
+        mov     [fs:(mat di).p11],eax
+        mov     eax,[si+4*9]
+        mov     [fs:(mat di).p4],eax
+        mov     eax,[si+4*10]
+        mov     [fs:(mat di).p8],eax
+        mov     eax,[si+4*11]
+        mov     [fs:(mat di).p12],eax
+        mov     eax,[cs:un]
+        mov     [fs:(mat di).p16],eax
+        mov     eax,0
+        mov     [fs:(mat di).p13],eax
+        mov     [fs:(mat di).p14],eax
+        mov     [fs:(mat di).p15],eax
+        add     si,12*4
+        jmp     @@reading        
+@@readfaces:
+        add     si,6
+        mov     ax,[si]
+        mov     di,[@face]
+        mov     [fs:di],ax
+        inc     si
+        inc     si
+        add     di,2
+        push    fs
+        pop     es
+        cld
+@@readall:
+        mov     cx,3
+        rep     movsw
+        inc     si
+        inc     si
+        dec     ax
+        jnz     @@readall
         ;;jmp     @@reading
-;
-;@@error1:
-;@@error2:
-        ;ret
-;endp load3ds  
+@@error1:
+@@error2:
+        ret
+endp load3ds  
 
 un dd 1.0
 zero dd 0.0
