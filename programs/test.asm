@@ -14,6 +14,7 @@ start:
 header exe <"CE",1,0,0,,offset imports,,offset realstart>
 
 realstart:
+    call    [cs:randomize]
     push    0FFFFh
     pushd    652201
     pushd    1545454545
@@ -91,29 +92,13 @@ go4:
     call    [restorestate]
     retf
 put:
-    call    random
-    mov     di,dx
+    call    [cs:random]
+    mov     di,ax
     and     di,4096-2
     mov     si,offset fond
     call    showstring2
     ret
-random:      
-    push    ax
-    MOV     AX,[cs:randseed]
-    MOV     DX,8405h
-    MUL     DX
-    INC     AX
-    MOV     [cs:randseed],AX
-    pop     ax
-    ret
-randseed        dw 1234h   
-Randomize:        
-    push    ax	cx dx
-    mov     ah,0
-    int     1ah
-    mov     [cs:randseed],dx
-    pop     dx cx ax
-    ret
+
 		  
 zero db 'Chaine a z‚ro terminal',0
 fixe db 20,'Chaine a taille fixe'
@@ -156,6 +141,8 @@ strinaize4:
 
 
 importing
+use MATH.LIB,randomize
+use MATH.LIB,random
 use VIDEO.LIB,print
 use VIDEO,xchgpages
 use VIDEO,setvideomode
