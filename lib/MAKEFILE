@@ -1,7 +1,7 @@
 asm= lzasm /z/t
 lnk= elink
 
-all: detect.lib video.lib str0.lib bmp.lib graphic.lib 3d.lib
+all: detect.lib video.lib str0.lib bmp.lib graphic.lib 3d.lib math.lib
 
 .asm.obj: 
       $(asm) $<
