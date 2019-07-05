@@ -1,9 +1,5 @@
-model tiny,stdcall
-p486
-locals
-jumps
-codeseg
-option procalign:byte
+use16
+align 1
 
 include "..\include\mem.h"
 include "..\include\fat.h"
@@ -13,7 +9,7 @@ org 7C00h
 
 jmp boot
 
-bootsec bootinfo <"COS2000A",512,1,1,2,224,2880,0F0h,9,18,2,0,0,0,0,0,29h,01020304h,"COS2000    ","FAT12   ">
+bootsec bootinfo  "COS2000A","COS2000    ","FAT12   "
 
 errorloading  db " [Erreur]",0dh,0ah,0
 okloading     db "Recherche noyau ",0Dh,0ah,"  -"
@@ -21,10 +17,8 @@ sys           db "SYSTEME SYS",0
 syst          db " [  Ok  ]",0dh,0ah,"Chargement ",0
 dot           db ".",0
 
-
-
 errorboot:
-        mov      si,offset errorloading
+        mov      si,errorloading
         call     showstr
         mov      ah,0
         int      16h
@@ -46,14 +40,14 @@ boot2:
         mov      dl,[bootsec.bootdrive]
         int      13h
         jc       errorboot
-        mov      si,offset okloading
+        mov      si,okloading
         call     showstr
         mov      cx,[bootsec.reservedsectors]
 	add      cx,[bootsec.hiddensectorsh]
         adc      cx,[bootsec.hiddensectorsl]
 	push     cx
 	mov      bx,[bootsec.sectorsperfat]
-	mov      di,offset bufferfat
+	mov      di,bufferfat
 readfat:
 	call     readsector
         jc       errorboot
@@ -72,24 +66,24 @@ readfat:
         div      [bootsec.sectorsize]
         add      ax,cx
         sub      ax,2
-        mov      [word ptr bootsec.reservedfornt],ax
+        mov      word [bootsec.reservedfornt],ax
         xor      dx,dx
 checkroot:
-	mov      di,offset buffer
+	mov      di,buffer
         call     readsector
         jc       errorboot
         xor      bx,bx
 findnext:
-        cmp      [byte ptr di],0
+        cmp      byte [di],0
         je       errorboot
-	cmp      [byte ptr di],0E5h
+	cmp      byte [di],0E5h
 	je       no
-        cmp      [byte ptr di],041h
+        cmp     byte [di],041h
 	je       no
-	mov      si,offset dot
+	mov      si,dot
         call     showstr
 	push     di cx
-	mov      si,offset sys
+	mov      si,sys
 	mov      cx,11
         rep      cmpsb
         pop      cx di
@@ -105,7 +99,7 @@ no:
         inc      cx
         jmp      checkroot
 oksystem:
-        mov      si,offset syst
+        mov      si,syst
         call     showstr
         mov      cx,[di+26]
         mov      ax,8000h
@@ -113,13 +107,13 @@ oksystem:
         push     es
         mov      di,0000h
         push     0010h
-        mov      si,offset dot
+        mov      si,dot
         xor	 ax,ax
 fatagain:
         cmp      cx,0FF0h
         jae      finishload
         push     cx
-        add      cx,[word ptr bootsec.reservedfornt]
+        add      cx,word [bootsec.reservedfornt]
         call     readsector
         pop      cx
         jc       errorboot
@@ -167,7 +161,7 @@ done:
 
 getfat:
 	push    ax bx dx di
-	mov     di,offset bufferfat
+	mov     di,bufferfat
 	mov	ax,cx
 	mov	bx,ax
 	and     bx,0000000000000001b
@@ -206,11 +200,13 @@ fin:
         pop     si bx ax
         ret
         
-        
+rb 7C00h+512-2-$
 db 055h,0AAh
 
 endof:
 
-buffer      equ offset endof+2048
-bufferfat   equ offset endof+4096
+buffer:      
+rb 7C00h+512+2048-$
+bufferfat:
+rb 7C00h+512+4096-$
 
