@@ -38,13 +38,13 @@ struc entries
 }
 
 ;Pour recherches
-struc find
+struc find files
 {
 .files                   db      13 dup (0) ;le fichier
 .entryplace		dw	0 ;En octet
 .adressdirectory		dw	0 ;En cluster
 .firstsearch		db	1 ;Premiere requete ?
-.result                  entries <>
+.result                  entries
 }
 
 struc bootinfo vendor,drivename,serialnumber

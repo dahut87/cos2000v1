@@ -1,9 +1,3 @@
-model tiny,stdcall
-p586N
-locals
-jumps
-codeseg
-option procalign:byte
 
 include "..\include\mem.h"
 include "..\include\divers.h"
@@ -16,7 +10,7 @@ memorystart equ 0052h             ;premier bloc de la mémoire
 org 0h
 
 mb0:
-header exe <"CE",1,0,0,offset exports,offset imports,offset section,offset start>
+header exe 1
 
 start:
         push    cs
@@ -27,20 +21,20 @@ start:
         pop     es
         pop     fs
         pop     gs
-        call    biosprint,offset return
-        call    biosprint,offset msg_memory
-        call    biosprint,offset return
-        call    biosprint,offset msg_memory_init
-        call    mbinit
+        stdcall   biosprint,makereturn
+        stdcall    biosprint,msg_memory
+        stdcall    biosprint,makereturn
+        stdcall    biosprint,msg_memory_init
+        stdcall    mbinit
         jc      error
-        call    biosprint,offset msg_ok
-        call    biosprint,offset msg_memory_section
+        stdcall    biosprint,msg_ok
+        stdcall    biosprint,msg_memory_section
         mov     ax,cs
-        call    mbloadsection,ax
+        stdcall    mbloadsection,ax
         jc      error
-        call    biosprint,offset msg_ok
-        call    biosprint,offset msg_memory_jumps
-        jmp     [dword ptr cs:pointer]
+        stdcall    biosprint,msg_ok
+        stdcall    biosprint,msg_memory_jumps
+        jmp     dword [cs:pointer]
 pointer:
         dw suite
         dw memorystart
@@ -53,29 +47,29 @@ suite:
         pop     es
         pop     fs
         pop     gs
-        call    biosprint,offset msg_ok
-        call    biosprint,offset msg_video_init
-        call    [cs:setvideomode],2
+        stdcall    biosprint,msg_ok
+        stdcall    biosprint,msg_video_init
+        stdcall    [cs:setvideomode],2
         jc      error
-        call    [cs:clearscreen]
-        call    [cs:print],offset msg_memory
-        call    [cs:print],offset msg_ok2
-        call    [cs:print],offset msg_memory_init
-        call    [cs:print],offset msg_ok2
-        call    [cs:print],offset msg_memory_section
-        call    [cs:print],offset msg_ok2
-        call    [cs:print],offset msg_memory_jumps
-        call    [cs:print],offset msg_ok2
-        call    [cs:print],offset msg_video_init
-        call    [cs:print],offset msg_ok2
-        call    [cs:print],offset msg_handler
-        ;call    installirqhandler
-        call    [cs:print],offset msg_ok2
-        call    [cs:print],offset msg_cpu_detect
-        call    [cs:cpuinfo],offset thecpu
-        call    [cs:setinfo],offset thecpu,offset temp
-        call    [cs:print],offset msg_ok2
-        push    offset temp
+        stdcall    [cs:clearscreen]
+        stdcall    [cs:print],msg_memory
+        stdcall    [cs:print],msg_ok2
+        stdcall    [cs:print],msg_memory_init
+        stdcall    [cs:print],msg_ok2
+        stdcall    [cs:print],msg_memory_section
+        stdcall    [cs:print],msg_ok2
+        stdcall    [cs:print],msg_memory_jumps
+        stdcall    [cs:print],msg_ok2
+        stdcall    [cs:print],msg_video_init
+        stdcall    [cs:print],msg_ok2
+        stdcall    [cs:print],msg_handler
+        ;stdcall    installirqhandler
+        stdcall    [cs:print],msg_ok2
+        stdcall    [cs:print],msg_cpu_detect
+        stdcall    [cs:cpuinfo],thecpu
+        stdcall    [cs:setinfo],thecpu,temporary
+        stdcall    [cs:print],msg_ok2
+        push    temporary
         xor     eax,eax
         mov     al,[thecpu.family]
         push    eax
@@ -83,13 +77,13 @@ suite:
         push    eax
         mov     al,[thecpu.stepping]
         push    eax
-        push    offset thecpu.names
-        push    offset thecpu.vendor
-        call    [cs:print],offset msg_cpu_detect_inf
-        call    [cs:print],offset msg_pci
-        call    [cs:pciinfo],offset thepci
+        push    thecpu.names
+        push    thecpu.vendor
+        stdcall    [cs:print],msg_cpu_detect_inf
+        stdcall    [cs:print],msg_pci
+        stdcall    [cs:pciinfo],thepci
         jc      nopci
-        call    [cs:print],offset msg_ok2
+        stdcall    [cs:print],msg_ok2
         xor     eax,eax
         mov     al,[thepci.maxbus]
         push    eax
@@ -97,25 +91,25 @@ suite:
         push    eax
         mov     al,[thepci.version_major]
         push    eax
-        call    [cs:print],offset msg_pci_info
-        call    [cs:print],offset msg_pci_enum
+        stdcall    [cs:print],msg_pci_info
+        stdcall    [cs:print],msg_pci_enum
         xor     ebx,ebx
         xor     ecx,ecx
         xor     si,si
 searchpci:
-        call    [cs:getcardinfo],bx,cx,si,offset temp
+        stdcall [cs:getcardinfo],bx,cx,si,temporary
         jc      stopthis
-        mov     al,[(pcidata offset temp).subclass]
+        mov     al,[temporary+pcidata.subclass]
         push    ax
-        mov     al,[(pcidata offset temp).class]
+        mov     al,[temporary+pcidata.class]
         push    ax
-        call    [cs:getpcisubclass]
+        stdcall    [cs:getpcisubclass]
         push    dx
         push    ax
-        mov     al,[(pcidata offset temp).class]
+        mov     al,[temporary+pcidata.class]
         xor     ah,ah
         push    ax
-        call    [cs:getpciclass]
+        stdcall    [cs:getpciclass]
         push    dx
         push    ax
         push    4
@@ -124,11 +118,11 @@ searchpci:
         push    ecx
         push    4
         push    ebx
-        mov     ax,[(pcidata offset temp).device]
+        mov     ax,[temporary+pcidata.device]
         push    eax
-        mov     ax,[(pcidata offset temp).vendor]
+        mov     ax,[temporary+pcidata.vendor]
         push    eax
-        call    [cs:print],offset msg_pci_card
+        stdcall    [cs:print],msg_pci_card
         inc     si
         cmp     si,7
         jbe     searchpci
@@ -143,42 +137,42 @@ stopthis:
         jbe     searchpci
         jmp     next
 nopci:
-        call    [cs:print],offset msg_echec2
+        stdcall    [cs:print],msg_echec2
 next:
-        ;call    [cs:detectvmware]
+        ;stdcall    [cs:detectvmware]
         ;jne     novirtual
-        ;call    [cs:print],offset msg_vmware
+        ;stdcall    [cs:print],msg_vmware
 novirtual:
-        ;call    [cs:print],offset msg_flat
-        ;call    enablea20
-        ;call    flatmode
+        ;stdcall    [cs:print],msg_flat
+        ;stdcall    enablea20
+        ;stdcall    flatmode
         ;xor     ax,ax
         ;mov     fs,ax
         ;mov     esi,0100000h
         ;mov     [dword ptr fs:esi],"OKIN"
-        call    [cs:print],offset msg_ok2
-        call    [cs:print],offset msg_disk_init
-        call    [cs:initdrive]
+        stdcall    [cs:print],msg_ok2
+        stdcall    [cs:print],msg_disk_init
+        stdcall    [cs:initdrive]
         jc      error2
-        call    [cs:print],offset msg_ok2
-        call    [cs:print],offset msg_launchcommand
-        call    [cs:execfile],offset shell
+        stdcall    [cs:print],msg_ok2
+        stdcall    [cs:print],msg_launchcommand
+        stdcall    [cs:execfile],shell
         jc      error2
 error2:
-        call    [cs:print],offset msg_error2
-        call    bioswaitkey
+        stdcall    [cs:print],msg_error2
+        stdcall    bioswaitkey
         jmp     far 0FFFFh:0000h
 
 error:
-        call    biosprint,offset msg_error
-        call    bioswaitkey
+        stdcall    biosprint,msg_error
+        stdcall    bioswaitkey
         jmp     far 0FFFFh:0000h
         
-shell find <"COMMANDE.CE",0,0,0,1,>
-thepci pciinf <>
-thecpu cpu <>
-temp db 256 dup (0)
-return             db 0dh,0ah,0
+shell find "COMMANDE.CE\0"
+thepci pciinf
+thecpu cpu
+temporary db 256 dup (0)
+makereturn             db 0dh,0ah,0
 msg_memory         db "Initialisation de la memoire",0
 msg_memory_init    db "  -Creation du bloc primordial",0
 msg_memory_section db "  -Developpement des sections",0
@@ -260,37 +254,37 @@ endi
 include "mcb.asm"
 include "8259a.asm"
 
-section:
-dw offset mb0
-dw offset mb1-offset mb0
+allsection:
+dw mb0
+dw mb1-mb0
 db "SYSTEME",0
 
-dw offset mb1
-dw offset mb2-offset mb1
+dw mb1
+dw mb2-mb1
 db "VIDEO",0
 
-dw offset mb2
-dw offset mb3-offset mb2
+dw mb2
+dw mb3-mb2
 db "VIDEO.LIB",0
 
-dw offset mb3
-dw offset mb4-offset mb3
+dw mb3
+dw mb4-mb3
 db "DETECT.LIB",0
 
-dw offset mb4
-dw offset mb5-offset mb4
+dw mb4
+dw mb5-mb4
 db "DISQUE",0
 
 dd 0
 
 mb1:
-includebin "video.sys"
+file "video.sys"
 mb2:
-includebin "..\lib\video.lib"
+file "..\lib\video.lib"
 mb3:
-includebin "..\lib\detect.lib"
+file "..\lib\detect.lib"
 mb4:
-includebin "disque.sys"
+file "disque.sys"
 mb5:
 
 
