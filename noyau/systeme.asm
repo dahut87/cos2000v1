@@ -49,26 +49,26 @@ suite:
         pop     gs
         stdcall    biosprint,msg_ok
         stdcall    biosprint,msg_video_init
-        stdcall    [cs:setvideomode],2
+        invoke     setvideomode,2
         jc      error
-        stdcall    [cs:clearscreen]
-        stdcall    [cs:print],msg_memory
-        stdcall    [cs:print],msg_ok2
-        stdcall    [cs:print],msg_memory_init
-        stdcall    [cs:print],msg_ok2
-        stdcall    [cs:print],msg_memory_section
-        stdcall    [cs:print],msg_ok2
-        stdcall    [cs:print],msg_memory_jumps
-        stdcall    [cs:print],msg_ok2
-        stdcall    [cs:print],msg_video_init
-        stdcall    [cs:print],msg_ok2
-        stdcall    [cs:print],msg_handler
-        ;stdcall    installirqhandler
-        stdcall    [cs:print],msg_ok2
-        stdcall    [cs:print],msg_cpu_detect
-        stdcall    [cs:cpuinfo],thecpu
-        stdcall    [cs:setinfo],thecpu,temporary
-        stdcall    [cs:print],msg_ok2
+        invoke     clearscreen
+        invoke     print,msg_memory
+        invoke     print,msg_ok2
+        invoke     print,msg_memory_init
+        invoke     print,msg_ok2
+        invoke     print,msg_memory_section
+        invoke     print,msg_ok2
+        invoke     print,msg_memory_jumps
+        invoke     print,msg_ok2
+        invoke     print,msg_video_init
+        invoke     print,msg_ok2
+        invoke     print,msg_handler
+        ;invoke    installirqhandler
+        invoke     print,msg_ok2
+        invoke     print,msg_cpu_detect
+        invoke     cpuinfo,thecpu
+        invoke     setinfo,thecpu,temporary
+        invoke     print,msg_ok2
         push    temporary
         xor     eax,eax
         mov     al,[thecpu.family]
@@ -79,11 +79,11 @@ suite:
         push    eax
         push    thecpu.names
         push    thecpu.vendor
-        stdcall    [cs:print],msg_cpu_detect_inf
-        stdcall    [cs:print],msg_pci
-        stdcall    [cs:pciinfo],thepci
+        invoke     print,msg_cpu_detect_inf
+        invoke     print,msg_pci
+        invoke     pciinfo,thepci
         jc      nopci
-        stdcall    [cs:print],msg_ok2
+        invoke     print,msg_ok2
         xor     eax,eax
         mov     al,[thepci.maxbus]
         push    eax
@@ -91,25 +91,28 @@ suite:
         push    eax
         mov     al,[thepci.version_major]
         push    eax
-        stdcall    [cs:print],msg_pci_info
-        stdcall    [cs:print],msg_pci_enum
+        invoke     print,msg_pci_info
+        invoke     print,msg_pci_enum
         xor     ebx,ebx
         xor     ecx,ecx
         xor     si,si
 searchpci:
-        stdcall [cs:getcardinfo],bx,cx,si,temporary
+        invoke  getcardinfo,bx,cx,si,temporary
         jc      stopthis
-        mov     al,[temporary+pcidata.subclass]
+	virtual at temporary
+	.pcidata pcidata
+	end virtual
+        mov     al,[.pcidata.subclass]
         push    ax
-        mov     al,[temporary+pcidata.class]
+        mov     al,[.pcidata.class]
         push    ax
-        stdcall    [cs:getpcisubclass]
+        invoke     getpcisubclass
         push    dx
         push    ax
-        mov     al,[temporary+pcidata.class]
+        mov     al,[.pcidata.class]
         xor     ah,ah
         push    ax
-        stdcall    [cs:getpciclass]
+        invoke     getpciclass 
         push    dx
         push    ax
         push    4
@@ -118,11 +121,11 @@ searchpci:
         push    ecx
         push    4
         push    ebx
-        mov     ax,[temporary+pcidata.device]
+        mov     ax,[.pcidata.device]
         push    eax
-        mov     ax,[temporary+pcidata.vendor]
+        mov     ax,[.pcidata.vendor]
         push    eax
-        stdcall    [cs:print],msg_pci_card
+        invoke     print,msg_pci_card
         inc     si
         cmp     si,7
         jbe     searchpci
@@ -137,29 +140,29 @@ stopthis:
         jbe     searchpci
         jmp     next
 nopci:
-        stdcall    [cs:print],msg_echec2
+        invoke     print,msg_echec2
 next:
-        ;stdcall    [cs:detectvmware]
+        ;invoke     detectvmware
         ;jne     novirtual
-        ;stdcall    [cs:print],msg_vmware
+        ;invoke     print,msg_vmware
 novirtual:
-        ;stdcall    [cs:print],msg_flat
-        ;stdcall    enablea20
-        ;stdcall    flatmode
+        ;invoke    print,msg_flat
+        ;invoke    enablea20
+        ;invoke    flatmode
         ;xor     ax,ax
         ;mov     fs,ax
         ;mov     esi,0100000h
         ;mov     [dword ptr fs:esi],"OKIN"
-        stdcall    [cs:print],msg_ok2
-        stdcall    [cs:print],msg_disk_init
-        stdcall    [cs:initdrive]
+        invoke    print,msg_ok2
+        invoke    print,msg_disk_init
+        invoke    initdrive
         jc      error2
-        stdcall    [cs:print],msg_ok2
-        stdcall    [cs:print],msg_launchcommand
-        stdcall    [cs:execfile],shell
+        invoke    print,msg_ok2
+        invoke    print,msg_launchcommand
+        invoke    execfile,shell
         jc      error2
 error2:
-        stdcall    [cs:print],msg_error2
+        invoke     print,msg_error2
         stdcall    bioswaitkey
         jmp     far 0FFFFh:0000h
 

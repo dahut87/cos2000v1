@@ -1,69 +1,62 @@
-model tiny,stdcall
-p586N
-locals
-jumps
-codeseg
-option procalign:byte
-
 include "..\include\mem.h"
 include "..\include\divers.h"
 
 org 0h
 
 start:
-header exe <"CE",1,0,0,,offset imports,,offset realstart>
+header exe 1
 
 realstart: 
-    call    [cs:mballoc],65535
+    invoke    mballoc,65535
     jc      problem3
     push    ax
     pop     es
-    call    [cs:projfile],offset logo
+    invoke    projfile,logo
     jc      problem
     mov     ecx,eax
-    call    [cs:mbfind],offset logo
+    invoke    mbfind,logo
     jc      problem
-    call    [cs:decompressrle],ax,0,es,0,cx
+    invoke    decompressrle,ax,0,es,0,cx
     jc      problem2
     push    es
     pop     ds
-    call    [cs:savestate]
-    call    [cs:setvideomode],word 8
-    call    [cs:clearscreen]
-    call    [cs:loadbmppalet],word 0
-    call    [cs:showbmp],word 0,word 20,word 150
+    invoke    savestate
+    invoke    setvideomode,word 8
+    invoke    clearscreen
+    invoke    loadbmppalet,word 0
+    invoke    showbmp,word 0,word 20,word 150
     jc      problem4
     push    cs
     pop     ds
-    call    [cs:print],offset poper
+    invoke    print,poper
 endofit:
     xor     ax,ax
     int     16h
-    call    [cs:restorestate]
+    invoke    restorestate
     retf
 
 problem:
     push    cs
     pop     ds
-    call    [cs:print],offset error
+    invoke    print, error
     jmp     endofit
 
 problem2:
     push    cs
     pop     ds
-    call    [cs:print],offset error2
+    invoke    print, error2
     jmp     endofit
 
 problem3:
     push    cs
     pop     ds
-    call    [cs:print],offset error3
+    invoke    print, error3
     jmp     endofit
 
 problem4:
     push    cs
     pop     ds 
-    call    [cs:print],offset error4
+    invoke    print, error4
     jmp     endofit
 
 poper db '\c0BC\c0CO\c0DS\c0E2\c0E0\c0E0\c0F0 en mode graphique',0

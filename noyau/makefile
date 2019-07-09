@@ -1,16 +1,17 @@
 ASM=fasm
 CLEAN=rm -rf
 
-all: systeme.sys disque.sys video.sys
+all: disque.sys video.sys systeme.sys
+	sync
 
 systeme.sys: systeme.asm
-	$(ASM) $^
+	$(ASM) $^ $@
 
 disque.sys: disque.asm
-	$(ASM) $^
+	$(ASM) $^ $@
 
 video.sys: video.asm
-	$(ASM) $^
+	$(ASM) $^ $@
 
 clean:
 	$(CLEAN) *.sys

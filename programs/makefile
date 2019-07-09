@@ -1,23 +1,14 @@
-asm= lzasm /z/t
-lnk= elink
+ASM=fasm 
+CLEAN=rm -rf
+OBJS= $(SRCS:.c=.o)
+SRC= $(wildcard *.asm)
+PROG= $(SRC:.asm=.ce)
 
-all: exem-lib.lib exem-ce.ce pmode.ce isa.ce editeur.ce volume.ce test.ce verifier.ce gestion.ce logo.ce souris.ce test3d.ce test2d.ce
+all: $(PROG)
+	sync
 
-.asm.obj: 
-      $(asm) $<
-
-.obj.ce:
-	$(lnk) $< $*.ce
-
-.obj.lib:
-	$(lnk) $< $*.lib
+%.ce: %.asm
+	$(ASM) $^ $@
 
 clean:
-  del *.obj
-  del *.ce
-  del *.bak
-  del *.lib
-  del *.com
-  del *.bin
-  del *.sys
-  del *.err
+	$(CLEAN) *.ce

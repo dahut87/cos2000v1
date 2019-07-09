@@ -2,6 +2,7 @@ struc point
 {
 .coordx db 0
 .coordy db 0
+.sizeof = $ - .coordx
 }
 
 struc vgainf
@@ -33,4 +34,5 @@ struc vertex2d
 {
 .px dw ?
 .py dw ?
+.sizeof = $ - .px
 }

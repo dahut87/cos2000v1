@@ -110,11 +110,11 @@ proc print pointer:word
         add     di,2
         jmp     .strinaize0
 .showmultchar:
-        mov     cx,[.pointer+di+2+2]
+        mov     cx,[pointer+di+2+2]
         cmp     cx,0
         je      .nextfunc
 .showcharsx:
-        invoke    showchars,word [.pointer+di+2],0FFFFh
+        invoke    showchars,word [pointer+di+2],0FFFFh
         dec     cx
         jnz     .showcharsx
 .nextfunc:
@@ -123,19 +123,19 @@ proc print pointer:word
         jmp     .strinaize0
 
 .showint:
-        stdcall    showint,dword [.pointer+di+2]
+        stdcall    showint,dword [pointer+di+2]
         add     si,2
         add     di,4
         jmp     .strinaize0
 
 .showfixint:
-        stdcall    showintl,word [.pointer+di+6],[dword ptr .pointer+di+2]
+        stdcall    showintl,word [pointer+di+6],dword [pointer+di+2]
         add     di,6
         add     si,2
         jmp     .strinaize0
 
 .showintr:
-        stdcall    showintr,word [.pointer+di+6],dword [.pointer+di+2]
+        stdcall    showintr,word [pointer+di+6],dword [pointer+di+2]
         add     di,6
         add     si,2
         jmp     .strinaize0
@@ -156,32 +156,32 @@ proc print pointer:word
         jmp     .strinaize0
 
 .showstring:
-        cmp     [byte ptr si+2],'P'
+        cmp     byte [si+2],'P'
         je      .showstring.pointer
-        stdcall    showstring,[word ptr .pointer+di+2]
+        stdcall    showstring,word [pointer+di+2]
         add     si,2
         add     di,2
         jmp     .strinaize0
 .showstring.pointer:
         push    ds
-        mov     ds,[offset .pointer+di+2+2]
-        stdcall    showstring,[word ptr .pointer+di+2]
+        mov     ds,[pointer+di+2+2]
+        stdcall    showstring,word [pointer+di+2]
         add     si,3
         add     di,4
         pop     ds
         jmp     .strinaize0
 
 .showstring0:
-        cmp     [byte ptr si+2],'P'
+        cmp     byte [si+2],'P'
         je      .showstring0.pointer
-        stdcall    showstring0,[word ptr offset .pointer+di+2]
+        stdcall    showstring0,word [pointer+di+2]
         add     si,2
         add     di,2
         jmp     .strinaize0
 .showstring0.pointer:
         push    ds
-        mov     ds,[offset .pointer+di+2+2]
-        stdcall    showstring0,[word ptr offset .pointer+di+2]
+        mov     ds,[pointer+di+2+2]
+        stdcall    showstring0,word [pointer+di+2]
         add     si,3
         add     di,4
         pop     ds
@@ -193,44 +193,44 @@ proc print pointer:word
         jmp     .strinaize0
 
 .showsize:
-        stdcall    showsize,[dword ptr offset .pointer+di+2]
+        stdcall    showsize,dword [pointer+di+2]
         add     si,2
         add     di,4
         jmp     .strinaize0
 
 .showattr:
-        stdcall    showattr,[word ptr offset .pointer+di+2]
+        stdcall    showattr,word [pointer+di+2]
         add     si,2
         add     di,2
         jmp     .strinaize0
 
 .showname:
-        stdcall    showname,[word ptr offset .pointer+di+2]
+        stdcall    showname,word [pointer+di+2]
         add     si,2
         add     di,2
         jmp     .strinaize0
 
 .showtime:
-        stdcall    showtime,[word ptr offset .pointer+di+2]
+        stdcall    showtime,word [pointer+di+2]
         add     si,2
         add     di,2
         jmp     .strinaize0
 
 .showdate:
-        stdcall    showdate,[word ptr offset .pointer+di+2]
+        stdcall    showdate,word [pointer+di+2]
         add     si,2
         add     di,2
         jmp     .strinaize0
 
 .Chosesize:
         pop     cx
-        push    [dword ptr offset .pointer+di+2]
+        push    dword [pointer+di+2]
         add     di,4
-        cmp     [byte ptr si+2],'B'
+        cmp     byte [si+2],'B'
         je      .byte
-        cmp     [byte ptr si+2],'W'
+        cmp     byte [si+2],'W'
         je      .word
-        cmp     [byte ptr si+2],'D'
+        cmp     byte [si+2],'D'
         je      .dword
         dec     si
 
@@ -238,27 +238,27 @@ proc print pointer:word
         push    16
         add     si,3
         push    cx
-        retfn
+        ret
 
 .byte:
         push    8
         add     si,3
         push    cx
-        retfn
+        ret
 
 .dword:
         push    32
         add     si,3
         push    cx
-        retfn
+        ret
 
 .special2:
-        cmp     [byte ptr si+1],'\'
+        cmp     byte [si+1],'\'
         jne     .notshowit2
         inc     si
         jmp     .showit
 .notshowit2:
-        mov     cl,[byte ptr si+1]
+        mov     cl,byte [si+1]
         cmp     cl,'l'
         je      .showline
         cmp     cl,'g'
@@ -465,7 +465,7 @@ proc showname uses cx si, thename:word
 	mov     si,[thename]
 	xor	cx,cx
 .showthename:
-	invoke	showchars,[word ptr ds:si],0FFFFh
+	invoke	showchars,word [ds:si],0FFFFh
 	inc	si
 	inc	cx
 	cmp	cx,8
@@ -547,22 +547,22 @@ proc showsize uses edx ds, thesize:dword
 	cmp	edx,1024*9
 	ja	.kilo
 	stdcall	showintr,4,edx
-	stdcall	showstring0,offset unit
+	stdcall	showstring0,unit
 	jmp	.finsize
 .kilo:
 	shr	edx,10
 	stdcall	showintr,4,edx
-	stdcall	showstring0,offset unitkilo
+	stdcall	showstring0,unitkilo
 	jmp	.finsize
 .mega:
 	shr	edx,20
 	stdcall	showintr,4,edx
-	stdcall	showstring0,offset unitmega
+	stdcall	showstring0,unitmega
 	jmp	.finsize
 .giga:
 	shr	edx,30
 	stdcall	showintr,4,edx
-	stdcall	showstring0,offset unitgiga
+	stdcall	showstring0,unitgiga
 .finsize:
 	retf
 
@@ -590,11 +590,11 @@ endp
 ;<-
 ;============================
 proc showint uses eax bx cx edx esi, integer:dword
-local showbuffer 	db 50 dup (0FFh)
+local showbuffer[50]:BYTE
       	xor	cx,cx
 	mov   	eax,[integer]
       	mov   	esi,10
-      	mov   	bx,offset showbuffer+27
+      	lea   	bx,[showbuffer+27]
 .decint:
       	xor   	edx,edx
       	div   	esi
@@ -619,12 +619,13 @@ endp
 ;-> %0 un entier  % taille en caracteres
 ;<-
 ;===============================
-proc showintl eax bx cx edx esi di, sizeofint:word,integer:dword
+proc showintl uses eax bx cx edx esi di, sizeofint:word,integer:dword
+local showbuffer[50]:BYTE
 	mov	di,[sizeofint]
       	xor	cx,cx
 	mov   	eax,[integer]
       	mov   	esi,10
-      	mov   	bx,offset showbuffer+27
+      	lea   	bx,[showbuffer+27]
 .decint:
       	xor   	edx,edx
       	div   	esi
@@ -640,7 +641,7 @@ proc showintl eax bx cx edx esi di, sizeofint:word,integer:dword
   	xchg 	cx,di
 	sub 	cx,di
 .rego:
-	mov 	[byte ptr cs:bx],'0'
+	mov 	byte [cs:bx],'0'
 	dec    	bx
 	dec    	cx
 	jnz	.rego
@@ -663,11 +664,12 @@ endp
 ;<-
 ;===============================
 proc showintr uses eax bx cx edx esi di, sizeofint:word,integer:dword	
+local showbuffer[50]:BYTE
 	mov	di,[sizeofint]
       	xor	cx,cx
 	mov   	eax,[integer]
       	mov   	esi,10
-      	mov   	bx,offset showbuffer+27
+      	lea   	bx,[showbuffer+27]
 .decint:
       	xor   	edx,edx
       	div   	esi
@@ -683,7 +685,7 @@ proc showintr uses eax bx cx edx esi di, sizeofint:word,integer:dword
   	xchg 	cx,di
 	sub 	cx,di
 .rego:
-	mov 	[byte ptr cs:bx],' '
+	mov 	byte [cs:bx],' '
 	dec    	bx
 	dec    	cx
 	jnz	.rego
@@ -705,7 +707,7 @@ endp
 ;-> %0 un entier, %1 la taille
 ;<-
 ;===============================
-proc showsigned ebx cx edx, sizeofint:word,integer:dword
+proc showsigned uses ebx cx edx, sizeofint:word,integer:dword
 	mov	ebx,[integer]	
 	mov	cx,[sizeofint]	
 	xor	edx,edx
@@ -741,7 +743,7 @@ endp
 ;-> %0 un entier, %1 la taille
 ;<-
 ;============================
-proc showhex ax bx cx edx, sizeofint:word,integer:dword 	
+proc showhex uses ax bx cx edx, sizeofint:word,integer:dword 	
        	mov     edx,[integer]
        	mov   	cx,[sizeofint]
        	mov     ax,cx
@@ -753,7 +755,7 @@ proc showhex ax bx cx edx, sizeofint:word,integer:dword
        	rol   	edx,4
        	mov   	bx,dx
        	and   	bx,0fh
-       	mov   	cl,[cs:bx+offset Tab]
+       	mov   	cl,[cs:bx+Tab]
         invoke	showchars,cx,0FFFFh
        	dec   	al
        	jnz   	.Hexaize
@@ -767,7 +769,7 @@ endp
 ;-> %0 un entier, %1 la taille
 ;<-
 ;============================
-proc showbin ax cx edx, sizeofint:word,integer:dword	
+proc showbin uses ax cx edx, sizeofint:word,integer:dword	
         mov     edx,[integer]
        	mov   	cx,[sizeofint]
        	sub     cx,32
@@ -789,7 +791,7 @@ endp
 ;-> %0 un entier, %1 la taille
 ;<-
 ;============================
-proc showbcd ax cx edx, sizeofint:word,integer:dword
+proc showbcd uses ax cx edx, sizeofint:word,integer:dword
         mov     edx,[integer]
         mov     ax,[sizeofint]
         mov     cx,ax
@@ -813,12 +815,12 @@ endp
 ;-> ds:%1 pointeur chaine type pascal
 ;<-
 ;===============================
-proc showstring bx si, pointer:word
+proc showstring uses bx si, pointer:word
         mov     si,[pointer]
         mov     bl,[si]
 .strinaize:
         inc     si
-        invoke	showchars,[word ptr si],0FFFFh
+        invoke	showchars,word [si],0FFFFh
         dec     bl
         jnz     .strinaize
         retf

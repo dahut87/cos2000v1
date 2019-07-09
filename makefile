@@ -1,11 +1,12 @@
-all:	boot/boot12.bin lib/3d.lib noyau/systeme.sys commande.ce
+all:	boot/boot12.bin lib/3d.lib noyau/systeme.sys programs/commande.ce
 	sync
 
 install:
-	(sudo apt-get install yasm qemu fusefat cgdb)
+	(sudo apt-get install fasm qemu fusefat cgdb)
 
 clean:
 	make -C final clean
+	make -C boot clean
 	make -C lib clean
 	make -C noyau clean
 	make -C programs clean
@@ -45,3 +46,7 @@ boot/boot12.bin:
 
 lib/3d.lib:
 	make -C lib
+
+programs/commande.ce:
+	make -C programs
+

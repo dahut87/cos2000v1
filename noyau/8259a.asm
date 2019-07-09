@@ -29,7 +29,7 @@ IRR = 0Ah ; Pas d'operation, pas de Poll, lire IRR
 
 ;Autorise une interruption electronique
 ;Entree : %1 - Numero de l'interruption (0-15) à autoriser 0-7 = MASTERPIC , 8-15 = SLAVEPIC
-proc enableirq, irq
+proc enableirq uses ax cx dx, irq:word
         mov     ax,[irq]
         mov     dx,MASTERPIC+IRQMASK
         cmp     al,7
@@ -50,7 +50,7 @@ endp
 
 ;Desactive une interruption ‚lectronique
 ;Entr‚e : %0 - Num‚ro de l'interruption (0-15) … desactiver 0-7 = MASTERPIC , 8-15 = SLAVEPIC
-proc disableirq, irq
+proc disableirq uses ax cx dx, irq:word
         mov     ax,[irq]
         mov     dx,MASTERPIC+IRQMASK
         cmp     al,7
@@ -71,7 +71,7 @@ endp
 
 
 ;Signale "End Of Interrupt" de l'interruption %0
-proc seteoi, irq
+proc seteoi uses ax dx, irq:word
        mov     ax,[irq]
        cmp     al,7
        jbe     .master
@@ -85,7 +85,7 @@ endp
 
 
 ;Lit les masques d'un contr“leur IRQ dans ax, 0 master ou slave 1 ds %1
-proc readimr, controleurx
+proc readimr uses bx dx, controleur:word
        mov     bx,[controleur]
        mov     dx,MASTERPIC+ IRQMASK
        cmp     bl,0
@@ -99,7 +99,7 @@ proc readimr, controleurx
 endp
 
 ;Lit le registre d'‚tat d'un contr“leur IRQ dans ax, 0 master ou slave 1 ds %1
-proc readisr, controleur
+proc readisr uses bx dx, controleur:word
        mov     bx,[controleur]
        mov     dx,MASTERPIC
        cmp     bh,0
@@ -115,7 +115,7 @@ endp
 
 
 ;Lit le registre d'‚tat d'un contr“leur IRQ dans al, 0 master ou slave 1 ds bh
-proc readirr, controleur
+proc readirr uses bx dx, controleur:word
        mov     bx,[controleur]
        mov     dx,MASTERPIC
        cmp     bh,0
@@ -130,7 +130,7 @@ proc readirr, controleur
 endp
 
 ;carry si enable et pas carry si pas enable
-proc isenableirq, irq
+proc isenableirq uses ax cx dx, irq:word
         mov     ax,[irq]
         mov     dx,MASTERPIC+IRQMASK
         cmp     al,7
@@ -147,7 +147,7 @@ endp
 
 
 ;carry si enable et pas carry si pas enable
-proc isinserviceirq, irq
+proc isinserviceirq uses ax cx dx, irq:word
         mov     ax,[irq]
         mov     dx,MASTERPIC
         cmp     al,7
@@ -166,7 +166,7 @@ endp
 
 
 ;carry si enable et pas carry si pas enable
-proc isrequestirq, irq
+proc isrequestirq uses ax cx dx, irq:word
         mov     ax,[irq]
         mov     dx,MASTERPIC
         cmp     al,7
@@ -184,62 +184,74 @@ proc isrequestirq, irq
 endp
 
 
-proc installirqhandler
+proc installirqhandler uses eax bx cx edx si di ds es
        push    fs
-       stdcall    mbcreate,interruptionbloc,256*ints.sizeof
+	virtual at 0
+	.intsori ints
+	end virtual
+       stdcall    mbcreate,interruptionbloc,256*.intsori.sizeof
        mov     es,ax
        mov     ax,0x0000
        mov     ds,ax
        xor     si,si
 .searchdummypointer:
-       mov     fs,[si+vector.data.seg] 
-       mov     bx,[si+vector.data.off]
+	virtual at si
+	.vector vector
+	end virtual
+	virtual at 0
+	.vectorori vector
+	end virtual
+       mov     fs,[.vector.data.seg] 
+       mov     bx,[.vector.data.off]
        cmp     byte [fs:bx],0xCF ;iret
        je      .founded
-       add     si,vector.sizeof
+       add     si,.vectorori.sizeof
        cmp     si,256*4
        jb      .searchdummypointer
        xor     edx,edx
        jmp     .suite
 .founded:
-       mov     edx,[si+vector.content]
+       mov     edx,[.vector.content]
 .suite:
        xor     cx,cx
        xor     si,si
        xor     di,di
        cli
 .copy:
-       mov     [es:di+ints.number],cl
-       mov     [es:di+ints.locked],0
-       mov     [es:di+ints.vector1.content],0
-       mov     [es:di+ints.vector3.content],0
-       mov     [es:di+ints.vector4.content],0
-       mov     [es:di+ints.vector5.content],0
-       mov     [es:di+ints.vector6.content],0
-       mov     [es:di+ints.vector7.content],0
-       mov     [es:di+ints.vector8.content],0
-       mov     [es:di+ints.launchedlow],0
-       mov     [es:di+ints.launchedhigh],0
-       mov     [es:di+ints.calledlow],0
-       mov     [es:di+ints.calledhigh],0
-       mov     eax,[si+vector.ints.content]
+	virtual at di
+	.ints ints
+	end virtual
+       mov     [es:.ints.number],cl
+       mov     [es:.ints.locked],0
+       mov     [es:.ints.vector1.content],0
+       mov     [es:.ints.vector3.content],0
+       mov     [es:.ints.vector4.content],0
+       mov     [es:.ints.vector5.content],0
+       mov     [es:.ints.vector6.content],0
+       mov     [es:.ints.vector7.content],0
+       mov     [es:.ints.vector8.content],0
+       mov     [es:.ints.launchedlow],0
+       mov     [es:.ints.launchedhigh],0
+       mov     [es:.ints.calledlow],0
+       mov     [es:.ints.calledhigh],0
+       mov     eax,[.vector.content]
        cmp     eax,edx
        je      .notarealvector
-       mov     [es:di+ints.vector1.content],eax
-       mov     [es:di+ints.activated],1
+       mov     [es:.ints.vector1.content],eax
+       mov     [es:.ints.activated],1
        jmp     .copynext
 .notarealvector:
-       mov     [es:di+ints.vector1.content],0
-       mov     [es:di+ints.activated],0
+       mov     [es:.ints.vector1.content],0
+       mov     [es:.ints.activated],0
 .copynext:
        mov     bx,cx
        shl     bx,3
        sub     bx,cx
        add     bx,coupling
-       mov     [si+vector.data.seg],cs
-       mov     [si+vector.data.off],bx
-       add     si,vector.sizeof
-       add     di,ints.sizeof
+       mov     [.vector.data.seg],cs
+       mov     [.vector.data.off],bx
+       add     si,.vectorori.sizeof
+       add     di,.intsori.sizeof
        inc     cl
        cmp     cl,0
        jne     .copy
@@ -253,7 +265,7 @@ endp
 interruptionbloc db '/interrupts',0
 
 
-proc savecontext, pointer
+proc savecontext uses eax si ds, pointer:word
 pushfd
 push eax
 push ebx
@@ -278,39 +290,45 @@ push  eax
 mov   ax,bp
 add   ax,4
 push  eax 
-pop   [si+regs.sesp]
-pop   [si+regs.seip]
-pop   [si+regs.scs]
-pop   [si+regs.sebp]
-pop   [si+regs.sss]
-pop   [si+regs.sgs]
-pop   [si+regs.sfs]
-pop   [si+regs.ses]
-pop   [si+regs.sds]
-pop   [si+regs.sedi]
-pop   [si+regs.sesi]
-pop   [si+regs.sedx]
-pop   [si+regs.secx]
-pop   [si+regs.sebx]
-pop   [si+regs.seax]
-pop   [si+regs.seflags]
+virtual at si
+.regs regs
+end virtual
+pop   [.regs.sesp]
+pop   [.regs.seip]
+pop   [.regs.scs]
+pop   [.regs.sebp]
+pop   [.regs.sss]
+pop   [.regs.sgs]
+pop   [.regs.sfs]
+pop   [.regs.ses]
+pop   [.regs.sds]
+pop   [.regs.sedi]
+pop   [.regs.sesi]
+pop   [.regs.sedx]
+pop   [.regs.secx]
+pop   [.regs.sebx]
+pop   [.regs.seax]
+pop   [.regs.seflags]
 retf
 endp
 
-proc restorecontextg, pointer
+proc restorecontextg, pointer:word
 mov     si,[pointer]
-pushd [cs:si+regs.sesi]
-pushd [cs:si+regs.seflags]
-mov eax,[cs:si+regs.seax]
-mov ebx,[cs:si+regs.sebx]
-mov ecx,[cs:si+regs.secx]
-mov edx,[cs:si+regs.sedx]
-mov edi,[cs:si+regs.sedi]
-mov ebp,[cs:si+regs.sebp]
-mov es,[cs:si+regs.ses]
-mov fs,[cs:si+regs.sfs]
-mov gs,[cs:si+regs.sgs]
-mov ds,[cs:si+regs.sds]
+virtual at si
+.regs regs
+end virtual
+pushd [cs:.regs.sesi]
+pushd [cs:.regs.seflags]
+mov eax,[cs:.regs.seax]
+mov ebx,[cs:.regs.sebx]
+mov ecx,[cs:.regs.secx]
+mov edx,[cs:.regs.sedx]
+mov edi,[cs:.regs.sedi]
+mov ebp,[cs:.regs.sebp]
+mov es,[cs:.regs.ses]
+mov fs,[cs:.regs.sfs]
+mov gs,[cs:.regs.sgs]
+mov ds,[cs:.regs.sds]
 popfd
 pop esi
 pop [cs:dummy]
@@ -322,7 +340,7 @@ endp
 coupling:
 repeat 256 
 push %+256
-push offset irqhandlers
+push irqhandlers
 ret
 end repeat
 
@@ -334,48 +352,60 @@ function_reg regs
 irqhandlers:
 cli
 pop     [cs:interrupt]
-stdcall    savecontext,offset calling_reg
+stdcall    savecontext,calling_reg
 stdcall    irqhandler,[cs:interrupt]
-stdcall    restorecontextg,offset calling_reg
+stdcall    restorecontextg,calling_reg
 sti
 iret
 
-proc    irqhandler, int
+proc    irqhandler, int:word
 push    cs
 pop     ds
-stdcall    mbfindsb,offset interruptionbloc,cs
+stdcall    mbfindsb,interruptionbloc,cs
 jc      .end
 mov     es,ax
 mov     ax,[int] 
 sub     ax,256
-mov     cx,ints.sizeof
+virtual at 0
+.intsorig ints
+end virtual
+mov     cx,.intsorig.sizeof
 mul     cx
 mov     si,ax
-add     [es:si+ints.calledlow],1
-adc     [es:si+ints.calledhigh],0
-cmp     [es:si+ints.activated],1
+virtual at si
+.ints ints
+end virtual
+add     [es:.ints.calledlow],1
+adc     [es:.ints.calledhigh],0
+cmp     [es:.ints.activated],1
 jne     .end
-add     [es:si+ints.launchedlow],1
-adc     [es:si+ints.launchedhigh],0
-lea     si,[es:si+ints.vector1]
+add     [es:.ints.launchedlow],1
+adc     [es:.ints.launchedhigh],0
+lea     si,[es:.ints.vector1]
 mov     cl,8
 .launchall:
-cmp     [es:si+vector.content],0
+virtual at si
+.vector vector
+end virtual
+virtual at 0
+.vectorori vector
+end virtual
+cmp     [es:.vector.content],0
 je      .end
 push    word [cs:calling_reg.seflags]
 push    cs
-push    offset .back
-push    [es:si+vector.data.seg]
-push    [es:si+vector.data.off]
-stdcall    savecontext,offset function_reg
-stdcall    restorecontextg,offset calling_reg
+push    .back
+push    [es:.vector.data.seg]
+push    [es:.vector.data.off]
+stdcall    savecontext,function_reg
+stdcall    restorecontextg,calling_reg
 db 0xCB
 .back:
 cli
-stdcall    savecontext,offset calling_reg
-stdcall    restorecontextg,offset function_reg
+stdcall    savecontext,calling_reg
+stdcall    restorecontextg,function_reg
 .next:
-add     si,vector.sizeof
+add     si,.vectorori.sizeof
 dec     cl
 jnz     .launchall
 .end:

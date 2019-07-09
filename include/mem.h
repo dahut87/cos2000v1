@@ -15,7 +15,7 @@ struc regs
 .sfs  dw 0
 .sgs  dw 0
 .sss  dw 0
-;.seflags dd 0
+.seflags dd 0
 ;.sst0 dt 0
 ;;sst1 dt 0
 ;.sst2 dt 0
@@ -37,6 +37,7 @@ struc vector off,seg
 .data tuple off,seg
 virtual at .data 
 .content dd 0
+.sizeof = $ - .data
 end virtual 
 }
 

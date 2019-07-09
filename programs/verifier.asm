@@ -1,21 +1,14 @@
-model tiny,stdcall
-p586N
-locals
-jumps
-codeseg
-option procalign:byte
-
 include "..\include\mem.h"
 include "..\include\divers.h"
 
 org 0h
 
 start:
-header exe <"CE",1,0,0,,offset imports,,offset realstart>
+header exe 1
 
 realstart:
-    call    [savestate]
-    call    [print],offset msg
+    invoke    savestate
+    invoke    print, msg
     mov     bp,1000h
     xor     di,di
     xor     cx,cx
@@ -40,9 +33,9 @@ nokey:
     div     si
     mov     dx,ax
     push    edx 
-    call    [print],offset msg2
+    invoke    print, msg2
     call    gauge
-    call    [verifysector],cx
+    invoke    verifysector,cx
     jc      errors
     je      noprob
     inc     di
@@ -53,20 +46,20 @@ noprob:
 enend:
     cmp     di,0
     je      noatall
-    call    [print],offset error2
+    invoke    print, error2
     jmp     someof
 noatall:
-    call    [print],offset noerror
+    invoke    print, noerror
 someof:
     mov     ah,0
     int     16h
-    call    [restorestate]
+    invoke    restorestate
     retf
 errors:
-    call    [print],offset error
+    invoke    print, error
     mov     ah,0
     int     16h
-    call    [restorestate]
+    invoke    restorestate
     retf
 
 error db '\g10,10Erreur avec le lecteur de disquette !',0
@@ -88,10 +81,10 @@ gauge:
     mov     dx,ax
     push    dx
     push    'Û'
-    push    offset gauges
-    call    [print]
+    push    gauges
+    invoke    print
     pop     dx ax
-    retn
+    ret
 
 max      dw 2879
 sizeof   dw 50

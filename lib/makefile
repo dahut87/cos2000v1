@@ -1,20 +1,14 @@
-asm= lzasm /z/t
-lnk= elink
+ASM=fasm 
+CLEAN=rm -rf
+OBJS= $(SRCS:.c=.o)
+SRC= $(wildcard *.asm)
+LIB= $(SRC:.asm=.lib)
 
-all: detect.lib video.lib str0.lib bmp.lib graphic.lib 3d.lib math.lib
+all: $(LIB)
+	sync
 
-.asm.obj: 
-      $(asm) $<
-
-.obj.lib:
-	$(lnk) $< $*.lib
+%.lib: %.asm
+	$(ASM) $^ $@
 
 clean:
-  del *.obj
-  del *.ce
-  del *.bak
-  del *.lib
-  del *.com
-  del *.bin
-  del *.sys
-  del *.err
+	$(CLEAN) *.lib

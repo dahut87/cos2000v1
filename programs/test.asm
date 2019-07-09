@@ -1,27 +1,20 @@
-model tiny,stdcall
-p586N
-locals
-jumps
-codeseg
-option procalign:byte
-
 include "..\include\mem.h"
 include "..\include\divers.h"
 
 org 0h
 
 start:
-header exe <"CE",1,0,0,,offset imports,,offset realstart>
+header exe 1
 
 realstart:
-    call    [cs:randomize]
+    invoke    randomize
     push    0FFFFh
     pushd    652201
     pushd    1545454545
     push    1523
     push    2041
-    push    offset zero
-    push    offset fixe
+    push    zero
+    push    fixe
     push    5
     push    'i'
     push    'a'
@@ -31,71 +24,71 @@ realstart:
     pushd    125645
     pushd    5041
     pushd    125645
-    push    offset message
-    call    [print]
+    push    message
+    invoke    print
     xor     ax,ax
     int     16h
-    call    [clearscreen]
-    call    [xchgpages]
-    call    [clearscreen]
+    invoke    clearscreen
+    invoke    xchgpages
+    invoke    clearscreen
     mov     cx,200
 go1:
-    call    [xchgpages]
-    call    [waitretrace]
-    call    [print],offset textdemo1
-    call    put
-    call    [xchgpages]
-    call    [waitretrace]
+    invoke    xchgpages
+    invoke    waitretrace
+    invoke    print, textdemo1
+    invoke    put
+    invoke    xchgpages
+    invoke    waitretrace
     dec     cx
     jnz     go1
     mov     cx,200
 go2:
-    call    [xchgpages]
-    call    [waitretrace]
-    call    [print],offset textdemo2
-    call    put
-    call    [xchgpages]
-    call    [waitretrace]
+    invoke    xchgpages
+    invoke    waitretrace
+    invoke    print, textdemo2
+    invoke    put
+    invoke    xchgpages
+    invoke    waitretrace
     dec     cx
     jnz     go2
     mov     cx,200
 go3:
-    call    [xchgpages]
-    call    [waitretrace]  
-    call    [print],offset textdemo3
-    call    put
-    call    [xchgpages]
-    call    [waitretrace]
+    invoke    xchgpages
+    invoke    waitretrace 
+    invoke    print, textdemo3
+    invoke    put
+    invoke    xchgpages
+    invoke    waitretrace
     dec     cx
     jnz     go3
-    call    [clearscreen] 
-    call    [xchgpages]
-    call    [clearscreen] 
-    call    [print],offset texte2
+    invoke    clearscreen 
+    invoke    xchgpages
+    invoke    clearscreen
+    invoke    print, texte2
     mov     bp,255
     xor     edx,edx
 go4:
-    call    [xchgpages]
-    call    [waitretrace]
+    invoke    xchgpages
+    invoke    waitretrace
     inc     edx
     push    edx
-    push    offset texte3
-    call    [print]
-    call    [xchgpages]
-    call    [waitretrace]
+    push    texte3
+    invoke    print
+    invoke    xchgpages
+    invoke    waitretrace
     dec     bp
     jnz     go4
-    push    offset texte4
-    call    [print]
+    push    texte4
+    invoke    print
     mov     ax,0
     int     16h
-    call    [restorestate]
+    invoke    restorestate
     retf
 put:
-    call    [cs:random]
+    invoke    random
     mov     di,ax
     and     di,4096-2
-    mov     si,offset fond
+    mov     si,fond
     call    showstring2
     ret
 

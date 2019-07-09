@@ -1,16 +1,9 @@
-model tiny,stdcall
-p586N
-locals
-jumps
-codeseg
-option procalign:byte
-
 include "..\include\mem.h"
 include "..\include\divers.h"
 
 org 0h
 
-header exe <"CE",1,0,0,offset exports,,,>
+header exe 1
 
 
 exporting
@@ -68,180 +61,169 @@ ende
 	;       8 nombre
 
 ;Renvoie carry si la syntaxe de ds:si n'est pas respect‚ par rapport a es:di
-PROC checksyntax FAR
-        ARG     @src:word,@dest:word,@delim:word
-        USES    ax,bx,cx,dx,si,di,ds,es
-        LOCAL   @@temp:word:256
+proc checksyntax uses ax bx cx dx si di ds es, src:word,dest:word,delim:word
+        local   temp[256]:WORD
         push    ss
         pop     es
-        lea     si,[@@temp]
-        mov     di,[@dest]
-        call    copy,[@src],si
+        lea     si,[temp]
+        mov     di,[dest]
+        stdcall    copy,[src],si
         call    xch 
-        call    compressdelimiter,si,[@delim]
-        call    getnbitems,si,[@delim]
+        stdcall    compressdelimiter,si,[delim]
+        stdcall    getnbitems,si,[delim]
         mov     bx,ax
         call    xch 
-        call    getnbitems,di,[@delim]
+        stdcall    getnbitems,di,[delim]
         cmp     bx,ax
-        jne     @@notequalatall
+        jne     .notequalatall
         xor     cx,cx
-@@itemer:
+.itemer:
         call    xch 
-        call    whatisitem,si,cx,[@delim]
+        stdcall    whatisitem,si,cx,[delim]
         mov     dx,ax
-        call    xch 
-        call    whatisitem,di,cx,[@delim]
+        stdcall    xch 
+        stdcall    whatisitem,di,cx,[delim]
         cmp     ax,dx
-        jne     @@prob
+        jne     .prob
         cmp     al,6
-        jb      @@equal
-        call    cmpitems
-        je      @@equal
-@@prob:
+        jb      .equal
+        stdcall    cmpitems
+        je      .equal
+.prob:
         cmp     dl,4
-        ja      @@nonumber
+        ja      .nonumber
         cmp     dl,8
-        je      @@equal
+        je      .equal
         ;cmp     al,4
-        ;jne     @@notequalatall
+        ;jne     .notequalatall
         cmp     dh,ah
-        ja      @@notequalatall
-        jmp     @@equal
-@@nonumber:
+        ja      .notequalatall
+        jmp     .equal
+.nonumber:
         cmp     al,7
-        jne     @@nostr
+        jne     .nostr
         cmp     ah,0
-        jne     @@notequalatall
-        jmp     @@equal
-@@nostr:
+        jne     .notequalatall
+        jmp     .equal
+.nostr:
         cmp     al,6
-        jne     @@noname
+        jne     .noname
         cmp     dl,6
-        jne     @@noname
+        jne     .noname
         cmp     ah,0
-        jne     @@notequalatall
-        jmp     @@equal
-@@noname:
+        jne     .notequalatall
+        jmp     .equal
+.noname:
         cmp     al,8
-        je      @@equal
-        jmp     @@notequalatall
-@@equal:
+        je      .equal
+        jmp     .notequalatall
+.equal:
         inc     cx
         cmp     cx,bx
-        jne     @@itemer
+        jne     .itemer
         cld
-@@ackno: 
-        ret
-@@notequalatall:
+.ackno: 
+        retf
+.notequalatall:
         stc
-        jmp     @@ackno
-endp checksyntax
-
+        jmp     .ackno
 xch:
         push    es
         push    ds
         pop     es
         pop     ds
         ret
+endp
 
 
 ;Compare les ‚l‚ments cx de deux chaine ds:si et es:di
-PROC cmpitems FAR
-        ARG     @src:word,@dest:word,@item:word,@delim:word
-        USES    ax,cx,si,di,es
+proc cmpitems uses ax cx si di es, src:word,dest:word,item:word,delim:word
         push    ds
         pop     es 
-        call    getpointeritem,[@src],[@item],[@delim]
+        stdcall    getpointeritem,[src],[item],[delim]
         mov     si,ax
-        call    getitemsize,[@src],[@item],[@delim]
-        mov     di,[@dest]
+        stdcall    getitemsize,[src],[item],[delim]
+        mov     di,[dest]
         mov     cx,ax    
         cld 
         rep     cmpsb
         clc
-        ret
-endp cmpitems
+        retf
+endp
 
                                 
 ;Renvoie l'‚l‚ment cx de ds:si dans edx si nb et dans es:di si str ou name
-PROC gettypeditem FAR
-        ARG     @src:word,@item:word,@delim:word
-        USES    bx,cx,si,di
-        mov     si,[@src]
-        mov     cx,[@item]
-        call    getpointeritem,si,cx,[@delim]
+proc gettypeditem uses bx cx si di, src:word,item:word,delim:word
+        mov     si,[src]
+        mov     cx,[item]
+        stdcall    getpointeritem,si,cx,[delim]
         mov     di,ax
         inc     cx
-        call    getpointeritem,si,cx,[@delim]
+        stdcall    getpointeritem,si,cx,[delim]
         mov     si,ax
         dec     si
         mov     cl,0
         xchg    cl,[ds:si]
-        call    gettyped,di
+        stdcall    gettyped,di
         xchg    cl,[ds:si]
         clc
-        ret
-endp gettypeditem
+        retf
+endp 
 
 
 ;Renvoie eax si nb et dans ds:eax si str ou name
-PROC gettyped FAR
-        ARG     @src:word
-        USES    si
-        mov     si,[@src]
+proc gettyped uses si, src:word
+        mov     si,[src]
         xor     eax,eax
-        call    whatis,si
+        stdcall    whatis,si
         cmp     al,1
-        je      @@bin
+        je      .bin
         cmp     al,2
-        je      @@oct
+        je      .oct
         cmp     al,3
-        je      @@dec
+        je      .dec
         cmp     al,4
-        je      @@hex
+        je      .hex
         cmp     al,5
-        je      @@pointer
+        je      .pointer
         mov     ax,si
-        jmp     @@endofgettypeditem
-@@bin:
-        call    strtoint,si,2
-        jmp     @@endofgettypeditem
-@@oct:
-        call    strtoint,si,8
-        jmp     @@endofgettypeditem
-@@dec:
-        call    strtoint,si,10
-        jmp     @@endofgettypeditem
-@@hex:
-        call    strtoint,si,16
-        jmp     @@endofgettypeditem
-@@pointer:
-        call    strtoadress,si
-@@endofgettypeditem:
+        jmp     .endofgettypeditem
+.bin:
+        stdcall    strtoint,si,2
+        jmp     .endofgettypeditem
+.oct:
+        stdcall    strtoint,si,8
+        jmp     .endofgettypeditem
+.dec:
+        stdcall    strtoint,si,10
+        jmp     .endofgettypeditem
+.hex:
+        stdcall    strtoint,si,16
+        jmp     .endofgettypeditem
+.pointer:
+        stdcall    strtoadress,si
+.endofgettypeditem:
         clc
-        ret   
-endp gettyped  
+        retf   
+endp
 
 ;Renvoie dans ax le type de la str0 point‚e par ds:%0 ‚l‚ment %1 delim %3
-PROC whatisitem FAR
-        ARG     @src:word,@item:word,@delim:word
-        USES    bx,cx,si,di
-        mov     si,[@src]
-        mov     cx,[@item]
-        call    getpointeritem,si,cx,[@delim]
+proc whatisitem uses bx cx si di, src:word,item:word,delim:word
+        mov     si,[src]
+        mov     cx,[item]
+        stdcall    getpointeritem,si,cx,[delim]
         mov     di,ax
         inc     cx
-        call    getpointeritem,si,cx,[@delim]
+        stdcall    getpointeritem,si,cx,[delim]
         mov     si,ax
         dec     si
         mov     cl,0
         xchg    cl,[ds:si]
-        call    whatis,di
+        stdcall    whatis,di
         xchg    cl,[ds:si]
         clc
-        ret
-endp whatisitem
+        retf
+endp 
 
 ;Renvoie dans ax le type de la str0 point‚e par ds:%0
 ;High          Low
@@ -252,636 +234,587 @@ endp whatisitem
 ;4 dword       5 adresse
 ;5 5 octets    6 name
 ;6 ...         7 str
-PROC whatis FAR
-        ARG     @src:word
-        USES    bx,cx,edx,si
-        mov     si,[@src]
+proc whatis uses bx cx edx si, src:word
+        mov     si,[src]
         xor     cx,cx
         mov     cl,2 
-        call    strisbase,si,cx
-        jnc     @@finbase
+        stdcall    strisbase,si,cx
+        jnc     .finbase
         mov     cl,8
-        call    strisbase,si,cx
-        jnc     @@finbase
+        stdcall    strisbase,si,cx
+        jnc     .finbase
         mov     cl,10
-        call    strisbase,si,cx
-        jnc     @@finbase
+        stdcall    strisbase,si,cx
+        jnc     .finbase
         mov     cl,16
-        call    strisbase,si,cx
-        jc      @@testadress
-@@finbase:
+        stdcall    strisbase,si,cx
+        jc      .testadress
+.finbase:
         mov     bx,cx
         xor     ch,ch
-        mov     al,[cs:bx+offset basenn-2]
+        mov     al,[cs:bx+ basenn-2]
         push    eax
-        call    strtoint,si,cx
+        stdcall    strtoint,si,cx
         mov     edx,eax
         pop     eax 
         cmp     edx,0000FFFFh
-        ja      @@bits32
+        ja      .bits32
         cmp     dx,00FFh
-        ja      @@bits16
+        ja      .bits16
         mov     ah,1
-        jmp     @@endofwhat
-@@bits16:
+        jmp     .endofwhat
+.bits16:
         mov     ah,2
-        jmp     @@endofwhat
-@@bits32:
+        jmp     .endofwhat
+.bits32:
         mov     ah,4
-        jmp     @@endofwhat
-@@testadress:
-        call    strisadress,si
-        jc      @@testname
+        jmp     .endofwhat
+.testadress:
+        stdcall    strisadress,si
+        jc      .testname
         mov     ax,0005h
-        jmp     @@endofwhat
-@@testname:
-        call    strisname
-        jc      @@testnumber
+        jmp     .endofwhat
+.testname:
+        stdcall    strisname
+        jc      .testnumber
         xor     ah,ah
-        cmp     [byte ptr si],'&'
-        je      @@okname
-        call    getlength,si
+        cmp     byte [si],'&'
+        je      .okname
+        stdcall    getlength,si
         mov     ah,al
-@@okname:
+.okname:
 	    mov     al,06h
-	    jmp     @@endofwhat
-@@testnumber:
-        cmp     [byte ptr si],'#'
-        jne     @@testvarstr
+	    jmp     .endofwhat
+.testnumber:
+        cmp     byte [si],'#'
+        jne     .testvarstr
         xor     ah,ah
 	    mov     al,08h
-        jmp     @@endofwhat
-@@testvarstr:    
+        jmp     .endofwhat
+.testvarstr:    
         xor     ah,ah   
-        cmp     [byte ptr si],'?'
-        je      @@okvarstr
-        call    getlength,si
+        cmp     byte [si],'?'
+        je      .okvarstr
+        stdcall    getlength,si
         mov     ah,al
-@@okvarstr:
+.okvarstr:
 	    mov     al,07h
-@@endofwhat:
+.endofwhat:
         clc
-        ret
-endp whatis
+        retf
+endp 
 
 
 
 ;Renvoie non carry si la str ds:si point‚e peut ˆtre une adresse
-PROC strtoadress FAR
+proc strtoadress 
         ;push
         stc
         ;pop
-        ret
-endp strtoadress
+        retf
+endp 
         
 
 ;Renvoie en es:di le pointeur str0 ds:si
-PROC strisadress FAR
+proc strisadress
         ;push
         stc
         ;pop
-        ret
-endp strisadress
+        retf
+endp 
 
 ;Renvoie non carry si la str ds:%0 point‚e peut ˆtre un nom de fichier
-PROC strisname FAR
-        ARG     @src:word
-        USES    ax,si,di
-        mov     si,[@src] 
-@@isname:
+proc strisname uses ax si di, src:word
+        mov     si,[src] 
+.isname:
         mov     al,[si]
         inc     si
         cmp     al,0
-        je      @@itsok
-        mov     di,offset non
-@@verify:
+        je      .itsok
+        mov     di, non
+.verify:
         mov     ah,[cs:di]
         inc     di
         cmp     ah,0FFh
-        je      @@isname
+        je      .isname
         cmp     ah,al
-        jne     @@verify
+        jne     .verify
         stc
-        jmp     @@itsdead
-@@itsok:
+        jmp     .itsdead
+.itsok:
         clc
-@@itsdead:        
-        ret
-endp strisname
+.itsdead:        
+        retf
+endp 
 
 non db '/<>|"?*:\',01,0FFh
-
-;Renvoie non carry si le texte point‚ par %0 est de la base %1
-PROC strisbase FAR
-        ARG     @src:word,@base:word
-        USES    ax,cx,si,di,es
-        push    cs
-        pop     es
-        mov     si,[@src] 
-@@isstrbase:
-        mov     al,[si]         
-        cmp     al,0
-        je      @@okbase
-        mov     cx,[@base] 
-        xor     ch,ch
-        mov     di,cx
-        cmp     al,[es:di-2+offset basen]
-        je      @@verifbase
-        xor     ch,ch
-        inc     cl
-        mov     di,offset base
-        cld
-        repne   scasb
-        cmp     cx,0
-        je      @@nobase
-        inc     si
-        jmp     @@isstrbase
-@@okbase:
-        clc
-@@endbase:
-        ret
-@@verifbase:
-        cmp     [byte ptr si+1],0
-        je      @@okbase  
-@@nobase:
-        stc
-        jmp     @@endbase  
-endp strisbase
-
 base   db '0123456789ABCDEF'
 basen  db 'b     o d     h'            
 basenn db 1,0,0,0,0,0,2,0,3,0,0,0,0,0,4
 
-
-;Converti un str %0 de base %1 en int dans eax
-PROC strtoint FAR
-        ARG     @src:word,@base:word
-        USES    ebx,ecx,edx,si,edi,es
+;Renvoie non carry si le texte point‚ par %0 est de la base %1
+proc strisbase uses ax cx si di es, src:word,base:word
         push    cs
         pop     es
-        mov     si,[@src]
-@@gotos:         
-        cmp     [byte ptr si+1], 0
-        je      @@oklo
+        mov     si,[src] 
+.isstrbase:
+        mov     al,[si]         
+        cmp     al,0
+        je      .okbase
+        mov     cx,[base] 
+        xor     ch,ch
+        mov     di,cx
+        cmp     al,[es:di-2+ basen]
+        je      .verifbase
+        xor     ch,ch
+        inc     cl
+        lea     di,[base]
+        cld
+        repne   scasb
+        cmp     cx,0
+        je      .nobase
         inc     si
-        jmp     @@gotos
-@@oklo:
+        jmp     .isstrbase
+.okbase:
+        clc
+.endbase:
+        retf
+.verifbase:
+        cmp     byte [si+1],0
+        je      .okbase  
+.nobase:
+        stc
+        jmp     .endbase  
+endp 
+
+
+;Converti un str %0 de base %1 en int dans eax
+proc strtoint uses ebx ecx edx si edi es, src:word,base:word
+        push    cs
+        pop     es
+        mov     si,[src]
+.gotos:         
+        cmp     byte [si+1], 0
+        je      .oklo
+        inc     si
+        jmp     .gotos
+.oklo:
         mov     edi,1
         xor     ebx,ebx
-@@baseto:                        
-        cmp     [@src],si
-        ja      @@endbaseto
+.baseto:                        
+        cmp     [src],si
+        ja      .endbaseto
         mov     al,[si]
         xor     ecx,ecx
-        mov     cl,[byte ptr @base]
+        mov     cl,byte [base]
         inc     cl
         push    di
-        mov     di,offset base
+        lea     di, [base]
         cld
         repne   scasb
         pop     di
-        jne     @@noop
-        sub     cl,[byte ptr @base]
+        jne     .noop
+        sub     cl,byte [base]
         neg     cl
         mov     eax,edi
         mul     ecx
         add     ebx,eax
         mov     eax,edi
-        mov     cl,[byte ptr @base]
+        mov     cl,byte [base]
         mul     ecx
         mov     edi,eax
-@@noop:
+.noop:
         dec     si
-        jmp     @@baseto
-@@endbaseto:
+        jmp     .baseto
+.endbaseto:
         mov     eax,ebx
         clc
-        ret  
-endp strtoint
+        retf  
+endp 
 
 
 ;Renvoie en ds:%1 la partie de %2 caractŠres a partir de la gauche de ds:%0
-PROC left FAR
-        ARG     @src:word,@dest:word,@nb:word
-        USES    ax,cx,si,di,es
+proc left uses ax cx si di es, src:word,dest:word,nb:word
         push    ds
         pop     es 
-        mov     si,[@src] 
-        mov     di,[@dest] 
-        mov     cx,[@nb]
+        mov     si,[src] 
+        mov     di,[dest] 
+        mov     cx,[nb]
         cld
         rep     movsb
         mov     al,0
         stosb
         clc
-        ret
-endp left
+        retf
+endp 
 
 ;Renvoie en ds:%1 la partie de %2 caractŠres a partir de la droite de ds:%0
-PROC right FAR
-        ARG     @src:word,@dest:word,@nb:word
-        USES    ax,cx,si,di,es
+proc right uses ax cx si di es, src:word,dest:word,nb:word
         push    ds
         pop     es  
-        mov     si,[@src] 
-        mov     di,[@dest]
-        call    getlength,si
+        mov     si,[src] 
+        mov     di,[dest]
+        stdcall    getlength,si
         add     si,ax
-        sub     si,[@nb]
-        mov     cx,[@nb]
+        sub     si,[nb]
+        mov     cx,[nb]
         cld
         rep     movsb
         mov     al,0
         stosb
         clc
-        ret
-endp right
+        retf
+endp 
 
 ;Renvoie en ds:%1 la partie de %3 caractŠres a partir de la position %2 de ds:%0
-PROC middle FAR
-        ARG     @src:word,@dest:word,@item:word,@nb:word
-        USES    ax,cx,si,di,es
+proc middle uses ax cx si di es, src:word,dest:word,item:word,nb:word
         push    ds
         pop     es   
-        mov     si,[@src]   
-        mov     di,[@dest]
-        mov     cx,[@nb]   
-        add     si,[@item] 
+        mov     si,[src]   
+        mov     di,[dest]
+        mov     cx,[nb]   
+        add     si,[item] 
         cld
         rep     movsb
         mov     al,0
         stosb
         clc
-        ret
-endp middle
+        retf
+endp 
 
 ;Rempli de %3 caractŠres %2 a partir de la position %1 de ds:%0
-PROC fill FAR
-        ARG     @src:word,@item:word,@char:word,@nb:word
-        USES    ax,cx,si,di,es
+proc fill uses ax cx si di es, src:word,item:word,char:word,nb:word
         push    ds
         pop     es
-        mov     di,[@src]
-        add     di,[@item]
-        mov     ax,[@char]
-        mov     cx,[@nb]
+        mov     di,[src]
+        add     di,[item]
+        mov     ax,[char]
+        mov     cx,[nb]
         cld
         rep     stosb
         clc
-        ret
-endp fill
+        retf
+endp 
 
 ;Remplace tout les caractŠres %1 de ds:%0 par des caractŠres %2
-PROC replaceallchar FAR
-        ARG     @src:word,@char1:word,@char2:word
-        USES    ax,cx,dx,di,es
-        mov     di,[@src]
-        call    getlength,di
+proc replaceallchar uses ax cx dx di es, src:word,char1:word,char2:word
+        mov     di,[src]
+        stdcall    getlength,di
         mov     cx,ax
-        mov     ax,[@char1]
-        mov     dx,[@char2]
+        mov     ax,[char1]
+        mov     dx,[char2]
         push    ds
         pop     es
-@@findandchange:
+.findandchange:
         repne   scasb
         cmp     cx,0
-        je      @@endofchange
+        je      .endofchange
         mov     [es:di-1],dl
-        jmp     @@findandchange
-@@endofchange:
+        jmp     .findandchange
+.endofchange:
         clc
-        ret
-endp replaceallchar
+        retf
+endp 
 
 ;Recherche un caractŠre dl dans la chaŒne ds:%0
-PROC searchchar FAR
-        ARG     @src:word,@char:word
-        USES    cx,di,es
-        mov     di,[@src]
-        call    getlength,di
+proc searchchar uses cx di es, src:word,char:word
+        mov     di,[src]
+        stdcall    getlength,di
         mov     cx,ax
         push    ds
         pop     es
-        mov     ax,[@char]
+        mov     ax,[char]
         repne   scasb
         mov     ax,di
         dec     ax
         clc
-        ret
-endp searchchar
+        retf
+endp 
 
 ;Inverse la chaine point‚e en ds:%0
-PROC invert FAR
-        ARG     @src:word
-        USES    ax,cx,si,di
-        mov     si,[@src]
-        call    getlength,si
+proc invert uses ax cx si di, src:word
+        mov     si,[src]
+        stdcall    getlength,si
         mov     di,si
         add     di,ax
         dec     di
-@@revert:
+.revert:
         mov     al,[si]
         xchg    al,[di]
         mov     [si],al
         inc     si
         dec     di
         cmp     si,di
-        ja      @@finishinvert
+        ja      .finishinvert
         dec     di
         cmp     si,di
-        ja      @@finishinvert
+        ja      .finishinvert
         inc     di
-        jmp     @@revert
-@@finishinvert:
+        jmp     .revert
+.finishinvert:
         clc
-        ret
-endp invert
+        retf
+endp 
 
 ;Compares 2 chaines de caractŠres DS:%0 et DS:%1 zerof si non equal
-PROC cmpstr FAR
-        ARG     @src:word,@dest:word
-        USES    cx,dx,si,di
+proc cmpstr uses cx dx si di, src:word,dest:word
         push    ds
         pop     es
-        mov     si,[@src]
-        mov     di,[@dest]
-        call    getlength,di
+        mov     si,[src]
+        mov     di,[dest]
+        stdcall    getlength,di
         mov     cx,ax
-        call    getlength,si
+        stdcall    getlength,si
         cmp     cx,ax
-        jne     @@notequal
+        jne     .notequal
         repe    cmpsb
-@@notequal:
-        ret
-endp cmpstr
+.notequal:
+        retf
+endp 
 
 ;Compares 2 chaines de caractŠres DS:%0 et DS:%1 zerof si non equal et renvoie le nb de caractŠre egaux dans ax
-PROC evalue FAR
-        ARG     @src:word,@dest:word
-        USES    cx,si,di,es
+proc evalue uses cx si di es, src:word,dest:word
         push    ds
         pop     es
-        mov     si,[@src]
-        mov     di,[@dest]
-        call    getlength ,di 
+        mov     si,[src]
+        mov     di,[dest]
+        stdcall    getlength ,di 
         mov     cx,ax    
         repe    cmpsb
         pushf
-        jne     @@noident
+        jne     .noident
         sub     ax,cx
         popf
         clc
-        ret
-@@noident:
+        retf
+.noident:
         sub     ax,cx
         dec     ax
         popf
         clc
-        ret
-endp evalue
+        retf
+endp 
 
 ;Insert une chaine ds:%0 en ds:%1 a partir du caractŠre %2
-PROC insert FAR
-        ARG     @src:word,@dest:word,@item:word
-        USES    ax,cx,si,di,es
+proc insert uses ax cx si di es, src:word,dest:word,item:word
         push    es
         pop     ds   
-        mov     si,[@dest]
-        call    getlength,si
+        mov     si,[dest]
+        stdcall    getlength,si
         mov     cx,ax
         add     si,ax
         mov     di,si
-        call    getlength,[@src]
+        stdcall    getlength,[src]
         add     di,ax
-        sub     cx,[@item]
+        sub     cx,[item]
         inc     cx
         std
         rep     movsb
-        mov     si,[@src]
-        mov     di,[@dest]
-        add     di,[@item] 
+        mov     si,[src]
+        mov     di,[dest]
+        add     di,[item] 
         mov     cx,ax
         cld
         rep     movsb             
         clc
-        ret
-endp insert 
+        retf
+endp 
 
 
 ;Detruit %2 caractŠres a partir du caractŠre %1 de DS:%0
-PROC delete FAR
-        ARG     @src:word,@item:word,@size:word
-        USES    ax,cx,dx,si,di,es
+proc delete uses ax cx dx si di es, src:word,item:word,size:word
         push    ds
         pop     es
-        mov     si,[@src]
-        call    getlength,si
+        mov     si,[src]
+        stdcall    getlength,si
         mov     cx,ax
-        sub     cx,[@size]
-        sub     cx,[@item]
+        sub     cx,[size]
+        sub     cx,[item]
         inc     cx
-        add     si,[@item]
+        add     si,[item]
         mov     di,si
-        add     si,[@size]
+        add     si,[size]
         cld
         rep     movsb
         clc
-        ret
-endp delete
+        retf
+endp 
         
 ;Copie une chaine de ds:si en es:di
-PROC copy FAR
-        ARG     @src:word,@dest:word
-        USES    ax,cx,si,di
-        mov     si,[@src]
-        mov     di,[@dest]
-        call    getlength,si
+proc copy uses ax cx si di, src:word,dest:word
+        mov     si,[src]
+        mov     di,[dest]
+        stdcall    getlength,si
         mov     cx,ax
         cld
         rep     movsb
         mov     al,0
         stosb
         clc
-        ret
-endp copy
+        retf
+endp 
 
 
 ;ConcatŠne le chaine ds:si avec ds:di
-PROC concat FAR
-        ARG     @src:word,@dest:word
-        USES    ax,cx,si,di,es
+proc concat uses ax cx si di es, src:word,dest:word
         push    ds
         pop     es
-        mov     si,[@src]
-        call    getlength,si
+        mov     si,[src]
+        stdcall    getlength,si
         mov     cx,ax
-        mov     di,[@dest]
-        call    getlength,di
+        mov     di,[dest]
+        stdcall    getlength,di
         add     di,ax
         cld
         rep     movsb
         mov     al,0
         stosb
         clc
-        ret
-endp concat
+        retf
+endp 
 
 
 ;D‚truit les d‚limiteur qui sont cons‚cutifs dans ds:%0 -> renvoie le nb d'item
-PROC compressdelimiter FAR
-        ARG     @src:word,@delim:word
-        USES    cx,dx,si,di,es
-        mov     di,[@src]
-        call    getlength,di
+proc compressdelimiter uses cx dx si di es, src:word,delim:word
+        mov     di,[src]
+        stdcall    getlength,di
         mov     cx,ax
         push    ds
         pop     es
-        mov     ax,[@delim]
+        mov     ax,[delim]
         xor     dx,dx
-@@compressitems:
+.compressitems:
         repne   scasb
         inc     dx
-@@againcomp:
+.againcomp:
         cmp     [di],al
-        jne     @@nosup
-        call    delete,di,0,1
-        jmp     @@againcomp
-@@nosup:
+        jne     .nosup
+        stdcall    delete,di,0,1
+        jmp     .againcomp
+.nosup:
         cmp     cx,0
-        jne     @@compressitems
+        jne     .compressitems
         mov     ax,dx
         clc
-        ret
-endp compressdelimiter
+        retf
+endp 
 
 ;Met le nombre d'‚l‚ments de ds:%0 à %1
-PROC setnbitems FAR
-        ARG     @src:word,@size:word,@delim:word
-        USES    ax,cx,di,es
-        mov     di,[@src]
-        cmp     [@size],0
-        je      @@onlyzero
-        call    getnbitems,di,[@delim]
-        cmp     [@size],ax
-        je      @@noadjust
-        jb      @@subsome
+proc setnbitems uses ax cx di es, src:word,size:word,delim:word
+        mov     di,[src]
+        cmp     [size],0
+        je      .onlyzero
+        stdcall    getnbitems,di,[delim]
+        cmp     [size],ax
+        je      .noadjust
+        jb      .subsome
         push    ds
         pop     es
-        sub     ax,[@size]
+        sub     ax,[size]
         neg     ax
         mov     cx,ax
-        call    getlength,di
+        stdcall    getlength,di
         add     di,ax
-        mov     ax,[@delim]
+        mov     ax,[delim]
         mov     ah,'a'
         rep     stosw
         xor     al,al
         stosb
-        jmp     @@noadjust
-@@subsome:
-        call    getpointeritem,[@src],[@size],[@delim]
+        jmp     .noadjust
+.subsome:
+        stdcall    getpointeritem,[src],[size],[delim]
         dec     ax
         mov     di,ax
-@@onlyzero:
-        mov     [byte ptr di],0
-@@noadjust:
+.onlyzero:
+        mov     byte [di],0
+.noadjust:
         clc
-        ret
-endp setnbitems
+        retf
+endp 
 
 ;Renvoie la taille ax de l'‚l‚ment %0
-PROC getitemsize FAR
-        ARG     @src:word,@item:word,@delim:word
-        USES    cx,dx
-        mov     cx,[@item]
-        call    getpointeritem,[@src],cx,[@delim]
+proc getitemsize uses cx dx, src:word,item:word,delim:word
+        mov     cx,[item]
+        stdcall    getpointeritem,[src],cx,[delim]
         mov     dx,ax
         inc     cx
-        call    getpointeritem,[@src],cx,[@delim]
+        stdcall    getpointeritem,[src],cx,[delim]
         sub     ax,dx
         dec     ax
         clc
-        ret
-endp getitemsize
+        retf
+endp 
 
 ;Renvoie en ds:%1 l'‚l‚ment %2 de ds:%0
-PROC getitem FAR
-        ARG     @src:word,@dest:word,@item:word,@delim:word
-        USES    ax,cx,si,di,es
+proc getitem uses ax cx si di es, src:word,dest:word,item:word,delim:word
         push    ds
         pop     es 
-        call    getpointeritem,[@src],[@item],[@delim]
+        stdcall    getpointeritem,[src],[item],[delim]
         mov     si,ax
-        call    getitemsize,[@src],[@item],[@delim]
-        mov     di,[@dest]
+        stdcall    getitemsize,[src],[item],[delim]
+        mov     di,[dest]
         mov     cx,ax    
         cld 
         rep     movsb
         mov     al,0
         stosb
         clc
-        ret
-endp getitem
+        retf
+endp 
 
 ;renvoi un pointeur ax sur l'‚l‚ment %1 de ds:%0
-PROC getpointeritem FAR
-        ARG     @src:word,@item:word,@delim:word
-        USES    cx,dx,di,es
-        mov     di,[@src]
-        cmp     [@item],0
-        je      @@finishpointer
+proc getpointeritem uses cx dx di es, src:word,item:word,delim:word
+        mov     di,[src]
+        cmp     [item],0
+        je      .finishpointer
         push    ds
         pop     es  
-        call    getlength,di
+        stdcall    getlength,di
         mov     cx,ax 
         push    ds
         pop     es
-        mov     ax,[@delim]
+        mov     ax,[delim]
         xor     dx,dx
-@@countnbitems:
-        cmp     [@item],dx
-        je      @@finishpointer
+.countnbitems:
+        cmp     [item],dx
+        je      .finishpointer
         cld
         repne   scasb
         inc     dx
         cmp     cx,0
-        jne     @@countnbitems
+        jne     .countnbitems
         inc     di
-@@finishpointer:
+.finishpointer:
         mov     ax,di
         clc
-        ret 
-endp getpointeritem
+        retf 
+endp 
 
 ;Renvoie le nombre d'‚l‚ments ax de ds:%0
-PROC getnbitems FAR
-        ARG     @src:word,@delim:word
-        USES    cx,dx,di,es
-        mov     di,[@src]
-        call    getlength,di
+proc getnbitems uses cx dx di es, src:word,delim:word
+        mov     di,[src]
+        stdcall    getlength,di
         mov     cx,ax
         push    ds
         pop     es
-        mov     ax,[@delim]
+        mov     ax,[delim]
         xor     dx,dx
         cld
-@@countitems:
+.countitems:
         repne   scasb
         inc     dx
         cmp     cx,0
-        jne     @@countitems
+        jne     .countitems
         mov     ax,dx
         clc
-        ret
-endp getnbitems
+        retf
+endp 
 
 ;renvoie la taille en octets AX de la chaine point‚e en ds:%0
-PROC getlength FAR
-        ARG     @src:word
-        USES    cx,di,es
+proc getlength uses cx di es, src:word
         push    ds
         pop     es
-        mov     di,[@src]
+        mov     di,[src]
         mov     al,0
         mov     cx,0FFFFh
         cld
@@ -891,103 +824,93 @@ PROC getlength FAR
         dec     cx
         mov     ax,cx
         clc
-        ret
-endp getlength
+        retf
+endp 
 
 ;Met la taille en octets de la chaine point‚e ds:%0 a %1     
-PROC setlength FAR
-        ARG     @src:word,@size:word
-        USES    si
-        mov     si,[@src]        
-        add     si,[@size] 
-        mov     [byte ptr si],0
+proc setlength uses si, src:word,size:word
+        mov     si,[src]        
+        add     si,[size] 
+        mov     byte [si],0
         clc
-        ret  
-endp setlength
+        retf  
+endp 
 
 ;met en majuscule la chaine ds:%0
-PROC uppercase FAR
-        ARG     @src:word
-        USES    si,ax
-        mov     si,[@src]    
-@@uppercase:
+proc uppercase uses ax si, src:word
+        mov     si,[src]    
+.uppercase:
         mov     al,[ds:si]
         inc     si
         cmp     al,0
-        je      @@enduppercase
+        je      .enduppercase
         cmp     al,'a'
-        jb      @@uppercase
+        jb      .uppercase
         cmp     al,'z'
-        ja      @@uppercase
-        sub     [byte ptr si-1],'a'-'A'
-        jmp     @@uppercase
-@@enduppercase:
+        ja      .uppercase
+        sub     byte [si-1],'a'-'A'
+        jmp     .uppercase
+.enduppercase:
         clc
-        ret
-endp uppercase
+        retf
+endp 
 
 ;met en majuscule la premiŠre lettre chaine ds:%0
-PROC onecase FAR
-        ARG     @src:word
-        USES    ax
-        mov     si,[@src] 
+proc onecase uses ax si, src:word
+        mov     si,[src] 
         mov     al,[ds:si]
         cmp     al,'a'
-        jb      @@oneenduppercase
+        jb      .oneenduppercase
         cmp     al,'z'
-        ja      @@oneenduppercase
-        sub     [byte ptr si],'a'-'A'
-@@oneenduppercase:
+        ja      .oneenduppercase
+        sub     byte [si],'a'-'A'
+.oneenduppercase:
         clc
-        ret  
-endp onecase
+        retf  
+endp 
 
 ;met en minuscule la chaine ds:%0
-PROC lowercase FAR
-        ARG     @src:word
-        USES    si,ax
-        mov     si,[@src]        
-@@lowercase:
+proc lowercase uses ax si, src:word
+        mov     si,[src]        
+.lowercase:
         mov     al,[ds:si]
         inc     si
         cmp     al,0
-        je      @@endlowercase
+        je      .endlowercase
         cmp     al,'A'
-        jb      @@lowercase
+        jb      .lowercase
         cmp     al,'Z'
-        ja      @@lowercase
-        add     [byte ptr si-1],'a'-'A'
-        jmp     @@lowercase
-@@endlowercase:
+        ja      .lowercase
+        add     byte [si-1],'a'-'A'
+        jmp     .lowercase
+.endlowercase:
         clc
-        ret
-endp lowercase
+        retf
+endp 
 
 ;Inverse la casse la chaine ds:%0
-PROC invertcase FAR
-        ARG     @src:word
-        USES    si,ax
-        mov     si,[@src]
-@@invertcase:
+proc invertcase uses ax si, src:word
+        mov     si,[src]
+.invertcase:
         mov     al,[ds:si]
         inc     si
         cmp     al,0
-        je      @@endinvertcase
+        je      .endinvertcase
         cmp     al,'A'
-        jb      @@invertcase
+        jb      .invertcase
         cmp     al,'Z'
-        jbe     @@goinvertcase
+        jbe     .goinvertcase
         cmp     al,'a'
-        jb      @@invertcase
+        jb      .invertcase
         cmp     al,'z'
-        ja      @@invertcase 
-        sub     [byte ptr si-1],'a'-'A'
-        jmp     @@invertcase
-@@goinvertcase:
-        add     [byte ptr si-1],'a'-'A'
-        jmp     @@invertcase
-@@endinvertcase:
+        ja      .invertcase 
+        sub     byte [si-1],'a'-'A'
+        jmp     .invertcase
+.goinvertcase:
+        add     byte [si-1],'a'-'A'
+        jmp     .invertcase
+.endinvertcase:
         clc
-        ret
-endp invertcase
+        retf
+endp 
 

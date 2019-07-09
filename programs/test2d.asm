@@ -1,10 +1,3 @@
-model tiny,stdcall
-p586N
-locals
-jumps
-codeseg
-option procalign:byte
-
 include "..\include\mem.h"
 include "..\include\fat.h"
 include "..\include\divers.h"
@@ -13,31 +6,31 @@ include "..\include\3d.h"
 org 0h
 
 start:
-header exe <"CE",1,0,0,,offset imports,,offset realstart>
+header exe 1
 
 realstart:
-    call      [cs:randomize]
-    call      [cs:savestate]
-    call      [cs:setvideomode],10
-    call      [cs:clearscreen]
+    invoke      randomize
+    invoke      savestate
+    invoke      setvideomode,10
+    invoke      clearscreen
     mov       cx,65535
 show:
-    call      [cs:random]
+    invoke      random
     and       ax,1111b
     push      ax
-    call      [cs:random]
+    invoke      random
     push      ax
-    call      [cs:random]
+    invoke      random
     push      ax
-    call      [cs:random]
+    invoke      random
     push      ax
-    call      [cs:random]
+    invoke      random
     push      ax
-    call      [cs:line]
+    invoke      line
     dec       cx
     jnz       show
-    call      [cs:bioswaitkey]
-    call      [cs:restorestate]
+    invoke      bioswaitkey
+    invoke      restorestate
     retf
 
 importing

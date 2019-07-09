@@ -1,10 +1,3 @@
-model tiny,stdcall
-p586N
-locals
-jumps
-codeseg
-option procalign:byte
-
 include "..\include\mem.h"
 include "..\include\fat.h"
 include "..\include\divers.h"
@@ -13,11 +6,10 @@ include "..\include\3d.h"
 org 0h
 
 start:
-header exe <"CE",1,0,0,,offset imports,,offset realstart>
+header exe 1
 
-data:
-
-camera vertex3d <320.0,240.0,70.0>
+alldata:
+camera vertex3d 320.0,240.0,70.0
 
 zoom dd 5.0
 rot1 dd 0.1
@@ -66,10 +58,10 @@ dd -2.0,-2.0,20.0
 dd 2.0,2.0,20.0
 
 
-mat1 mat <?>
-mat2 mat <?>
-mat3 mat <?>
-matrixp mat <?>
+mat1 mat 
+mat2 mat 
+mat3 mat 
+matrixp mat
 
 mode db 0
 
@@ -78,36 +70,29 @@ vertexp equ objectp+15
 facep   equ vertexp+20000
 screen  equ facep+20000
 
-;typep db ?
-;objectp db 15 dup (?)
-;vertexp db 1000*4*3+2 dup (?)
-;facep db 2000*3+2 dup (?)
-;screen db 1000*2*2 dup (?)
-
-
 realstart:
-    call      [cs:savestate]
-    call      [cs:setvideomode],10
-    call      [cs:clearscreen]
-    call      [cs:mballoc],65535
+    invoke      savestate
+    invoke      setvideomode,10
+    invoke      clearscreen
+    invoke      mballoc,65535
     mov       es,ax
-    mov       si,offset data
+    mov       si, alldata
     mov       di,si
-    mov       ecx,(offset realstart-offset data)
+    mov       ecx,( realstart- alldata)
     shr       ecx,2
     inc       ecx
     cld
     rep       movsd
-    call      [cs:projfile],offset filename
+    invoke      projfile, filename
     jc        errorloading
-    call      [cs:mbfind],offset filename
+    invoke      mbfind, filename
     jc        errorloading
     push      es
     pop       ds
     mov       es,ax  
-    call      [cs:load3ds],es,0,offset objectp,offset vertexp,offset matrixp,offset facep
-    call      [cs:transform],offset vertexnbp,offset matrixp
-    call      [cs:identity],offset mat1
+    invoke      load3ds,es,0, objectp, vertexp, matrixp, facep
+    invoke      transform, vertexnbp, matrixp
+    invoke      identity, mat1
     jmp       show
 rool:
     mov       ah,1
@@ -127,32 +112,32 @@ rool:
 notmode:
     cmp       ax,4800h
     jne       notup
-    call      [cs:rotationx],offset mat1,[rot2]
+    invoke      rotationx, mat1,[rot2]
     jmp       show
 notup:
     cmp       ax,5000h
     jne       notdown
-    call      [cs:rotationx],offset mat1,[rot1]
+    invoke      rotationx, mat1,[rot1]
     jmp       show
 notdown:
     cmp       ax,4B00h
     jne       notleft
-    call      [cs:rotationy],offset mat1,[rot1]
+    invoke      rotationy, mat1,[rot1]
     jmp       show
 notleft:
     cmp       ax,4D00h
     jne       notright
-    call      [cs:rotationy],offset mat1,[rot2]
+    invoke      rotationy, mat1,[rot2]
     jmp       show
 notright:
     cmp       ax,4900h
     jne       notupup
-    call      [cs:rotationz],offset mat1,[rot1]
+    invoke      rotationz, mat1,[rot1]
     jmp       show
 notupup:
     cmp       ax,5100h
     jne       notdowndown
-    call      [cs:rotationz],offset mat1,[rot2]
+    invoke      rotationz, mat1,[rot2]
     jmp       show
 notdowndown:
     cmp       ax,4A2Dh
@@ -169,45 +154,45 @@ notminus:
     fstp      [camera.tz]
     jmp       show
 notmaxus:
-    call      [cs:identity],offset mat1
+    invoke      identity, mat1
     jmp       rool
 show:
-    call      [cs:transform],offset vertexp,offset mat1
-    call      [cs:transform],offset vertexnbp,offset mat1
+    invoke      transform, vertexp, mat1
+    invoke      transform, vertexnbp, mat1
 notmodify:
-    call      [cs:clearscreen]
-    call      [cs:print],offset objectp
-    call      [cs:draw3d_line],3,offset facenbp,offset vertexnbp,offset screen,offset camera,3
-    call      [cs:draw3d_line],3,offset facenbp,offset vertexnbp2,offset screen,offset camera,3
+    invoke      clearscreen
+    invoke      print, objectp
+    invoke      draw3d_line,3, facenbp, vertexnbp, screen, camera,3
+    invoke      draw3d_line,3, facenbp, vertexnbp2, screen, camera,3
     cmp       [mode],0
     jne       line
-    call      [cs:draw3d_point],offset vertexp,offset screen,offset camera,4
+    invoke      draw3d_point, vertexp, screen, camera,4
     jmp       retrace
 line:
     cmp       [mode],1
     jne       hidden
-    call      [cs:draw3d_line],3,offset facep,offset vertexp,offset screen,offset camera,4
+    invoke      draw3d_line,3, facep, vertexp, screen, camera,4
     jmp       retrace
 hidden:
-    call      [cs:draw3d_hidden],3,offset facep,offset vertexp,offset screen,offset camera,4
+    invoke      draw3d_hidden,3, facep, vertexp, screen, camera,4
 retrace:
-    call      [cs:waitretrace]
-    call      [cs:waitretrace]
+    invoke      waitretrace
+    invoke      waitretrace
     jmp       rool
 endee:
-    call      [cs:restorestate]
+    invoke      restorestate
     retf
 
 errorloading:
     push      cs
     pop       ds
-    call      [cs:print],offset errorload
-    call      [cs:bioswaitkey]
+    invoke      print, errorload
+    invoke      bioswaitkey
     jmp       endee
 
 errorload db '\c02Erreur au chargement du fichier 3D\l<Appuyez sur une touche>\c07',0
 
-filename find <"SPHERE.3DS",0,0,0,1,>
+filename find "SPHERE.3DS"
 
 
 importing

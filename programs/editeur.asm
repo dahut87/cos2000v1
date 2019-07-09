@@ -1,10 +1,3 @@
-model tiny,stdcall
-p586N
-locals
-jumps
-codeseg
-option procalign:byte
-
 include "..\include\mem.h"
 include "..\include\divers.h"
 include "..\include\graphic.h"
@@ -12,20 +5,20 @@ include "..\include\graphic.h"
 org 0h
 
 start:
-header exe <"CE",1,0,0,,offset imports,,offset realstart>
+header exe 1
 
 realstart:
 mov     ax,0305h
 mov     bx,0008h
 int     16h
-call    [savestate]
-call    [setvideomode],2
+invoke    savestate
+invoke    setvideomode,2
 xor     ebp,ebp
 xor     ax,ax
 mov     fs,ax
-call    [disablescroll]
+invoke    disablescroll
 adres:
-call    [saveparamto],offset infos
+invoke    saveparamto, infos
 mov     al,[infos.lines]
 dec     al
 mov     [lastline],al
@@ -36,13 +29,13 @@ shr     al,2
 mov     [sizex],al
 and     bl,11b
 mov     [sizex2],bl
-mov     al,[infos.mode]
+mov     al,[infos.modenum]
 cmp     al,[oldmode]
 je      noinit
-call    [clearscreen]
+invoke    clearscreen
 mov     [oldmode],al
 noinit:
-call    [setxy],0,0
+invoke    setxy,0,0
 mov     edi,ebp
 mov     bh,[lastline]
 lines:
@@ -53,8 +46,8 @@ mov     edx,edi
 shr     edx,4*4
 shl     edx,4*3
 push    edx
-push    offset spaces
-call    [print]
+push    spaces
+invoke    print
 mov     dx,di
 mov     al,[sizex]
 mov     esi,edi
@@ -63,24 +56,24 @@ mov     edx,edi
 shr     edx,4*4
 shl     edx,4*3
 mov     fs,dx
-push    [dword ptr fs:di]
+push    dword [fs:di]
 push    8
-call    [showhex]
-call    [showchar],' '
+invoke    showhex
+invoke    showchar,' '
 inc     edi
 dec     al
 jnz     doaline
 mov     edi,esi
-push    offset spaces2
-call    [print]
+push    spaces2
+invoke    print
 mov     al,[sizex]
 doaline2:
 mov     edx,edi
 shr     edx,4*4
 shl     edx,4*3
 mov     fs,dx
-push    [word ptr fs:di]
-call    [showchar]
+push    word [fs:di]
+invoke    showchar
 inc     edi
 dec     al
 jnz     doaline2
@@ -88,11 +81,11 @@ dec     bh
 je      outes
 cmp     [sizex2],0
 je      lines
-call    [addline]
+invoke    addline
 jmp     lines
 outes:
-call    [setxy],0,[word ptr lastline]   
-call    [print],offset menu
+invoke    setxy,0,word [lastline]   
+invoke    print, menu
 waitkey:
 mov     ax,0
 int     16h
@@ -128,9 +121,9 @@ jmp     adres
 suit6:
 cmp     ax,4100h
 jne     suit7
-mov     [dword ptr pope],'TIDE'
-call    [setxy],0,[word ptr lastline]
-call    [print],offset menu
+mov     dword  [pope],'TIDE'
+invoke    setxy,0,word [lastline]
+invoke    print, menu
 mov     ax,0B800h
 mov     es,ax
 mov     [xxyy2],3
@@ -142,7 +135,7 @@ mov     ax,0
 int     16h
 cmp     ah,41h
 jne     tre
-mov     [dword ptr pope],' EUV'
+mov     dword [pope],' EUV'
 push    cs
 pop     es
 jmp     adres
@@ -187,7 +180,7 @@ call    calc1
 call    calc2
 mov     edi,[es:bx-1]
 mov     dx,[es:si-1]
-mov     [byte ptr es:bx],0112
+mov     byte [es:bx],0112
 mov     [es:bx-1],al
 writs:
 mov     ax,0
@@ -209,12 +202,12 @@ mov     cl,[gs:bx]
 cmp     ch,cl
 je      no
 push    si ax
-call    [setxy],0,[word ptr lastline]
-call    [print],offset msg
+invoke    setxy,0,word [lastline]
+invoke    print, msg
 mov     ax,0
 int     16h
-call    [setxy],0,[word ptr lastline]
-call    [print],offset menu
+invoke    setxy,0,word [lastline]
+invoke    print, menu
 pop     bx si
 mov     [es:bx-1],edi
 mov     [es:si-1],dx
@@ -235,7 +228,7 @@ jmp     waitst
 suit7:
 cmp     ax,4200h
 jne     adres
-call    [restorestate]
+invoke    restorestate
 retf
 calc1:
 push    ax dx si
@@ -251,11 +244,11 @@ shl     bx,5
 shl     dx,7
 add     bx,dx
 add     bx,ax
-mov     [byte ptr es:bx],112
-mov     [byte ptr es:bx+2],112
+mov     byte [es:bx],112
+mov     byte [es:bx+2],112
 mov     si,[xxyy]
-mov     [byte ptr es:si],07
-mov     [byte ptr es:si+2],07
+mov     byte [es:si],07
+mov     byte [es:si+2],07
 mov     [xxyy],bx
 pop     si dx ax
 ret
@@ -270,9 +263,9 @@ mov     dx,[xx]
 shl     dx,1
 add     si,dx
 add     si,129
-mov     [byte ptr es:si],112
+mov     byte [es:si],112
 mov     bx,[xxyy2]
-mov     [byte ptr es:bx],07
+mov     byte [es:bx],07
 mov     [xxyy2],si
 pop     dx bx ax
 ret
@@ -330,7 +323,7 @@ spaces2 db  '\c04 | \c07',0
 
 showbuffer db 35 dup (0FFh)
 oldmode db 0
-infos vgainf <>
+infos vgainf 
 
 importing
 use VIDEO,setvideomode
@@ -345,11 +338,4 @@ use VIDEO.LIB,print
 use VIDEO.LIB,showhex
 use VIDEO.LIB,showchar
 endi
-
-
-
-
-
-
-
 

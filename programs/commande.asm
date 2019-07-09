@@ -1,10 +1,3 @@
-model tiny,stdcall
-p586N
-locals
-jumps
-codeseg
-option procalign:byte
-
 include "..\include\fat.h"
 include "..\include\mem.h"
 include "..\include\divers.h"
@@ -14,31 +7,31 @@ include "..\include\cpu.h"
 org     0h
 
 start:
-header  exe     <,1,0,,,offset imports,,offset realstart>
+header  exe     1
 
 realstart:
-        call    [cs:print],offset msginit
+        invoke    print, msginit
         xor     bp,bp
 replay:
-        call    [cs:addline]
+        invoke    addline
 noret:
-        call    [cs:addline]
-        mov     di,offset dir
-        call    [cs:getdir],di
-        call    [cs:print],di
-        call    [cs:print],offset prompt
-        mov     di,offset buffer
+        invoke    addline
+        mov     di,dir
+        invoke    getdir,di
+        invoke    print,di
+        invoke    print,prompt
+        mov     di, buffer
 waitchar:
         xor     ax,ax
         int     16h
-        call    convertfr
+        invoke    convertfr
         cmp     ah,59
         jne     norr
         cmp     bp,0
         je      waitchar
-        call    [print],[word ptr cs: bp]
-        call    [copy],[word ptr cs: bp],di
-        call    [getlength],di
+        invoke    print,word [cs: bp]
+        invoke    copy,word [cs: bp],di
+        invoke    getlength,di
         add     di,ax
         jmp     waitchar
 norr:
@@ -50,17 +43,17 @@ norr:
         je      escape
         cmp     al,' '
         jb      waitchar
-        cmp     di,offset buffer+256
+        cmp     di, buffer+256
         je      waitchar
         mov     [di],al
         inc     di
-        call    [cs:showchar],ax
+        invoke    showchar,ax
         jmp     waitchar
 escape:
-        cmp     di,offset buffer
+        cmp     di, buffer
         je      waitchar
-        call    [cs:getxy]
-        mov     dx,offset buffer
+        invoke    getxy
+        mov     dx,buffer
         mov     cx,di
         sub     cx,dx
         js      waitchar
@@ -69,84 +62,84 @@ escape:
         mov     cl,ah
         xor     ah,ah
         xor     ch,ch
-        call    [cs:setxy],cx,ax
-        mov     di,offset buffer
-        mov     [byte ptr di],0
+        invoke    setxy,cx,ax
+        mov     di,buffer
+        mov     byte [di],0
         jmp     waitchar
 backspace:
-        cmp     di,offset buffer
+        cmp     di,buffer
         je      waitchar
-        call    [cs:getxy]
+        invoke    getxy
         dec     ah
         mov     cl,ah
         xor     ah,ah
         xor     ch,ch        
-        call    [cs:setxy],cx,ax        
-        call    [cs:showchar],' '
-        call    [cs:setxy],cx,ax         
+        invoke    setxy,cx,ax        
+        invoke    showchar,' '
+        invoke    setxy,cx,ax         
         dec     di
-        mov     [byte ptr di],0
+        mov     byte [di],0
         jmp     waitchar
 entere:
-        mov     [byte ptr di],0
-        cmp     di,offset buffer
+        mov     byte [di],0
+        cmp     di,buffer
         je      noret
-        mov     si,offset temp
-        call    [cs:addline]
-        call    [cs:getitem],offset buffer,si,0,' '
-        call    [cs:uppercase],si
-        mov     bx,offset commands
+        mov     si,temp
+        invoke    addline
+        invoke    getitem,buffer,si,0,' '
+        invoke    uppercase,si
+        mov     bx,commands
         xor     bp,bp
         xor     dx,dx
 tre:
         mov     di,[bx]
         cmp     di,0
         je      error
-        call    [cs:evalue],si,di
+        invoke    evalue,si,di
         cmp     ax,dx
         jb      noadd
         mov     dx,ax
         mov     bp,bx
 noadd:
-        call    [cs:cmpstr],si,di
+        invoke    cmpstr,si,di
         je      strisok
         add     bx,8
         jmp     tre
 strisok:
-        mov     di,offset temp
-        call    [cs:copy],offset buffer,di
-        call    [cs:uppercase],di
+        mov     di, temp
+        invoke    copy,buffer,di
+        invoke    uppercase,di
         xor     cx,cx
         inc     cx
-        call    [cs:getpointeritem],di,cx,' '
+        invoke    getpointeritem,di,cx,' '
         mov     di,ax
-        cmp     [byte ptr di-1],0
+        cmp     byte [di-1],0
         jne     nopod
-        mov     [byte ptr di],0
+        mov     byte [di],0
 nopod:
-        call    [cs:checksyntax],di,[word ptr bx+4],' '
+        invoke    checksyntax,di,word [bx+4],' '
         jc      errorprec
         mov     bx,[bx+2]
-        call    bx
+        invoke    bx
         jmp     replay
 error:
-        mov     di,offset buffer
-        call    [cs:searchchar],di,'.'
+        mov     di,buffer
+        invoke    searchchar,di,'.'
         je      noaddext
-        call    [cs:concat],offset extcom,di
+        invoke    concat, extcom,di
 noaddext:
-        call    [cs:execfile],di
+        invoke    execfile,di
         jc      reallyerror
         xor     bp,bp
         jmp     replay
 reallyerror:
-        push    [word ptr cs: bp]
-        push    offset error_syntax
-        call    [cs:print]
+        push    word [cs: bp]
+        push    error_syntax
+        invoke    print
         jmp     replay
 errorprec:
-        push    offset derror
-        call    [cs:print]
+        push    derror
+        invoke    print
         jmp     replay
 
 code_exit:
@@ -154,13 +147,13 @@ code_exit:
         retf
 
 code_version:  
-        call    [cs:print],offset version_text
+        invoke    print, version_text
         ret
 
 version_text db 'Cos 2000 version 1.4Fr par \c04MrNop\c07',0
 
 code_cls:
-        call    [cs:clearscreen]
+        invoke    clearscreen
         ret
 
 code_reboot:
@@ -169,15 +162,15 @@ code_reboot:
         retf
 
 code_command: 
-        call    [cs:print],offset def
-        mov     bx,offset commands
+        invoke    print, def
+        mov     bx, commands
 showalls:
-        push    [word ptr bx+4]
-        push    [word ptr bx+6]
-        push    [word ptr bx]  
-        call    [cs:print],offset commandes
+        push    word [bx+4]
+        push    word [bx+6]
+        push    word [bx]  
+        invoke    print, commandes
         add     bx,8
-        cmp     [word ptr bx],0
+        cmp     word [bx],0
         jne     showalls
 endoff:
         ret
@@ -186,11 +179,11 @@ def       db '\c02Liste des commandes internes\l\l\c07',0
 commandes db '%0 \h10:\h12%0 \h70%0\l',0
 
 code_detect:
-        call    [cs:print],offset msg_cpu_detect
-        call    [cs:cpuinfo],offset thecpu
-        call    [cs:setinfo],offset thecpu,offset temp
-        call    [cs:print],offset msg_ok2
-        push    offset temp
+        invoke    print,msg_cpu_detect
+        invoke    cpuinfo,thecpu
+        invoke    setinfo,thecpu, temp
+        invoke    print,msg_ok2
+        push    temp
         xor     eax,eax
         mov     al,[thecpu.family]
         push    eax
@@ -198,13 +191,13 @@ code_detect:
         push    eax
         mov     al,[thecpu.stepping]
         push    eax
-        push    offset thecpu.names
-        push    offset thecpu.vendor
-        call    [cs:print],offset msg_cpu_detect_inf
-        call    [cs:print],offset msg_pci
-        call    [cs:pciinfo],offset thepci
+        push     thecpu.names
+        push     thecpu.vendor
+        invoke    print, msg_cpu_detect_inf
+        invoke    print, msg_pci
+        invoke    pciinfo, thepci
         jc      nopci
-        call    [cs:print],offset msg_ok2
+        invoke    print, msg_ok2
         xor     eax,eax
         mov     al,[thepci.maxbus]
         push    eax
@@ -212,25 +205,28 @@ code_detect:
         push    eax
         mov     al,[thepci.version_major]
         push    eax
-        call    [cs:print],offset msg_pci_info
-        call    [cs:print],offset msg_pci_enum
+        invoke    print, msg_pci_info
+        invoke    print, msg_pci_enum
         xor     ebx,ebx
         xor     ecx,ecx
         xor     si,si
 searchpci:
-        call    [cs:getcardinfo],bx,cx,si,offset temp
+        invoke    getcardinfo,bx,cx,si, temp
         jc      stopthis
-        mov     al,[(pcidata offset temp).subclass]
+	virtual at temp
+	.pcidata pcidata
+	end virtual
+        mov     al,[.pcidata.subclass]
         push    ax
-        mov     al,[(pcidata offset temp).class]
+        mov     al,[.pcidata.class]
         push    ax
-        call    [cs:getpcisubclass]
+        invoke    getpcisubclass
         push    dx
         push    ax
-        mov     al,[(pcidata offset temp).class]
+        mov     al,[.pcidata.class]
         xor     ah,ah
         push    ax
-        call    [cs:getpciclass]
+        invoke    getpciclass
         push    dx
         push    ax
         push    4
@@ -239,11 +235,11 @@ searchpci:
         push    ecx
         push    4
         push    ebx
-        mov     ax,[(pcidata offset temp).device]
+        mov     ax,[.pcidata.device]
         push    eax
-        mov     ax,[(pcidata offset temp).vendor]
+        mov     ax,[.pcidata.vendor]
         push    eax
-        call    [cs:print],offset msg_pci_card
+        invoke    print, msg_pci_card
         inc     si
         cmp     si,7
         jbe     searchpci
@@ -258,16 +254,16 @@ stopthis:
         jbe     searchpci
         jmp     next
 nopci:
-        call    [cs:print],offset msg_echec2
+        invoke    print, msg_echec2
 next:
-        call    [cs:detectvmware]
+        invoke    detectvmware
         jne     novirtual
-        call    [cs:print],offset msg_vmware
+        invoke    print, msg_vmware
 novirtual:
         ret
 
-thepci pciinf <>
-thecpu cpu <>
+thepci pciinf
+thecpu cpu 
 
 msg_ok2            db "\h70 [\c02  Ok  \c07]\l",0
 msg_echec2         db "\h70 [\c0CPasser\c07]\l",0
@@ -281,42 +277,45 @@ msg_pci_card       db "   | 0x%hW  | 0x%hW |%w|%w|%w|%0P.%0P\l",0
 msg_vmware         db "\c04 VMWare a ete detecte !!!\c07\l",0
 
 code_mode:
-        call    [cs:gettypeditem],di,0,' '
+        invoke    gettypeditem,di,0,' '
         and     al,1111b
-        call    [cs:setvideomode],ax
-        call    [cs:clearscreen]
+        invoke    setvideomode,ax
+        invoke    clearscreen
         ret
 
 code_dir:
-        call    [cs:getserial] 
+        invoke    getserial
         push    eax
-        mov     si,offset nomdisque
-        call    [cs:getname],si 
+        mov     si, nomdisque
+        invoke    getname,si 
         push    si
-        push    offset present
-        call    [cs:print]
+        push     present
+        invoke   print
         xor     ecx,ecx
-        mov     di,offset bufferentry
-        call    [cs:findfirstfile],di
+        mov     di, bufferentry
+        invoke    findfirstfile,di
         jc      nofiles
 go:
-        push    [word ptr (find di).result.fileattr]
-        push    [(find di).result.filesize]
-        push    [(find di).result.filetime]
-        push    [(find di).result.filedate]
-        push    [(find di).result.filetimecrea]
-        push    [(find di).result.filedatecrea]
-        lea     bx,[(find di).result.filename]
+	virtual at di
+	.find find
+	end virtual
+        push    word [.find.result.fileattr]
+        push    [.find.result.filesize]
+        push    [.find.result.filetime]
+        push    [.find.result.filedate]
+        push    [.find.result.filetimecrea]
+        push    [.find.result.filedatecrea]
+        lea     bx,[.find.result.filename]
         push    bx
-        push    offset line
-        call    [cs:print]
+        push     line
+        invoke    print
         inc     ecx
-        call    [cs:findnextfile],di
+        invoke    findnextfile,di
         jnc     go
 nofiles:
         push    ecx
-        push    offset filess
-        call    [cs:print]
+        push     filess
+        invoke    print
         ret
         
 nomdisque db    13 dup (0)
@@ -327,14 +326,14 @@ line    db      '\c07%n   %d   %t   %d   %t   %z   %a\l',0
 filess  db      '\l\l\c02%u Fichier(s) au total\l\c07',0
 
 code_cd:
-        call    [cs:gettypeditem],di,0,' '
+        invoke    gettypeditem,di,0,' '
         push    ax
-        push    offset changing
-        call    [cs:print]
-        call    [cs:changedir],ax
+        push     changing
+        invoke    print
+        invoke    changedir,ax
         jnc     okchange
-        push    offset errorchanging
-        call    [cs:print]
+        push     errorchanging
+        invoke   print
 okchange:
         ret
         
@@ -342,16 +341,16 @@ changing db     'Changement de repertoire vers %0\l',0
 errorchanging db '\c04Impossible d''atteindre ce dossier\c07',0
         
 code_kill:
-        call    [cs:gettypeditem],di,0,' '
+        invoke    gettypeditem,di,0,' '
         push    ax
-        push    offset killing
-        call    [cs:print]
-        call    [cs:mbfind],ax
+        push     killing
+        invoke    print
+        invoke    mbfind,ax
         jc      nochanged
-        call    [cs:mbfree],ax
+        invoke    mbfree,ax
         jnc     okchanged
 nochanged:   
-        call    [cs:print],offset errorkilling
+        invoke    print, errorkilling
 okchanged:
         ret
 
@@ -363,26 +362,26 @@ push ebp
 push esp
 push ss
 push ss
-call [cs:print],offset stackshow
+invoke print, stackshow
 mov cx,12 ;12 derniers éléments
 xor esi,esi
 mov si,sp
 sub si,2*12
 showloop:
-push [dword ptr ss:si]
+push dword [ss:si]
 push esi
 push ss
 push ss
-call [cs:print],offset itemshow
+invoke print, itemshow
 inc si
 inc si
 cmp si,sp
 jne notspshow
-call [cs:print],offset stresp
+invoke print, stresp
 notspshow:
 cmp si,bp
 jne nextshow
-call [cs:print],offset strebp
+invoke print, strebp
 nextshow:
 dec cx
 jnz showloop
@@ -400,42 +399,42 @@ stresp db '<-- SP',0
 
 
 code_setbuffer:
-        call    [cs:gettypeditem],di,0,' '
-        call    [cs:setbuffer],ax
+        invoke    gettypeditem,di,0,' '
+        invoke    setbuffer,ax
 
 code_getbuffer:
-        mov     si,offset diskbuffers
-        call    [cs:getbuffer],si
+        mov     si, diskbuffers
+        invoke    getbuffer,si
         xor     ecx,ecx
         mov     cx,[diskbuffers.current]
         push    ecx
         mov     cx,[diskbuffers.size]
         push    ecx
-        call    [cs:print],offset showbuffers
-        mov     si,offset diskbuffers.chain
+        invoke    print, showbuffers
+        mov     si, diskbuffers.chain
         xor     bx,bx
 showbuffer:
-        cmp     [word ptr si],0FFFFh
+        cmp     word [si],0FFFFh
         jne     notnoted
-        push    offset noted
+        push     noted
         jmp     islikeit
 notnoted:
-        cmp     [word ptr si],0FFFEh
+        cmp     word [si],0FFFEh
         jne     notempty
-        push    offset empty
+        push     empty
         jmp     islikeit
 notempty: 
-        push    [dword ptr si]
-        push    offset occup
+        push    dword [si]
+        push     occup
 islikeit:
         cmp     bx,[diskbuffers.current]
         jne     notthecurrent
-        call    [cs:showchar],'*'
+        invoke    showchar,'*'
         jmp     okletsgo
 notthecurrent:
-        call    [cs:showchar],' '
+        invoke    showchar,' '
 okletsgo:
-        call    [cs:print]
+        invoke    print
         inc     si
         inc     si
         inc     bx
@@ -450,89 +449,113 @@ showbuffers db '\l\c02Contenu des tampons disquette\l\l\c07'
             db 'Nombre de tampons alloues : %u\l'
             db 'Dernier element du tampon : %u\l\l',0
 
-diskbuffers diskbuffer <>
+diskbuffers diskbuffer 
 
 code_dump:
-        call    [cs:gettypeditem],di,0,' '     
-        call    [cs:mbfind],di
+	virtual at 0
+	.mb mb
+	end virtual
+        invoke    gettypeditem,di,0,' '     
+        invoke    mbfind,di
         jc      notmbfind
         mov     fs,ax 
         dec     ax
         dec     ax
         mov     gs,ax 
-        cmp     [word ptr fs:0x0],'EC'
+        cmp     word [fs:0x0],'EC'
         jne     notace2
-        push    offset oui ;CE? str0 2 
+        push     oui ;CE? str0 2 
         jmp     suitelikeace2
 notace2:
-        push    offset non
+        push     non
 suitelikeace2:
-        cmp     [word ptr gs:mb.isnotlast],true
+	virtual at 0
+	.mb mb
+	end virtual
+        cmp     word [gs:.mb.isnotlast],true
         je      notlast2
-        push    offset oui ;CE? str0 2 
+        push     oui ;CE? str0 2 
         jmp     suitelikelast2
 notlast2:
-        push    offset non
+        push     non
 suitelikelast2:
         mov     dx,gs
         push    edx          ;Emplacement memoire hex 2
 ;parent
-        cmp     [gs:mb.reference],0
+	virtual at 0
+	.mb mb
+	end virtual
+        cmp     [gs:.mb.reference],0
         jne     nextdetect2
         push    cs
-        push    offset none        ;parent lstr0 2x2 
-        add     bx,[gs:mb.sizes]
+        push     none        ;parent lstr0 2x2 
+        add     bx,[gs:.mb.sizes]
         jmp     suitemn2
 nextdetect2:
-        mov     dx,[gs:mb.reference]
+	virtual at 0
+	.mb mb
+	end virtual
+        mov     dx,[gs:.mb.reference]
         dec     dx
         dec     dx
         push    dx                    ;parent lstr0 2x2 
-        push    offset (mb).names
+        push     .mb.names
 suitemn2:
-        cmp     [gs: mb.isresident],true
+	virtual at 0
+	.mb mb
+	end virtual
+        cmp     [gs: .mb.isresident],true
         jne     notresident2
-        push    offset oui        ;resident str0 2 
+        push     oui        ;resident str0 2 
         jmp     suitelistmcb2
 notresident2:
-        push    offset non     ;resident str0 2
+        push     non     ;resident str0 2
 suitelistmcb2:
         xor     edx,edx
-        mov     dx,[gs: mb.sizes]
+	virtual at 0
+	.mb mb
+	end virtual
+        mov     dx,[gs:.mb.sizes]
         shl     edx,4
         push    edx
         push    gs                   ;nom lstr0 2x2 
-        push    offset (mb).names
-        push    offset dumpshow        ;ligne
-        call    [cs:print]
-        cmp     [word ptr fs:0x0],'EC'
+        push     .mb.names
+        push     dumpshow        ;ligne
+        invoke    print
+        cmp     word [fs:0x0],'EC'
         jne     endofdumpformoment
-        push    [dword ptr fs:exe.starting]
+	virtual at 0
+	.exe exe
+	end virtual
+        push    dword [fs:.exe.starting]
         push    fs
         push    fs
-        push    [dword ptr fs:exe.sections]
+        push    dword [fs:.exe.sections]
         push    fs
         push    fs
-        push    [dword ptr fs:exe.imports]
+        push    dword [fs:.exe.imports]
         push    fs
         push    fs
-        push    [dword ptr fs:exe.exports]
+        push    dword [fs:.exe.exports]
         push    fs
         push    fs
-        cmp     [fs: exe.compressed],true
+        cmp     [fs:.exe.compressed],true
         jne     notcompressed
-        push    offset oui
+        push     oui
         jmp     suiteiscompressed
 notcompressed:
-        push    offset non
+        push     non
 suiteiscompressed:
-        push    [dword ptr fs:exe.checksum]
-        push    [dword ptr fs:exe.major]
-        call    [cs:print],offset dumpshowce
+	virtual at 0
+	.exe exe
+	end virtual
+        push    dword [fs:.exe.checksum]
+        push    dword [fs:.exe.major]
+        invoke    print, dumpshowce
 endofdumpformoment:
         ret
 notmbfind:
-        call    [cs:print],offset errornotmbfind
+        invoke    print, errornotmbfind
         ret
 
 errornotmbfind db '\c04Impossible de trouver le bloc specifie\l\l\c07',0
@@ -559,93 +582,99 @@ dumpshowce db '\c02-----------------------------\l'
 
 
 code_sections:
-        call    [cs:gettypeditem],di,0,' '     
-        call    [cs:mbfind],di
+        invoke    gettypeditem,di,0,' '     
+        invoke    mbfind,di
         jc      notmbfindssections
         jmp     haveatargetsections
 notmbfindssections:
-        call    [cs:searchfile],di
+        invoke    searchfile,di
         jc      notmbfindall
-        call    [cs:projfile],di
+        invoke    projfile,di
         jc      notmbfindall
-        call    [cs:mbfind],di
+        invoke    mbfind,di
         jc      notmbfindall
 haveatargetsections:
         mov     fs,ax 
-        cmp     [word ptr fs:0x0],'EC'
+        cmp     word [fs:0x0],'EC'
         jne     errornotace2
-        mov     si,[fs:exe.sections]
+	virtual at 0
+	.exe exe
+	end virtual
+        mov     si,[fs:.exe.sections]
         cmp     si,0
         je      errornosections
         xor     edx,edx
-        call    [cs:print],offset rets
+        invoke    print, rets
 showallsections: 
         add     si,4       
         push    fs
         push    si
-        call    [cs:print],offset functions
+        invoke    print, functions
         inc     edx
 findnextsections:
         inc     si
-        cmp     [byte ptr fs:si],0
+        cmp     byte [fs:si],0
         jne     findnextsections
-        cmp     [dword ptr fs:si],0
+        cmp     dword [fs:si],0
         je      finishsections
         inc     si
         jmp     showallsections
 finishsections:
         push    edx
-        call    [cs:print],offset allsections
+        invoke    print, allsections
         ret
 
 errornosections:
-        call    [cs:print],offset errornosection
+        invoke    print, errornosection
         ret
 
 allsections           db '\c02\lIl y avait %u sections dans le bloc ou fichier\l\c07',0 
 errornosection        db '\c02Aucune section dans le bloc ou fichier\l\c07',0 
 
 code_exports:
-        call    [cs:gettypeditem],di,0,' '     
-        call    [cs:mbfind],di
+        invoke    gettypeditem,di,0,' '     
+        invoke    mbfind,di
         jc      notmbfindsimports
         jmp     haveatargetexports
 notmbfindsexports:
-        call    [cs:searchfile],di
+        invoke    searchfile,di
         jc      notmbfindall
-        call    [cs:projfile],di
+        invoke    projfile,di
         jc      notmbfindall
-        call    [cs:mbfind],di
+        invoke    mbfind,di
         jc      notmbfindall
 haveatargetexports:
         mov     fs,ax 
-        cmp     [word ptr fs:0x0],'EC'
+        cmp     word [fs:0x0],'EC'
         jne     errornotace2
-        mov     si,[fs:exe.exports]
+	virtual at 0
+	.exe exe
+	end virtual
+        mov     si,[fs:.exe.exports]
         cmp     si,0
         je      errornoexports
         xor     edx,edx
-        call    [cs:print],offset rets
+        invoke    print, rets
 showallexports: 
         push    fs
         push    si
-        call    [cs:print],offset functions
+        invoke    print, functions
         inc     edx
 findnextexports:
         inc     si
-        cmp     [byte ptr fs:si],0
+        cmp     byte [fs:si],0
         jne     findnextexports
         add     si,3
-        cmp     [dword ptr fs:si],0
+        cmp     dword [fs:si],0
         je      finishexports
         jmp     showallexports
 finishexports:
         push    edx
-        call    [cs:print],offset allexports
+        invoke    print, allexports
         ret
 
 errornoexports:
-        call    [cs:print],offset errornoexport
+        invoke    print, errornoexport
         ret
 
 allexports           db '\c02\lIl y avait %u exportations dans le bloc ou fichier\l\c07',0 
@@ -653,54 +682,57 @@ errornoexport        db '\c02Aucune exportation dans le bloc ou fichier\l\c07',0
 
 
 code_imports:
-        call    [cs:gettypeditem],di,0,' '     
-        call    [cs:mbfind],di
+        invoke    gettypeditem,di,0,' '     
+        invoke    mbfind,di
         jc      notmbfindsimports
         jmp     haveatargetimports
 notmbfindsimports:
-        call    [cs:searchfile],di
+        invoke    searchfile,di
         jc      notmbfindall
-        call    [cs:projfile],di
+        invoke    projfile,di
         jc      notmbfindall
-        call    [cs:mbfind],di
+        invoke    mbfind,di
         jc      notmbfindall
 haveatargetimports:
         mov     fs,ax 
-        cmp     [word ptr fs:0x0],'EC'
+        cmp     word [fs:0x0],'EC'
         jne     errornotace2
-        mov     si,[fs:exe.imports]
+	virtual at 0
+	.exe exe
+	end virtual
+        mov     si,[fs:.exe.imports]
         cmp     si,0
         je      errornoimports
         xor     edx,edx
-        call    [cs:print],offset rets
+        invoke    print, rets
 showallimports: 
         push    fs
         push    si
-        call    [cs:print],offset functions
+        invoke    print, functions
         inc     edx
 findnextimports:
         inc     si
-        cmp     [byte ptr fs:si],0
+        cmp     byte [fs:si],0
         jne     findnextimports
         add     si,5
-        cmp     [dword ptr fs:si],0
+        cmp     dword [fs:si],0
         je      finishimports
         jmp     showallimports
 finishimports:
         push    edx
-        call    [cs:print],offset allimports
+        invoke    print, allimports
         ret
 
 errornoimports:
-        call    [cs:print],offset errornoimport
+        invoke    print, errornoimport
         ret
 
 notmbfindall:
-        call    [cs:print],offset errornotmborfilefind
+        invoke    print, errornotmborfilefind
         ret
 
 errornotace2:
-        call    [cs:print],offset errornotcefind
+        invoke    print, errornotcefind
         ret
 
 functions db '%0P\l',0
@@ -711,63 +743,63 @@ errornotcefind       db '\c04Le bloc ou le fichier spécifié n''est pas CE\l\c07'
 errornotmborfilefind db '\c04Impossible de trouver le bloc ou le fichier specifie\l\c07',0
 
 code_regs:
-call [cs:savecontext],offset allregs
+invoke savecontext, allregs
 push 6
 push eax
 push eax
-mov ax,[word ptr allregs.sss]
+mov ax,word [allregs.sss]
 push 6
 push eax
 push eax
-mov ax,[word ptr allregs.sgs]
+mov ax,word [allregs.sgs]
 push 6
 push eax
 push eax
-mov ax,[word ptr allregs.sfs]
+mov ax,word [allregs.sfs]
 push 6
 push eax
 push eax
-mov ax,[word ptr allregs.ses]
+mov ax,word [allregs.ses]
 push 6
 push eax
 push eax
-mov ax,[word ptr allregs.sds]
+mov ax,word [allregs.sds]
 push 6
 push eax
 push eax
-mov ax,[word ptr allregs.scs]
+mov ax,word [allregs.scs]
 xor eax,eax
 push 10
-pushd [dword ptr allregs.seip]
-pushd [dword ptr allregs.seip]
+pushd dword [allregs.seip]
+pushd dword [allregs.seip]
 push 10
-pushd [dword ptr allregs.sesp]
-pushd [dword ptr allregs.sesp]
+pushd dword [allregs.sesp]
+pushd dword [allregs.sesp]
 push 10
-pushd [dword ptr allregs.sebp]
-pushd [dword ptr allregs.sebp]
+pushd dword [allregs.sebp]
+pushd dword [allregs.sebp]
 push 10
-pushd [dword ptr allregs.sedi]
-pushd [dword ptr allregs.sedi]
+pushd dword [allregs.sedi]
+pushd dword [allregs.sedi]
 push 10
-pushd [dword ptr allregs.sesi]
-pushd [dword ptr allregs.sesi]
+pushd dword [allregs.sesi]
+pushd dword [allregs.sesi]
 push 10
-pushd [dword ptr allregs.sedx]
-pushd [dword ptr allregs.sedx]
+pushd dword [allregs.sedx]
+pushd dword [allregs.sedx]
 push 10
-pushd [dword ptr allregs.secx]
-pushd [dword ptr allregs.secx]
+pushd dword [allregs.secx]
+pushd dword [allregs.secx]
 push 10
-pushd [dword ptr allregs.sebx]
-pushd [dword ptr allregs.sebx]
+pushd dword [allregs.sebx]
+pushd dword [allregs.sebx]
 push 10
-pushd [dword ptr allregs.seax]
-pushd [dword ptr allregs.seax]
+pushd dword [allregs.seax]
+pushd dword [allregs.seax]
 push 10
-pushd [dword ptr allregs.seflags]
-pushd [dword ptr allregs.seflags]
-call [cs:print],offset registershow
+pushd dword [allregs.seflags]
+pushd dword [allregs.seflags]
+invoke print, registershow
 ret
 
 registershow db '\l\c02Liste des registres du Microprocesseur\l\l\c07'
@@ -790,68 +822,83 @@ registershow db '\l\c02Liste des registres du Microprocesseur\l\l\c07'
              db 'SS  :     0x%hW :     %w |\h32\l',0
 
 
-allregs regs <>
+allregs regs 
 
 code_irqs:
-call    [cs:mbfind],offset interruptionbloc
+invoke    mbfind, interruptionbloc
 jc      erroronint
-call [cs:print],offset irqmsg1
+invoke print, irqmsg1
 mov     es,ax
 xor     ebx,ebx
 intoirq:
 xor     eax,eax
-mov     al,[bx+offset irqmap]
-mov     dx,size ints
+mov     al,[bx+ irqmap]
+virtual at 0
+.intsori ints
+end virtual
+mov     dx,.intsori.sizeof
 mul     dx
 mov     si,ax
-pushd  [dword ptr es:(ints si).vector1.data.off]
-pushd  [dword ptr es:(ints si).vector1.data.seg]
-call   [cs:isrequestirq],bx
+virtual at si
+.ints ints
+end virtual
+pushd  dword [es:.ints.vector1.data.off]
+pushd  dword [es:.ints.vector1.data.seg]
+invoke   isrequestirq,bx
 jc     requested
 push   ' '
 jmp    suiterequested
 requested:
 push   'X'
 suiterequested:
-call   [cs:isinserviceirq],bx
+invoke   isinserviceirq,bx
 jc     inservice
 push   ' '
 jmp    suiteinservice
 inservice:
 push   'X'
 suiteinservice:
-call   [cs:isenableirq],bx
+invoke   isenableirq,bx
 jc     activatemat
 push   ' '
 jmp    suiteactivatemat
 activatemat:
 push   'X'
 suiteactivatemat:
-cmp    [es:(ints si).activated],1
+virtual at si
+.ints ints
+end virtual
+cmp    [es:.ints.activated],1
 je     activate2
 push   ' '
 jmp    suiteactivate2
 activate2:
 push   'X'
 suiteactivate2:
-cmp    [es:(ints si).locked],1
+virtual at si
+.ints ints
+end virtual
+cmp    [es:.ints.locked],1
 je     verrouille2
 push   ' '
 jmp    suiteverrouille2
 verrouille2:
 push   'X'
 suiteverrouille2:
-pushd  [dword ptr es:(ints si).calledlow]
-pushd  [dword ptr es:(ints si).calledhigh]
-pushd  [dword ptr es:(ints si).launchedlow]
-pushd  [dword ptr es:(ints si).launchedhigh]
+virtual at si
+.ints ints
+end virtual
+pushd  dword [es:.ints.calledlow]
+pushd  dword [es:.ints.calledhigh]
+pushd  dword [es:.ints.launchedlow]
+pushd  dword [es:.ints.launchedhigh]
 push  3
 xor   eax,eax
-mov   al,[bx+offset irqmap]
+mov   al,[bx+ irqmap]
 push  eax
 push  3
 push  ebx
-call [cs:print],offset irqmsg2
+invoke print, irqmsg2
 inc   bl
 cmp   bl,16
 jb    intoirq
@@ -864,57 +911,66 @@ irqmsg1 db '\l\c02Listes des IRQs\c07\l\l'
 irqmsg2 db '%w | %w | 0x%hW%hD | 0x%hW%hD | %c | %c | %c | %c | %c | 0x%hW:0x%hW\l',0
 
 code_int:
-call    [cs:mbfind],offset interruptionbloc
+invoke    mbfind, interruptionbloc
 jc      erroronint
 mov     es,ax
-call    [cs:gettypeditem],di,0,' '
+invoke    gettypeditem,di,0,' '
 xor     edi,edi
 mov     di,ax
-mov     cx,size ints
+virtual at 0
+.intsori ints
+end virtual
+mov     cx,.intsori.sizeof
 mul     cx
 mov     si,ax
-pushd  [dword ptr es:(ints si).vector8.data.off]
-pushd  [dword ptr es:(ints si).vector8.data.seg]
-pushd  [dword ptr es:(ints si).vector7.data.off]
-pushd  [dword ptr es:(ints si).vector7.data.seg]
-pushd  [dword ptr es:(ints si).vector6.data.off]
-pushd  [dword ptr es:(ints si).vector6.data.seg]
-pushd  [dword ptr es:(ints si).vector5.data.off]
-pushd  [dword ptr es:(ints si).vector5.data.seg]
-pushd  [dword ptr es:(ints si).vector4.data.off]
-pushd  [dword ptr es:(ints si).vector4.data.seg]
-pushd  [dword ptr es:(ints si).vector3.data.off]
-pushd  [dword ptr es:(ints si).vector3.data.seg]
-pushd  [dword ptr es:(ints si).vector2.data.off]
-pushd  [dword ptr es:(ints si).vector2.data.seg]
-pushd  [dword ptr es:(ints si).vector1.data.off]
-pushd  [dword ptr es:(ints si).vector1.data.seg]
-pushd  [dword ptr es:(ints si).calledlow]
-pushd  [dword ptr es:(ints si).calledhigh]
-pushd  [dword ptr es:(ints si).launchedlow]
-pushd  [dword ptr es:(ints si).launchedhigh]
-cmp    [es:(ints si).activated],1
+virtual at si
+.ints ints
+end virtual
+pushd  dword [es:.ints.vector8.data.off]
+pushd  dword [es:.ints.vector8.data.seg]
+pushd  dword [es:.ints.vector7.data.off]
+pushd  dword [es:.ints.vector7.data.seg]
+pushd  dword [es:.ints.vector6.data.off]
+pushd  dword [es:.ints.vector6.data.seg]
+pushd  dword [es:.ints.vector5.data.off]
+pushd  dword [es:.ints.vector5.data.seg]
+pushd  dword [es:.ints.vector4.data.off]
+pushd  dword [es:.ints.vector4.data.seg]
+pushd  dword [es:.ints.vector3.data.off]
+pushd  dword [es:.ints.vector3.data.seg]
+pushd  dword [es:.ints.vector2.data.off]
+pushd  dword [es:.ints.vector2.data.seg]
+pushd  dword [es:.ints.vector1.data.off]
+pushd  dword [es:.ints.vector1.data.seg]
+pushd  dword [es:.ints.calledlow]
+pushd  dword [es:.ints.calledhigh]
+pushd  dword [es:.ints.launchedlow]
+pushd  dword [es:.ints.launchedhigh]
+cmp    [es:.ints.activated],1
 je     activate
-push   offset oui
+push   oui
 jmp    suiteactivate
 activate:
-push   offset non
+push   non
 suiteactivate:
-cmp    [es:(ints si).locked],1
+virtual at si
+.ints ints
+end virtual
+cmp    [es:.ints.locked],1
 je     verrouille
-push   offset oui
+push    oui
 jmp    suiteverrouille
 verrouille:
-push   offset non
+push    non
 suiteverrouille:
 push    esi
 push    es
 push    es
 push    edi
-call    [cs:print],offset infosint
+invoke    print, infosint
 ret
 erroronint:   
-        call    [cs:print],offset errorint
+        invoke    print,errorint
 okint:
         ret
        
@@ -937,18 +993,18 @@ infosint db '\c07Le bloc d''interruption est charge en memoire et le gestionnair
          db 'Vecteur 8 : 0x%hW:0x%hW\l\c07',0
 
 code_refresh:
-        call    [cs:initdrive]
+        invoke    initdrive
         jnc     okrefresh
-        call    [cs:print],offset errorrefreshing
+        invoke    print,errorrefreshing
         ret
 okrefresh:
-        call    [cs:getserial] 
+        invoke    getserial
         push    eax
-        mov     si,offset nomdisque
-        call    [cs:getname],si 
+        mov     si,nomdisque
+        invoke    getname,si 
         push    si
-        push    offset present
-        call    [cs:print]
+        push    present
+        invoke    print
         ret
 
 errorrefreshing db '\c04Impossible de lire le support',0
@@ -956,63 +1012,75 @@ extcom  db      '.CE',0
 
 
 code_mem:    
-        call    [cs:print],offset msg
+        invoke    print, msg
         xor     edx,edx
         xor     ebx,ebx
         xor     cx,cx
 listmcb:
-        call    [cs:mbget],cx
+        invoke    mbget,cx
         jc      fino
         mov     fs,ax
         dec     ax
         dec     ax
         mov     gs,ax
         inc     cx
-        cmp     [word ptr fs:0x0],'EC'
+        cmp     word [fs:0x0],'EC'
         jne     notace
-        push    offset oui ;CE? str0 2 
+        push    oui ;CE? str0 2 
         jmp     suitelikeace
 notace:
-        push    offset non
+        push    non
 suitelikeace:
         mov     dx,fs
         push    edx          ;Emplacement memoire hex 2
 ;parent
-        cmp     [gs:mb.reference],0
+	virtual at 0
+	.mb mb
+	end virtual
+        cmp     [gs:.mb.reference],0
         jne     nextdetect
         push    cs
-        push    offset none        ;parent lstr0 2x2 
-        add     bx,[gs:mb.sizes]
+        push    none        ;parent lstr0 2x2 
+        add     bx,[gs:.mb.sizes]
         jmp     suitemn
 nextdetect:
-        mov     dx,[gs:mb.reference]
+	virtual at 0
+	.mb mb
+	end virtual
+        mov     dx,[gs:.mb.reference]
         dec     dx
         dec     dx
         push    dx                    ;parent lstr0 2x2 
-        push    offset (mb).names
+        push    .mb.names
 suitemn:
-        cmp     [gs: mb.isresident],true
+	virtual at 0
+	.mb mb
+	end virtual
+        cmp     [gs: .mb.isresident],true
         jne     notresident
-        push    offset oui        ;resident str0 2 
+        push    oui        ;resident str0 2 
         jmp     suitelistmcb
 notresident:
-        push    offset non     ;resident str0 2
+        push    non     ;resident str0 2
 suitelistmcb:
         xor     edx,edx
-        mov     dx,[gs: mb.sizes]
+	virtual at 0
+	.mb mb
+	end virtual
+        mov     dx,[gs: .mb.sizes]
         shl     edx,4
         push    6                    ;decimal 4 + type 2
         push    edx
         push    gs                   ;nom lstr0 2x2 
-        push    offset (mb).names
-        push    offset line2         ;ligne
-        call    [cs:print]
+        push    .mb.names
+        push    line2         ;ligne
+        invoke    print
         jmp     listmcb
 fino:
         shl     ebx,4
         push    ebx
-        push    offset fin
-        call    [cs:print]
+        push    fin
+        invoke    print
         ret
 oui db     "oui",0
 non db     "non",0
@@ -1025,7 +1093,7 @@ none    db      "?????",0
 ;converti le jeux scancode/ascii en fr ax->ax
 convertfr:
         push    dx si
-        mov     si,offset fr
+        mov     si, fr
 searchtouch:
         mov     dx,[cs: si]
         cmp     dx,0

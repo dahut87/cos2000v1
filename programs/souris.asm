@@ -1,26 +1,19 @@
-model tiny,stdcall
-p586N
-locals
-jumps
-codeseg
-option procalign:byte
-
 include "..\include\mem.h"
 include "..\include\divers.h"
 
 org 0h
 
 start:
-header exe <"CE",1,0,0,,offset imports,,offset realstart>
+header exe 1
 
 realstart:  
-    call    [mouseon]
+    invoke    mouseon
     jc      errormouse
-    call    [print],offset message
+    invoke    print, message
     retf
 
 errormouse:
-    call    [print],offset errormessage
+    invoke    print, errormessage
     retf
 
 message db 'Activation de la souris\l',0
