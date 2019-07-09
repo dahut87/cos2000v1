@@ -1,16 +1,9 @@
-model tiny,stdcall
-p486
-locals
-jumps
-codeseg
-option procalign:byte
-
 include "..\include\mem.h"
 include "..\include\graphic.h"
 
 org 0h
 
-header exe <"CE",1,0,0,offset exports,offset imports,,>
+header exe 1
 
 exporting
 declare setvideomode		
@@ -37,8 +30,8 @@ declare restorescreen
 declare page2to1
 declare page1to2
 declare xchgpages
-declare waithretrace
-declare waitretrace
+declare waithretfrace
+declare waitretfrace
 declare getvideoinfos
 declare savedac
 declare restoredac
@@ -181,7 +174,7 @@ mode11        DB 0E7H
              DB 100,75
 
 ;============================================DATABLOCK=========================================================
-datablock vgainf <0,0,0,0,0,7,0FFh,0,0,0,0,0,0,0,0,0,0,0,1>
+datablock vgainf
 
 ;=======================================Equivalence pour la clarté du code========================================
 sequencer 	equ 03C4h
@@ -201,28 +194,27 @@ planesize	equ 65000
 ;->
 ;<- 
 ;=====================================
-PROC enablescroll FAR
+proc enablescroll
         mov     [cs:datablock.scrolling],1
-        ret
-endp enablescroll
+        retf
+endp
 
 ;=============DISABLESCROLLING=========
 ;Désactive le d‚filement
 ;->
 ;<- 
 ;======================================
-PROC disablescroll FAR
+proc disablescroll
         mov     [cs:datablock.scrolling],0
-        ret
-endp disablescroll
+        retf
+endp
 
 ;=============ENABLECURSOR=============
 ;Autorise le d‚filement
 ;->
 ;<-
 ;======================================
-PROC enablecursor FAR
-        USES    ax,dx
+proc enablecursor uses ax dx
         mov     [cs:datablock.cursor],1
        	mov 	dx,ccrt
 	mov 	al,0Ah
@@ -238,17 +230,16 @@ PROC enablecursor FAR
 	xor     ah,ah
 	mov     dl,[cs:datablock.y]
 	xor     dh,dh
-	call    setxy,ax,dx
-        ret
-endp enablecursor
+	stdcall    setxy,ax,dx
+        retf
+endp
 
 ;=============DISABLECURSOR=============
 ;D‚sactive le d‚filement
 ;->
 ;<-
 ;=======================================
-PROC disablecursor FAR
-        USES    ax,dx
+proc disablecursor uses ax dx
         mov     [cs:datablock.cursor],0
        	mov 	dx,ccrt
 	mov 	al,0Ah
@@ -260,60 +251,56 @@ PROC disablecursor FAR
 	dec     dx
 	mov     al,0Ah
 	out     dx,ax
-        ret
-endp disablecursor
+        retf
+endp
         
 ;==========SETSTYLE=========
 ;Change le style du texte a %0
 ;-> %0 style
 ;<-
 ;============================
-PROC setstyle FAR
-        ARG     @style:word
-        USES    cx
-        mov     ax,[@style]
+proc setstyle uses cx, style:word
+        mov     ax,[style]
 	mov 	[cs:datablock.style],al
-	ret
-endp setstyle
+	retf
+endp
 
 ;==========GETSTYLE=========
 ;Récupère le style du texte dans AX
 ;->
 ;<- AX style
 ;===========================
-PROC getstyle FAR
+proc getstyle
 	mov 	al,[cs:datablock.style]
 	xor     ah,ah
-	ret
-endp getstyle
+	retf
+endp
 
 ;=============SetVideoMode=========
 ;Fixe le mode vidéo courant a %0
 ;-> %0 mode d'écran
 ;<- Carry if error
 ;==================================
-PROC setvideomode FAR
-        ARG     @mode:word
-        USES    ax,cx,dx,di
-        mov     ax,[@mode]
+proc setvideomode uses ax cx dx di, modenum:word
+        mov     ax,[modenum]
         xor     ah,ah	
         cmp     al,maxmode
-	ja	@@errorsetvideomode
-	cmp     [cs:datablock.mode],5h
-	jb	@@nographic
+	ja	.errorsetvideomode
+	cmp     [cs:datablock.modenum],5h
+	jb	.nographic
 	cmp	al,5h
-	jae	@@nographic
+	jae	.nographic
 	call	initfont
-@@nographic:
-        cmp     [cs:datablock.mode],0FFh
-        jne     @@noinit
+.nographic:
+        cmp     [cs:datablock.modenum],0FFh
+        jne     .noinit
 	call	initfont
-@@noinit:
-	mov 	[cs:datablock.mode],al
+.noinit:
+	mov 	[cs:datablock.modenum],al
 	xor 	ah,ah
 	mov 	di,ax
 	shl 	di,6
-	add 	di,offset mode0 
+	add 	di,mode0 
 	mov 	dx,misc
 	mov 	al,[cs:di]
 	out 	dx,al
@@ -324,38 +311,38 @@ PROC setvideomode FAR
 	inc 	di              
 	mov 	dx,sequencer
 	xor 	ax,ax
-@@initsequencer:
+.initsequencer:
 	mov 	ah,[cs:di]
 	out 	dx,ax
 	inc 	al
 	inc 	di
 	cmp 	al,4
-	jbe 	@@initsequencer
+	jbe 	.initsequencer
 	mov 	ax,0E11h
 	mov 	dx,ccrt
 	out 	dx,ax
 	xor 	ax,ax
-@@initcrt:
+.initcrt:
 	mov 	ah,[cs:di]
 	out 	dx,ax
 	inc 	al
 	inc 	di
 	cmp 	al,24
-	jbe 	@@initcrt
+	jbe 	.initcrt
         mov     dx,graphics
 	xor 	ax,ax
-@@initgraphic:
+.initgraphic:
 	mov 	ah,[cs:di]
 	out 	dx,ax
 	inc 	al
 	inc 	di
 	cmp 	al,8
-	jbe 	@@initgraphic
+	jbe 	.initgraphic
 	mov 	dx,statut
 	in 	al,dx
 	mov 	dx,attribs
 	xor 	ax,ax
-@@initattribs:
+.initattribs:
 	mov 	ah,[cs:di]
 	push 	ax
 	in 	ax,dx
@@ -367,7 +354,7 @@ PROC setvideomode FAR
 	inc 	al
 	inc	di
 	cmp 	al,20
-	jbe	@@initattribs
+	jbe	.initattribs
 	mov 	al,20h
 	out 	dx,al
 	mov 	al,[cs:di]
@@ -378,24 +365,24 @@ PROC setvideomode FAR
 	mov     cl,[cs:di-5]
 	and     cl,01000000b
 	cmp     cl,0
-	je      @@colors16
+	je      .colors16
 	mov     [cs:datablock.color],8
 	mov     cl,4
-	jmp     @@colors256
-@@colors16:
+	jmp     .colors256
+.colors16:
         mov     [cs:datablock.color],4
         mov     cl,3
-@@colors256:
-  	cmp     [cs:datablock.mode],5
+.colors256:
+  	cmp     [cs:datablock.modenum],5
         setae   [cs:datablock.graphic]
-        jb      @@istext
+        jb      .istext
 	shl     ax,cl
         mov     [cs:datablock.segments],0A000h
-	jmp     @@wasgraph
-@@istext:
+	jmp     .wasgraph
+.istext:
         mov     [cs:datablock.segments],0B800h
         shl     ax,1
-@@wasgraph:
+.wasgraph:
 	mov 	[cs:datablock.pagesize],ax
 	mov	ax,planesize
 	xor	dx,dx
@@ -412,48 +399,47 @@ PROC setvideomode FAR
 	mov	[cs:datablock.base],ax
         mov     [cs:datablock.cursor],1
         mov     [cs:datablock.style],0
-	ret
-@@errorsetvideomode:
-	ret
-endp setvideomode
+	retf
+.errorsetvideomode:
+	retf
+endp
 
 
 initfont:
 	push 	ds
-	call    clearscreen
+	stdcall    clearscreen
 	push 	cs
 	pop 	ds
-	call 	loadfont,offset font8x8,8,1
-	call 	loadfont,offset font8x16,16,0
+	stdcall 	loadfont,font8x8,8,1
+	stdcall 	loadfont,font8x16,16,0
 	pop 	ds
-	ret
+	retf
 
 ;=============GetVideoMode=========
 ;Renvoie le mode vidéo courant dans AX
 ;->
 ;<- AX
 ;==================================
-PROC getvideomode FAR
-	mov 	al,[cs:datablock.mode]
+proc getvideomode
+	mov 	al,[cs:datablock.modenum]
 	xor     ah,ah
-	ret
-endp getvideomode
+	retf
+endp
 
 ;=============CLEARSCREEN=========
 ;Efface l'ecran graphique ou texte
 ;->
 ;<-
 ;=================================
-PROC clearscreen FAR
-	USES 	eax,cx,dx,di,es
+proc clearscreen uses eax cx dx di es
 	mov 	cx,planesize
 	mov	di,[cs:datablock.adress]
 	shr 	cx,2
         cmp     [cs:datablock.graphic],1
-	jne 	@@erasetext
+	jne 	.erasetext
 	mov  	ax,0A000h
 	mov 	es,ax
-@@erasegraph:
+.erasegraph:
 	mov     ax,0F02h
         mov     dx,sequencer
 	out     dx,ax
@@ -469,24 +455,24 @@ PROC clearscreen FAR
 	rep 	stosd
 	mov     ax,0005h
 	cmp     [cs:datablock.color],4
-	je      @@not256
+	je      .not256
 	mov     ax,4005h	
-@@not256:
+.not256:
         mov     dx,graphics
 	out     dx,ax
 	mov     ax,0003h
 	out     dx,ax
-        jmp     @@endoferase
-@@erasetext:
+        jmp     .endoferase
+.erasetext:
 	mov 	ax,0B800h
 	mov 	es,ax
 	mov 	eax,07200720h
 	cld
 	rep 	stosd	
-@@endoferase:	
-        call    setxy,0,0
-	ret
-endp clearscreen
+.endoferase:	
+        stdcall    setxy,0,0
+	retf
+endp
 
 
 ;=============SetFont=========
@@ -494,13 +480,11 @@ endp clearscreen
 ;-> %0 n° font
 ;<- Carry if error
 ;=============================
-PROC setfont FAR
-        ARG     @font:word
-	USES 	ax,cx,dx
-	mov     cx,[@font]
+proc setfont uses ax cx dx, font:word
+	mov     cx,[font]
 	xor     ch,ch
 	cmp	cl,7
-      	ja    	@@errorsetfont
+      	ja    	.errorsetfont
 	mov	[cs:datablock.font],cl
 	mov 	ah,cl
 	and 	cl,11b
@@ -510,20 +494,21 @@ PROC setfont FAR
       	mov   	dx,sequencer
 	mov 	al,3
 	out 	dx,ax
-        ret
-@@errorsetfont:
-	ret    
-endp setfont
+        retf
+.errorsetfont:
+	retf    
+endp
 
 ;=============GetFont=========
 ;Récupère le n° de la font active AX
 ;->
 ;<- CL n° font, Carry if error
 ;=============================
-PROC getfont FAR
+proc getfont
 	mov	al,[cs:datablock.font]
 	xor     ah,ah
-endp getfont
+	retf
+endp
 
 ;!!!!!!!!!!!!!!!!!!!! a remettre les anciens params de timing depuis origine
 ;=============LoadFont========
@@ -531,32 +516,30 @@ endp getfont
 ;-> %0 n°font, %1 pointeur vers Font, %2 taille police
 ;<- Carry if error
 ;=============================
-PROC loadfont FAR
-        ARG     @pointer:word,@size:word,@font:word
-	USES 	ax,bx,cx,dx,si,di,es
-	mov     si,[@pointer]
-	mov     cx,[@size]
-	mov     bx,[@font]
+proc loadfont uses ax bx cx dx si di es, pointer:word, size:word, font:word
+	mov     si,[pointer]
+	mov     cx,[size]
+	mov     bx,[font]
 	cmp	bl,7
-      	ja    	@@errorloadfont
+      	ja    	.errorloadfont
 	xor	di,di
       	cli  
       	mov   	dx,sequencer
-@@doseq:
-	mov 	ax,[cs:di+offset reg1]
+.doseq:
+	mov 	ax,[cs:di+reg1]
 	out 	dx,ax
 	inc 	di
 	inc 	di
 	cmp 	di,6
-	jbe 	@@doseq
+	jbe 	.doseq
       	mov   	dx,graphics 
-@@doseq2:
-	mov 	ax,[cs:di+offset reg1]
+.doseq2:
+	mov 	ax,[cs:di+reg1]
 	out 	dx,ax
 	inc 	di
 	inc 	di
 	cmp 	di,6+6
-	jbe 	@@doseq2
+	jbe 	.doseq2
 	sti
 	mov 	ax,0A000h
 	mov	es,ax
@@ -564,14 +547,14 @@ PROC loadfont FAR
 	mov 	al,0
 	xor 	bh,bh
 	cmp 	bl,4
-	jb 	@@isless
+	jb 	.isless
 	sub	bl,4
 	shl 	bl,1
 	inc 	bl
-	jmp 	@@okmake
-@@isless:
+	jmp 	.okmake
+.isless:
 	shl 	bl,1
-@@okmake:
+.okmake:
 	mov 	di,bx
 	shl 	di,13
 	mov 	bh,cl
@@ -580,102 +563,97 @@ PROC loadfont FAR
 	neg 	bl
 	xor 	cx,cx
 	cld
-@@popz:
+.popz:
 	mov 	cl,bh
 	rep 	movsb
 	mov 	cl,bl
 	rep 	stosb
 	dec 	dx
-	jnz 	@@popz
+	jnz 	.popz
 	xor 	di,di
       	mov   	dx,sequencer
-@@doseqs:
-	mov 	ax,[cs:di+offset reg2]
+.doseqs:
+	mov 	ax,[cs:di+reg2]
 	out 	dx,ax
 	inc 	di
 	inc 	di
 	cmp 	di,6
-	jbe 	@@doseqs
+	jbe 	.doseqs
 	mov     dx,graphics
-@@doseqs2:
-	mov 	ax,[cs:di+offset reg2]
+.doseqs2:
+	mov 	ax,[cs:di+reg2]
 	out 	dx,ax
 	inc 	di
 	inc 	di
 	cmp 	di,6+6
-	jbe 	@@doseqs2
-	ret    
-@@errorloadfont:
+	jbe 	.doseqs2
+	retf    
+.errorloadfont:
 	stc
-	ret
+	retf
   
 reg2 	dw 0100h, 0302h, 0304h, 0300h 
      	dw 0004h, 1005h, 0E06h 
 reg1 	dw 0100h, 0402h, 0704h, 0300h
      	dw 0204h, 0005h, 0406h
-endp loadfont
+endp
 
 ;==========SHOWLINE===============
-;remet le curseur text a la ligne avec un retour chariot
+;remet le curseur text a la ligne avec un retfour chariot
 ;->
 ;<-
 ;=================================
-PROC addline FAR
-        USES    bx,cx
+proc addline uses bx cx
 	mov 	bl,[cs:datablock.y]
 	xor 	bh,bh
 	mov 	cl,[cs:datablock.lines]
       	sub     cl,2
 	cmp 	bl,cl
-      	jne     @@scro
+      	jne     .scro
 	dec 	bl
 	mov	cx,1
 	cmp	[cs:datablock.graphic],0
-	je	@@okscro
+	je	.okscro
 	mov	cx,8
-@@okscro:
-	call	scrolldown,cx
-@@scro:
+.okscro:
+	stdcall	scrolldown,cx
+.scro:
 	inc 	bl
-        call    setxy,0,bx
-	ret
-endp addline
+        stdcall    setxy,0,bx
+	retf
+endp
 
 ;==========SETCOLOR=========
 ;Change les attributs du texte a CL
 ;-> %0 couleur
 ;<- 
 ;===========================
-PROC setcolor FAR
-        ARG     @color:word
-        USES    cx
-        mov     cx,[@color]
+proc setcolor, color:word
+        mov     cx,[color]
 	mov 	[cs:datablock.colors],cl
-	ret
-endp setcolor
+	retf
+endp
 
 ;==========GETCOLOR=========
 ;Récupère les attributs du texte dans AX
 ;->
 ;<- AX couleur
 ;===========================
-PROC getcolor FAR
+proc getcolor
 	mov 	al,[cs:datablock.colors]
 	xor     ah,ah
-	ret
-endp getcolor
+	retf
+endp
 	
 ;==========SCROLLDOWN=========
 ;defile de %0 lines vers le bas
 ;-> %0 lines à défiler vers le bas
 ;<-
 ;=============================	
-PROC scrolldown FAR
-        ARG     @line:word
-	USES 	ax,cx,dx,si,di,ds,es
+proc scrolldown uses ax cx dx si di ds es, line:word
         cmp     [cs:datablock.scrolling],0
-        je      @@graphp
-	mov 	ax,[@line]
+        je      .graphp
+	mov 	ax,[line]
 	mul 	[cs:datablock.linesize]
 	mov 	si,ax
 	mov 	cx,[cs:datablock.pagesize]
@@ -683,7 +661,7 @@ PROC scrolldown FAR
 	mov 	di,[cs:datablock.adress]
 	cld
 	cmp     [cs:datablock.graphic],1
-	jne 	@@textp
+	jne 	.textp
 	mov  	ax,0A000h
 	mov 	es,ax
 	mov 	ds,ax
@@ -697,46 +675,43 @@ PROC scrolldown FAR
 	rep 	movsb
 	mov     ax,0005h
 	cmp     [cs:datablock.color],4
-	je      @@not256ok
+	je      .not256ok
 	mov     ax,4005h	
-@@not256ok:
+.not256ok:
         mov     dx,graphics
 	out     dx,ax
 	mov     ax,0003h
 	out     dx,ax
-        jmp     @@graphp
+        jmp     .graphp
         
-@@textp:
+.textp:
 	mov 	ax,0B800h
 	mov 	es,ax
 	mov 	ds,ax
 	rep 	movsb
-@@graphp:
-	ret
-endp scrolldown 	
+.graphp:
+	retf
+endp 	
 
 ;==========GETXY=========
 ;Met les coordonnées du curseur dans ah,al au format point
 ;->
 ;<- ah coordonnées x, al coordonnées y
 ;========================
-PROC getxy FAR
-	USES 	bx
+proc getxy uses bx
 	mov 	ah,[cs:datablock.x]
 	mov 	al,[cs:datablock.y]
-	ret
-endp getxy
+	retf
+endp
 
 ;==========SETXY=========
 ;Change les coordonnées du curseur a X:%0,Y:%1
 ;-> %0 coordonnées x, %1 coordonnées y
 ;<- 
 ;========================
-PROC setxy FAR
-        ARG     @x:word,@y:word
-	USES 	ax,bx,dx,di
-	mov     ax,[@y]
-	mov     bx,[@x]
+proc setxy uses ax bx dx di, x:word ,y: word
+	mov     ax,[y]
+	mov     bx,[x]
 	mov 	[cs:datablock.x],bl
 	mov 	[cs:datablock.y],al
 	mov	di,[cs:datablock.adress]
@@ -746,22 +721,20 @@ PROC setxy FAR
 	shl 	di,1
 	mov 	[cs:datablock.xy],di
 	call    setcursor
-	ret
-endp setxy
+	retf
+endp
 
 ;==========SHOWPIXEL=========
 ;Affiche un pixel de couleur AL en X:%0,Y:%1
 ;-> %0 coordonnées x, %1 coordonnées y, %2 couleur
 ;<- 
 ;============================
-PROC showpixel FAR
-        ARG     @x:word,@y:word,@color:word
-     	USES 	ax,bx,cx,dx,si,di,es
-     	mov     bx,[@x]
-     	mov     cx,[@y]
-     	mov     ax,[@color]
+proc showpixel uses ax bx cx dx si di es, x:word,y:word,color:word   
+     	mov     bx,[x]
+     	mov     cx,[y]
+     	mov     ax,[color]
      	cmp     [cs:datablock.color],4
-     	je      @@showpixel4
+     	je      .showpixel4
         mov     si,ax
 	mov     ax,cx
         mov	cl,bl
@@ -780,9 +753,9 @@ PROC showpixel FAR
         mov  	es,bx
 	mov	ax,si
 	mov	[es:di],al	
-        jmp     @@endofshow
+        jmp     .endofshow
         
-@@showpixel4:
+.showpixel4:
         mov     dx,ax
         mov     ax,cx
         mov     ch,dl
@@ -807,9 +780,9 @@ PROC showpixel FAR
         mov  	es,bx
         mov	al,[es:di]
         mov	[es:di],ch	 	
-@@endofshow:        	
-	ret
-endp showpixel
+.endofshow:        	
+	retf
+endp
 
 ;!!!!!!!!!!!!!! gerer le mode chain 4
 ;==========GETPIXEL=========
@@ -817,11 +790,9 @@ endp showpixel
 ;-> %0 coordonnées x, %1 coordonnées y
 ;<- AX couleur
 ;=========================================
-PROC getpixel FAR
-        ARG     @x:word,@y:word
-     	USES 	ax,bx,cx,dx,di,es
-     	mov     bx,[@x]
-     	mov     cx,[@y]
+proc getpixel uses ax bx cx dx di es, x:word,y:word 
+     	mov     bx,[x]
+     	mov     cx,[y]
 	mov     ax,cx
         mov	cl,bl
         mul  	[cs:datablock.linesize]
@@ -837,106 +808,99 @@ PROC getpixel FAR
         mov     bx,0A000h
         mov  	es,bx
 	mov	al,[es:di] 	
-	ret
-endp getpixel
+	retf
+endp
 
 ;==========GETVGAINFO=========
 ;Renvoie un bloc de donnée en ES:DI sur l'état de la carte graphique
 ;<- ES:%0 pointeur
 ;->
 ;=============================================
-PROC getvideoinfos FAR
-        ARG     @pointer:word
-	USES 	cx,si,di,ds
+proc getvideoinfos uses cx si di ds, pointer:word
 	push 	cs
 	pop 	ds
-	mov 	cx,size datablock
-	mov 	si,offset datablock
-	mov     di,[@pointer]
+	mov 	cx,datablock.sizeof
+	mov 	si,datablock
+	mov     di,[pointer]
 	cld
 	rep 	movsb
-	ret
-endp getvideoinfos
+	retf
+endp
 
-;==========WAITRETRACE=========
-;Synchronisation avec la retrace verticale
+;==========WAITretfRACE=========
+;Synchronisation avec la retfrace verticale
 ;<-
 ;->
 ;==============================
-PROC waitretrace FAR
-	USES 	ax,dx
+proc waitretfrace uses ax dx
 	mov 	dx,3DAh
-@@waitr:
+.waitr:
 	in 	al,dx
 	test 	al,8
-	jz 	@@waitr
-	ret
-endp waitretrace
+	jz 	.waitr
+	retf
+endp
 	
-;==========WAITHRETRACE=========
-;Synchronisation avec la retrace horizontale
+;==========WAITHretfRACE=========
+;Synchronisation avec la retfrace horizontale
 ;<-
 ;->
 ;===============================
-PROC waithretrace FAR
-	USES 	ax,dx
+proc waithretfrace uses ax dx
 	mov 	dx,3DAh
-@@waitr:
+.waitr:
 	in 	al,dx
 	test 	al,1
-	jz 	@@waitr
-	ret
-endp waithretrace
+	jz 	.waitr
+	retf
+endp
 	
 ;==========GETCHAR=========
 ;Renvoie en AX le caractère sur le curseur
 ;<-
 ;->
 ;==========================	
-PROC getchars FAR
-        USES    di,es
+proc getchars uses di es
         mov	ax,0B800h
 	mov	es,ax
 	mov	di,[cs:datablock.xy]
 	mov	al,[es:di]
 	xor     ah,ah
-        ret
-endp getchars
+        retf
+endp
 
 ;==========SHOWCHAR=========
 ;Ecrit le caractère ASCII %0 attribut %1 aprés le curseur, en le mettant à jours
 ;<-
 ;->
 ;===========================
-PROC showchars FAR
-        ARG     @char:word,@attr:word
-	USES 	ax,bx,cx,dx,di,es
-	mov     cl,[byte ptr @char]
-	mov     ch,[byte ptr @attr]
-        cmp     [@attr],0FFFFh
-        jne     @@notlastattr
+proc showchars uses ax bx cx dx di es, char:word,attr:word   
+	mov     cl,byte [char]
+	mov     ch,byte [attr]
+        cmp     [attr],0FFFFh
+        jne     .notlastattr
         mov     ch,[cs:datablock.colors]
-@@notlastattr:	
+.notlastattr:	
 	cmp	[cs:datablock.graphic],1
-	jne	@@textaccess
+	jne	.textaccess
         call    emulatechar
-        jmp     @@adjusttext
-@@textaccess:
+        jmp     .adjusttext
+.textaccess:
 	mov	ax,0B800h
 	mov	es,ax
 	mov	di,[cs:datablock.xy]
 	mov	[es:di],cx
 	add	[cs:datablock.xy],2
-@@adjusttext:
+.adjusttext:
         inc     [cs:datablock.x]
 	mov	cl,[cs:datablock.columns]
 	cmp	[cs:datablock.x],cl
-	jb	@@noadjusted
-        call    addline
-@@noadjusted:
+	jb	.noadjusted
+        stdcall    addline
+.noadjusted:
         call    setcursor
-	ret
-endp showchars
+	retf
+endp
 
 setcursor:
         push    ax cx dx
@@ -963,7 +927,7 @@ emulatechar:
 	mov	di,cx
 	and 	di,11111111b
 	shl 	di,3
-	add 	di,offset font8x8
+	add 	di,font8x8
 	mov     bl,[cs:datablock.x]
 	mov     cl,[cs:datablock.y]
         xor     bh,bh
@@ -981,7 +945,7 @@ bouclet:
 	jnz     transparent
 colored:
         and     ax,1111b
-	call 	showpixel,bx,cx,ax
+	stdcall 	showpixel,bx,cx,ax
 transparent:
         pop     ax
 	inc 	bx
@@ -1001,77 +965,70 @@ ended:
         ret
 
 ;sauve l'ecran dans un bloc de mémoire
-PROC savescreen FAR
-USES    ax,ds,bp
+proc savescreen uses ax ds bp
 mov     bp,sp
 push    cs
 pop     ds
-call    [cs:mbcreate],offset data3,[cs:datablock.pagesize]
-jc      @@error
-call    [cs:mbchown],ax,[word ptr ss:bp+8]
-jc      @@error
+invoke   mbcreate,data3,[cs:datablock.pagesize]
+jc      .error
+invoke    mbchown,ax,word [ss:bp+8]
+jc      .error
 push    ax
 pop     ds
-call    savescreento,0
+stdcall    savescreento,0
 clc
-ret
-@@error:
+retf
+.error:
 stc
-ret
-endp savescreen
+retf
+endp
 data3 db '/vgascreen',0
 
 
 ;===================================sauve l'ecran rapidement en ds:%1================
-PROC savescreento FAR
-        ARG     @offset:word
-        USES    ecx,si,di,ds,es
+proc savescreento uses ecx si di ds es, offset:word
         push    ds
         pop     es
         mov     cx,0B800h
         mov     ds,cx
         xor     ecx,ecx
         mov     cx,[cs:datablock.pagesize]
-        mov     di,[@offset]
+        mov     di,[offset]
         shr     cx,2
         xor     si,si
         cld
         rep     movsd
-        ret
-endp savescreento
+        retf
+endp
 
 ;===================================sauve les parametres en ds:%0================
-PROC saveparamto FAR
-        ARG     @offset:word
-        USES   ecx,si,di,ds,es
+proc saveparamto uses ecx si di ds es, offset:word
         push    ds
         pop     es
         push    cs
         pop     ds
         xor     ecx,ecx
-        mov     cx,size datablock
-        mov     di,[@offset]
-        mov     si,offset datablock
+        mov     cx,datablock.sizeof
+        mov     di,[offset]
+        mov     si,datablock
         cld
         rep     movsb
-        ret
-endp saveparamto
+        retf
+endp
         
 ;===================================restore les parametres depuis en ds:%0================
-PROC restoreparamfrom FAR
-        ARG     @offset:word
-        USES    ecx,si,di,es
+proc restoreparamfrom uses ecx si di es, offset:word
         push    cs
         pop     es
         xor     ecx,ecx
-        mov     cx,size datablock
-        mov     si,[@offset]
-        call    setvideomode,[word ptr (vgainf si).mode]
-        mov     di,offset datablock
+        mov     cx,datablock.sizeof
+        mov     si,[offset]
+        stdcall    setvideomode,word [si+datablock.modenum]
+        mov     di,datablock
         cld
         rep     movsb
-        ret
-endp restoreparamfrom
+        retf
+endp
 
 
 
@@ -1080,47 +1037,43 @@ endp restoreparamfrom
 
 
 ;restaure l'ecran dans un bloc de mémoire
-PROC restorescreen FAR
-USES    ax,ds,bp
+proc restorescreen uses ax ds bp
 mov     bp,sp
 push    cs
 pop     ds
-call    [cs:mbfindsb],offset data3,[word ptr ss:bp+8]
-jc @@error
+invoke    mbfindsb,data3,word [ss:bp+8]
+jc .error
 push    ax
 pop     ds
-call    restorescreenfrom,0
+stdcall    restorescreenfrom,0
 clc
-ret
-@@error:
+retf
+.error:
 stc
-ret
-endp restorescreen
+retf
+endp
 
 
 ;===================================restaure l'ecran rapidement en %1================
-PROC restorescreenfrom FAR
-        ARG     @offset:word
-        USES    ecx,si,di,es
+proc restorescreenfrom uses ecx si di es, offset:word
         mov     cx,0B800h
         mov     es,cx
         xor     ecx,ecx
         mov     cx,[cs:datablock.pagesize]
-        mov     si,[@offset]
+        mov     si,[offset]
         shr     cx,2
         xor     di,di
         cld
         rep     movsd
-        ret
-endp restorescreenfrom
+        retf
+endp
 
 
 
 
 ;===============================Page2to1============================
 
-PROC page2to1 FAR
-        USES    ecx,si,di,ds,es
+proc page2to1 uses ecx si di ds es
         mov     cx,0B800H
         mov     es,cx
         mov     ds,cx
@@ -1131,12 +1084,11 @@ PROC page2to1 FAR
         xor     di,di
         cld
         rep     movsd
-        ret
-endp page2to1
+        retf
+endp
 
 ;===============================Page1to2============================
-PROC page1to2 FAR
-        USES    ecx,si,di,ds,es
+proc page1to2 uses ecx si di ds es
         mov     cx,0B800H
         mov     es,cx
         mov     ds,cx
@@ -1147,22 +1099,21 @@ PROC page1to2 FAR
         xor     si,si
         cld
         rep     movsd
-        ret
-endp page1to2
+        retf
+endp
 ;===============================xchgPages============================
-PROC xchgpages FAR
-        USES    ax,ecx,si,di,ds,es,bp
+proc xchgpages uses ax ecx si di ds es bp
 mov     bp,sp
 push    cs
 pop     ds
-call    [cs:mbcreate],offset data4,[cs:datablock.pagesize]
-jc      @@error
-call    [cs:mbchown],ax,[word ptr ss:bp+18]
-jc      @@error
+invoke    mbcreate,data4,[cs:datablock.pagesize]
+jc      .error
+invoke    mbchown,ax,word [ss:bp+18]
+jc      .error
 push    ax
 pop     ds
-call    savescreento,0
-call    page2to1
+stdcall    savescreento,0
+stdcall    page2to1
 xor     si,si
 mov     cx,0B800H
 mov     es,cx
@@ -1172,13 +1123,13 @@ mov     cx,[cs:datablock.pagesize]
 shr     cx,2
 cld
 rep     movsd
-call    [cs:mbfree],ax
+invoke    mbfree,ax
 clc
-ret
-@@error:
+retf
+.error:
 stc
-ret
-endp xchgpages
+retf
+endp
 
 data4 db '/vgatemp',0
 
@@ -1186,113 +1137,107 @@ data4 db '/vgatemp',0
 
 
 
-;Sauve l'‚tat de la carte dans un bloc mémoire
-PROC savestate FAR
-USES    ax,cx,di,ds,bp
+;Sauve l'état de la carte dans un bloc mémoire
+proc savestate uses ax cx di ds bp
 mov     bp,sp
-mov     cx,size datablock
+mov     cx,datablock.sizeof
 add     cx,[cs:datablock.pagesize]
 add     cx,3*256
 push    cs
 pop     ds
-call    [cs:mbcreate],offset data,cx
-jc      @@error
-call    [cs:mbchown],ax,[word ptr ss:bp+12]
-jc      @@error
+invoke    mbcreate,adata,cx
+jc      .error
+invoke    mbchown,ax,word [ss:bp+12]
+jc      .error
 push    ax
 pop     ds
 xor     di,di
-call    saveparamto,di
-add     di,size datablock
-call    savescreento,di
+stdcall    saveparamto,di
+add     di,datablock.sizeof
+stdcall    savescreento,di
 add     di,[cs:datablock.pagesize]
-call    savedacto,di
+stdcall    savedacto,di
 clc
-ret
-@@error:
+retf
+.error:
 stc
-ret
-endp savestate
+retf
+endp
 
-data db '/vga',0
-
-
+adata db '/vga',0
 
 
-;R‚cupŠre l'‚tat de la carte depuis son bloc mémoire
-PROC restorestate FAR
-USES    ax,cx,di,ds,bp
+
+
+;Récupère l'état de la carte depuis son bloc mémoire
+proc restorestate uses ax cx di ds bp
 mov     bp,sp
 push    cs
 pop     ds
-call    [cs:mbfindsb],offset data,[word ptr ss:bp+12]
-jc @@error
+invoke    mbfindsb,adata,word [ss:bp+12]
+jc .error
 push    ax
 pop     ds
 xor     di,di
-call    restoreparamfrom,di
-add     di,size datablock
-call    restorescreenfrom,di
+stdcall    restoreparamfrom,di
+add     di,datablock.sizeof
+stdcall    restorescreenfrom,di
 add     di,[cs:datablock.pagesize]
-call    restoredacfrom,di
+stdcall    restoredacfrom,di
 clc
-ret
-@@error:
+retf
+.error:
 stc
-ret
-endp restorestate
+retf
+endp
 
 
 ;sauve le DAC dans un bloc de mémoire
-PROC savedac FAR
-USES    ax,ds,bp
+proc savedac uses ax ds bp
 mov     bp,sp
 push    cs
 pop     ds
-call    [cs:mbcreate],offset data3,3*256
-jc      @@error
-call    [cs:mbchown],ax,[word ptr ss:bp+8]
-jc      @@error
+invoke    mbcreate,data3,3*256
+jc      .error
+invoke    mbchown,ax,word [ss:bp+8]
+jc      .error
 push    ax
 pop     ds
-call    savedacto,0
+stdcall    savedacto,0
 clc
-ret
-@@error:
+retf
+.error:
 stc
-ret
-endp savedac
+retf
+endp
 
 data2 db '/vgadac',0
 
 
 
-;R‚cupŠre le dac depuis son bloc mémoire
-PROC restoredac FAR
-USES    ax,ds,bp
+;Récupère le dac depuis son bloc mémoire
+proc restoredac uses ax ds bp
 mov     bp,sp
-call    [cs:mbfindsb],offset data2,[word ptr ss:bp+8]
-jc @@error
+invoke    mbfindsb,data2,word [ss:bp+8]
+jc .error
 push    ax
 pop     ds
-call    restoredacfrom,0
+stdcall    restoredacfrom,0
 clc
-ret
-@@error:
+retf
+.error:
 stc
-ret
-endp restoredac
+retf
+endp
 
 
 
 ;sauve le DAC en ds:%0
-PROC savedacto FAR
-ARG     @offset:word
-USES ax,cx,dx,di
-mov di,[@offset]
+proc savedacto uses ax ds bp, offset:word
+mov di,[offset]
 mov dx,3C7h
 mov cx,256
-@@save:
+.save:
 mov al,cl
 dec al
 out dx,al
@@ -1310,19 +1255,17 @@ inc di
 dec dx
 dec dx
 dec cx
-jne @@save 
-ret
-endp savedacto
+jne .save 
+retf
+endp
 
 ;restore le DAC depuis ds:si
-PROC restoredacfrom FAR
-ARG     @offset:word
-USES ax,cx,dx,si
-mov si,[@offset]
+proc restoredacfrom uses ax ds bp, offset:word
+mov si,[offset]
 xor ax,ax
 mov dx,3C8h
 mov cx,256
-@@save2:
+.save2:
 mov al,cl
 dec al
 out dx,al
@@ -1338,9 +1281,9 @@ inc si
 out dx,al
 dec dx
 dec cx
-jne @@save2
-ret
-endp restoredacfrom
+jne .save2
+retf
+endp
 
 
 

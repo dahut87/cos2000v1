@@ -1,15 +1,8 @@
-model tiny,stdcall
-p486
-locals
-jumps
-codeseg
-option procalign:byte
-
 include "..\include\mem.h"
 
 org 0h
 
-header exe <"CE",1,0,0,offset exports,offset imports,,>
+header exe 1
 
 exporting
 declare print
@@ -52,258 +45,257 @@ endi
 ;-> %0 %x
 ;<-
 ;===================================
-PROC print FAR
-        ARG     @@pointer:word
-        push    ax bx cx si di
+proc print pointer:word  
+ 	  push    ax bx cx si di
         xor     di,di
-        mov     si,[@@pointer]
-@@strinaize0:
+        mov     si,[pointer]
+.strinaize0:
         mov     cl,[si]
         cmp     cl,0
-        je      @@no0
+        je      .no0
         cmp     cl,'%'
-        je      @@special
+        je      .special
         cmp     cl,'\'
-        je      @@special2
-@@showit:
+        je      .special2
+.showit:
         xor     ch,ch
-        call    [cs:showchars],cx,0FFFFh
+        invoke    showchars,cx,0FFFFh
         inc     si
-        jmp     @@strinaize0
-@@special:
-        cmp     [byte ptr si+1],'%'
-        jne     @@notshowit
+        jmp     .strinaize0
+.special:
+        cmp     byte [si+1],'%'
+        jne     .notshowit
         inc     si
-        jmp     @@showit
-@@notshowit:
-        mov     cl,[byte ptr si+1]
+        jmp     .showit
+.notshowit:
+        mov     cl,byte [si+1]
         cmp     cl,'c'
-        je      @@showchars
+        je      .showchars
         cmp     cl,'u'
-        je      @@showint
+        je      .showint
         cmp     cl,'v'
-        je      @@showfixint
+        je      .showfixint
         cmp     cl,'w'
-        je      @@showintr
+        je      .showintr
         cmp     cl,'i'
-        je      @@showsigned
+        je      .showsigned
         cmp     cl,'h'
-        je      @@showhex
+        je      .showhex
         cmp     cl,'b'
-        je      @@showbin
+        je      .showbin
         cmp     cl,'s'
-        je      @@showstring
+        je      .showstring
         cmp     cl,'0'
-        je      @@showstring0
+        je      .showstring0
         cmp     cl,'y'
-        je      @@showbcd
+        je      .showbcd
         cmp     cl,'z'
-        je      @@showsize
+        je      .showsize
         cmp     cl,'a'
-        je      @@showattr
+        je      .showattr
         cmp     cl,'n'
-        je      @@showname
+        je      .showname
         cmp     cl,'t'
-        je      @@showtime
+        je      .showtime
         cmp     cl,'d'
-        je      @@showdate
+        je      .showdate
         clc
-        jmp     @@no0
+        jmp     .no0
 
-@@showchars:
-        cmp     [byte ptr si+2],'M'
-        je      @@showmultchar
-        call    [cs:showchars],[word ptr @@pointer+di+2],0FFFFh
+.showchars:
+        cmp     byte [si+2],'M'
+        je      .showmultchar
+        invoke    showchars,word [pointer+di+2],0FFFFh
         add     si,2
         add     di,2
-        jmp     @@strinaize0
-@@showmultchar:
-        mov     cx,[offset @@pointer+di+2+2]
+        jmp     .strinaize0
+.showmultchar:
+        mov     cx,[.pointer+di+2+2]
         cmp     cx,0
-        je      @@nextfunc
-@@showcharsx:
-        call    [cs:showchars],[word ptr @@pointer+di+2],0FFFFh
+        je      .nextfunc
+.showcharsx:
+        invoke    showchars,word [.pointer+di+2],0FFFFh
         dec     cx
-        jnz     @@showcharsx
-@@nextfunc:
+        jnz     .showcharsx
+.nextfunc:
         add     si,3
         add     di,4
-        jmp     @@strinaize0
+        jmp     .strinaize0
 
-@@showint:
-        call    showint,[dword ptr @@pointer+di+2]
+.showint:
+        stdcall    showint,dword [.pointer+di+2]
         add     si,2
         add     di,4
-        jmp     @@strinaize0
+        jmp     .strinaize0
 
-@@showfixint:
-        call    showintl,[word ptr @@pointer+di+6],[dword ptr @@pointer+di+2]
+.showfixint:
+        stdcall    showintl,word [.pointer+di+6],[dword ptr .pointer+di+2]
         add     di,6
         add     si,2
-        jmp     @@strinaize0
+        jmp     .strinaize0
 
-@@showintr:
-        call    showintr,[word ptr @@pointer+di+6],[dword ptr @@pointer+di+2]
+.showintr:
+        stdcall    showintr,word [.pointer+di+6],dword [.pointer+di+2]
         add     di,6
         add     si,2
-        jmp     @@strinaize0
+        jmp     .strinaize0
 
-@@showsigned:
-        call    @@Chosesize
-        call    showsigned
-        jmp     @@strinaize0
+.showsigned:
+        call    .Chosesize
+        stdcall    showsigned
+        jmp     .strinaize0
 
-@@showhex:
-        call    @@Chosesize
-        call    showhex
-        jmp     @@strinaize0
+.showhex:
+        call    .Chosesize
+        stdcall    showhex
+        jmp     .strinaize0
 
-@@showbin:
-        call    @@Chosesize
-        call    showbin
-        jmp     @@strinaize0
+.showbin:
+        call    .Chosesize
+        stdcall    showbin
+        jmp     .strinaize0
 
-@@showstring:
+.showstring:
         cmp     [byte ptr si+2],'P'
-        je      @@showstring@@pointer
-        call    showstring,[word ptr @@pointer+di+2]
+        je      .showstring.pointer
+        stdcall    showstring,[word ptr .pointer+di+2]
         add     si,2
         add     di,2
-        jmp     @@strinaize0
-@@showstring@@pointer:
+        jmp     .strinaize0
+.showstring.pointer:
         push    ds
-        mov     ds,[offset @@pointer+di+2+2]
-        call    showstring,[word ptr @@pointer+di+2]
+        mov     ds,[offset .pointer+di+2+2]
+        stdcall    showstring,[word ptr .pointer+di+2]
         add     si,3
         add     di,4
         pop     ds
-        jmp     @@strinaize0
+        jmp     .strinaize0
 
-@@showstring0:
+.showstring0:
         cmp     [byte ptr si+2],'P'
-        je      @@showstring0@@pointer
-        call    showstring0,[word ptr offset @@pointer+di+2]
+        je      .showstring0.pointer
+        stdcall    showstring0,[word ptr offset .pointer+di+2]
         add     si,2
         add     di,2
-        jmp     @@strinaize0
-@@showstring0@@pointer:
+        jmp     .strinaize0
+.showstring0.pointer:
         push    ds
-        mov     ds,[offset @@pointer+di+2+2]
-        call    showstring0,[word ptr offset @@pointer+di+2]
+        mov     ds,[offset .pointer+di+2+2]
+        stdcall    showstring0,[word ptr offset .pointer+di+2]
         add     si,3
         add     di,4
         pop     ds
-        jmp     @@strinaize0
+        jmp     .strinaize0
 
-@@showbcd:
-        call    @@Chosesize
-        call    showbcd
-        jmp     @@strinaize0
+.showbcd:
+        call    .Chosesize
+        stdcall    showbcd
+        jmp     .strinaize0
 
-@@showsize:
-        call    showsize,[dword ptr offset @@pointer+di+2]
+.showsize:
+        stdcall    showsize,[dword ptr offset .pointer+di+2]
         add     si,2
         add     di,4
-        jmp     @@strinaize0
+        jmp     .strinaize0
 
-@@showattr:
-        call    showattr,[word ptr offset @@pointer+di+2]
+.showattr:
+        stdcall    showattr,[word ptr offset .pointer+di+2]
         add     si,2
         add     di,2
-        jmp     @@strinaize0
+        jmp     .strinaize0
 
-@@showname:
-        call    showname,[word ptr offset @@pointer+di+2]
+.showname:
+        stdcall    showname,[word ptr offset .pointer+di+2]
         add     si,2
         add     di,2
-        jmp     @@strinaize0
+        jmp     .strinaize0
 
-@@showtime:
-        call    showtime,[word ptr offset @@pointer+di+2]
+.showtime:
+        stdcall    showtime,[word ptr offset .pointer+di+2]
         add     si,2
         add     di,2
-        jmp     @@strinaize0
+        jmp     .strinaize0
 
-@@showdate:
-        call    showdate,[word ptr offset @@pointer+di+2]
+.showdate:
+        stdcall    showdate,[word ptr offset .pointer+di+2]
         add     si,2
         add     di,2
-        jmp     @@strinaize0
+        jmp     .strinaize0
 
-@@Chosesize:
+.Chosesize:
         pop     cx
-        push    [dword ptr offset @@pointer+di+2]
+        push    [dword ptr offset .pointer+di+2]
         add     di,4
         cmp     [byte ptr si+2],'B'
-        je      @@byte
+        je      .byte
         cmp     [byte ptr si+2],'W'
-        je      @@word
+        je      .word
         cmp     [byte ptr si+2],'D'
-        je      @@dword
+        je      .dword
         dec     si
 
-@@word:
+.word:
         push    16
         add     si,3
         push    cx
-        retn
+        retfn
 
-@@byte:
+.byte:
         push    8
         add     si,3
         push    cx
-        retn
+        retfn
 
-@@dword:
+.dword:
         push    32
         add     si,3
         push    cx
-        retn
+        retfn
 
-@@special2:
+.special2:
         cmp     [byte ptr si+1],'\'
-        jne     @@notshowit2
+        jne     .notshowit2
         inc     si
-        jmp     @@showit
-@@notshowit2:
+        jmp     .showit
+.notshowit2:
         mov     cl,[byte ptr si+1]
         cmp     cl,'l'
-        je      @@showline
+        je      .showline
         cmp     cl,'g'
-        je      @@goto
+        je      .goto
         cmp     cl,'h'
-        je      @@gotox
+        je      .gotox
         cmp     cl,'c'
-        je      @@color
+        je      .color
         cmp     cl,'m'
-        je      @@setvideomode
+        je      .setvideomode
         cmp     cl,'e'
-        je      @@clearscreen
+        je      .clearscreen
         cmp     cl,'s'
-        je      @@savestate
+        je      .savestate
         cmp     cl,'r'
-        je      @@restorestate
+        je      .restorestate
         cmp     cl,'i'
-        je      @@enablescroll
+        je      .enablescroll
         cmp     cl,'j'
-        je      @@disablescroll
+        je      .disablescroll
         cmp     cl,'f'
-        je      @@setfont
+        je      .setfont
         clc
-        jmp     @@no0
+        jmp     .no0
 
-@@color:
+.color:
         mov     al,[si+2]
         sub     al,'0'
         shl     al,4
         add     al,[si+3]
         sub     al,'0'
         xor     ah,ah
-        call    [cs:setcolor],ax
+        invoke    setcolor,ax
         add     si,4
-        jmp     @@strinaize0
+        jmp     .strinaize0
 
-@@gotox:
+.gotox:
         mov     bh,[si+2]
         sub     bh,'0'
         mov     bl,bh
@@ -313,13 +305,13 @@ PROC print FAR
         add     bl,[si+3]
         sub     bl,'0'
         xor     bh,bh
-        call    [cs:getxy]
+        invoke    getxy
         xor     ah,ah
-        call    [cs:setxy],bx,ax
+        invoke    setxy,bx,ax
         add     si,4
-        jmp     @@strinaize0
+        jmp     .strinaize0
 
-@@setvideomode:
+.setvideomode:
         mov     ah,[si+2]
         sub     ah,'0'
         mov     al,ah
@@ -329,11 +321,11 @@ PROC print FAR
         add     al,[si+3]
         sub     al,'0'
         xor     ah,ah
-        call    [cs:setvideomode],ax
+        invoke    setvideomode,ax
         add     si,4
-        jmp     @@strinaize0
+        jmp     .strinaize0
 
-@@setfont:
+.setfont:
         mov     ah,[si+2]
         sub     ah,'0'
         mov     al,ah
@@ -343,41 +335,41 @@ PROC print FAR
         add     al,[si+3]
         sub     al,'0'
         xor     ah,ah
-        call    [cs:setfont],ax
+        invoke    setfont,ax
         add     si,4
-        jmp     @@strinaize0
+        jmp     .strinaize0
 
-@@showline:
-        call    [cs:addline]
+.showline:
+        invoke    addline
         add     si,2
-        jmp     @@strinaize0
+        jmp     .strinaize0
 
-@@clearscreen:
-        call    [cs:clearscreen]
+.clearscreen:
+        invoke    clearscreen
         add     si,2
-        jmp     @@strinaize0
+        jmp     .strinaize0
 
-@@savestate:
-        call    [cs:savestate]
+.savestate:
+        invoke    savestate
         add     si,2
-        jmp     @@strinaize0
+        jmp     .strinaize0
 
-@@restorestate:
-        call    [cs:restorestate]
+.restorestate:
+        invoke    restorestate
         add     si,2
-        jmp     @@strinaize0
+        jmp     .strinaize0
 
-@@enablescroll:
-        call    [cs:enablescroll]
+.enablescroll:
+        invoke    enablescroll
         add     si,2
-        jmp     @@strinaize0
+        jmp     .strinaize0
 
-@@disablescroll:
-        call    [cs:disablescroll]
+.disablescroll:
+        invoke    disablescroll
         add     si,2
-        jmp     @@strinaize0
+        jmp     .strinaize0
 
-@@goto:
+.goto:
         mov     ah,[si+2]
         sub     ah,'0'
         mov     al,ah
@@ -397,11 +389,11 @@ PROC print FAR
         add     bl,[si+6]
         sub     bl,'0'
         xor     bh,bh
-        call    [cs:setxy],ax,bx
+        invoke    setxy,ax,bx
         add     si,7
-        jmp     @@strinaize0
+        jmp     .strinaize0
 
-@@no0:
+.no0:
         add     di,bp
         mov     ax,[ss:bp]   ;BP
         mov     bx,[ss:bp+2] ;IP
@@ -412,8 +404,8 @@ PROC print FAR
         mov     bp,di
         pop     di si cx bx ax
         mov     sp,bp
-        ret
-ENDP print
+        retf
+endp
 
 
 ;================SHOWDATE==============
@@ -421,199 +413,189 @@ ENDP print
 ;-> %0
 ;<-
 ;======================================
-PROC showdate FAR
-        ARG     @dates:word
-	USES	edx
+proc showdate uses edx, dates:word
 	xor	edx,edx
-	mov	dx,[@dates]
+	mov	dx,[dates]
 	and	dx,11111b
-	call	showintl,2,edx	
-	call	[cs:showchars],'/',0FFFFh
-	mov	dx,[@dates]
+	stdcall	showintl,2,edx	
+	invoke	showchars,'/',0FFFFh
+	mov	dx,[dates]
 	shr	dx,5
 	and	dx,111b
-	call	showintl,2,edx	
-	call	[cs:showchars],'/',0FFFFh
-	mov	dx,[@dates]
+	stdcall	showintl,2,edx	
+	invoke	showchars,'/',0FFFFh
+	mov	dx,[dates]
 	shr	dx,8
 	and	dx,11111111b
 	add	dx,1956
-	call	showintl,2,edx	
-	ret
-ENDP showdate
+	stdcall	showintl,2,edx	
+	retf
+endp
 
 ;================SHOWTIME==============
 ;Affiche l'heure contenu en %0
 ;-> %0
 ;<-
 ;======================================
-PROC showtime FAR
-        ARG     @times:word
-	USES 	edx
+proc showtime uses edx, times:word 	
 	xor 	edx,edx
-	mov	dx,[@times]
+	mov	dx,[times]
 	shr	dx,11
 	and	dx,11111b
-	call	showintl,2,edx
-	call	[cs:showchars],':',0FFFFh
-	mov	dx,[@times]
+	stdcall	showintl,2,edx
+	invoke	showchars,':',0FFFFh
+	mov	dx,[times]
 	shr	dx,5
 	and	dx,111111b
-	call	showintl,2,edx
-	call	[cs:showchars],':',0FFFFh
-	mov	dx,[@times]
+	stdcall	showintl,2,edx
+	invoke	showchars,':',0FFFFh
+	mov	dx,[times]
 	and	dx,11111b
 	shl	dx,1
-	call	showintl,2,edx
-	ret
-ENDP showtime
+	stdcall	showintl,2,edx
+	retf
+endp
 	
 ;================SHOWNAME==============
-;Affiche le nom pointé par ds:%0
+;Affiche le nom pointe par ds:%0
 ;-> ds:%0
 ;<-
 ;======================================
-PROC showname FAR
-        ARG     @thename:word
-	USES	cx,si
-	mov     si,[@thename]
+proc showname uses cx si, thename:word
+	mov     si,[thename]
 	xor	cx,cx
-@@showthename:
-	call	[cs:showchars],[word ptr ds:si],0FFFFh
+.showthename:
+	invoke	showchars,[word ptr ds:si],0FFFFh
 	inc	si
 	inc	cx
 	cmp	cx,8
-	jne	@@suiteaname
-	call	[cs:showchars],' ',0FFFFh
-@@suiteaname:
+	jne	.suiteaname
+	invoke	showchars,' ',0FFFFh
+.suiteaname:
 	cmp	cx,8+3
-	jb	@@showthename
-	ret
-ENDP showname
+	jb	.showthename
+	retf
+endp
 
 ;================SHOWATTR==============
-;Affiche les attributs spécifié par %0
+;Affiche les attributs specifie par %0
 ;-> %0
 ;<-
 ;======================================
-PROC showattr FAR
-        ARG     @attr:word
-       	push    0FFFFh
-	test 	[@attr],00000001b
-	je	@@noreadonly
+proc showattr, attr:word
+       push    0FFFFh
+	test 	[attr],00000001b
+	je	.noreadonly
 	push    'L'	
-	jmp	@@readonly
-@@noreadonly:
+	jmp	.readonly
+.noreadonly:
 	push    '-'
-@@readonly:
-	call	[cs:showchars]
+.readonly:
+	invoke	showchars
 	push    0FFFFh
-	test 	[@attr],00000010b
-	je	@@nohidden
+	test 	[attr],00000010b
+	je	.nohidden
 	push    'C'	
-	jmp	@@hidden
-@@nohidden:
+	jmp	.hidden
+.nohidden:
 	push    '-'
-@@hidden:
-	call	[cs:showchars]
+.hidden:
+	invoke	showchars
 	push    0FFFFh
-	test 	[@attr],00000100b
-	je	@@nosystem
+	test 	[attr],00000100b
+	je	.nosystem
 	push    'S'	
-	jmp	@@system
-@@nosystem:
+	jmp	.system
+.nosystem:
 	push    '-'
-@@system:
-	call	[cs:showchars]
+.system:
+	invoke	showchars
 	push    0FFFFh
-	test 	[@attr],00100000b
-	je	@@noarchive
+	test 	[attr],00100000b
+	je	.noarchive
 	push    'A'	
-	jmp	@@archive
-@@noarchive:
+	jmp	.archive
+.noarchive:
 	push    '-'
-@@archive:
-	call	[cs:showchars]
+.archive:
+	invoke	showchars
 	push    0FFFFh
-	test 	[@attr],00010000b
-	je	@@nodirectory
+	test 	[attr],00010000b
+	je	.nodirectory
 	push    'R'	
-	jmp	@@directory
-@@nodirectory:
+	jmp	.directory
+.nodirectory:
 	push    '-'
-@@directory:
-	call	[cs:showchars]
-	ret
-ENDP showattr
+.directory:
+	invoke	showchars
+	retf
+endp
 
 ;================SHOWSIZE==============
-;Affiche le nom pointé par %0
+;Affiche le nom pointe par %0
 ;-> %0
 ;<-
 ;======================================
-PROC showsize FAR
-        ARG     @thesize:dword
-	USES 	edx,ds
+proc showsize uses edx ds, thesize:dword
 	push	cs
 	pop	ds
-	mov     edx,[@thesize]
+	mov     edx,[thesize]
 	cmp	edx,1073741824
-	ja	@@giga
+	ja	.giga
 	cmp	edx,1048576*9
-	ja	@@mega
+	ja	.mega
 	cmp	edx,1024*9
-	ja	@@kilo
-	call	showintr,4,edx
-	call	showstring0,offset unit
-	jmp	@@finsize
-@@kilo:
+	ja	.kilo
+	stdcall	showintr,4,edx
+	stdcall	showstring0,offset unit
+	jmp	.finsize
+.kilo:
 	shr	edx,10
-	call	showintr,4,edx
-	call	showstring0,offset unitkilo
-	jmp	@@finsize
-@@mega:
+	stdcall	showintr,4,edx
+	stdcall	showstring0,offset unitkilo
+	jmp	.finsize
+.mega:
 	shr	edx,20
-	call	showintr,4,edx
-	call	showstring0,offset unitmega
-	jmp	@@finsize
-@@giga:
+	stdcall	showintr,4,edx
+	stdcall	showstring0,offset unitmega
+	jmp	.finsize
+.giga:
 	shr	edx,30
-	call	showintr,4,edx
-	call	showstring0,offset unitgiga
-@@finsize:
-	ret
+	stdcall	showintr,4,edx
+	stdcall	showstring0,offset unitgiga
+.finsize:
+	retf
 
 unit db ' o ',0
 unitkilo db ' ko',0
 unitmega db ' mo',0
 unitgiga db ' go',0
-ENDP showsize
+endp
 
 ;==========SHOWSPACE===========
-;met un espace aprés le curseur
+;met un espace apres le curseur
 ;->
 ;<-
 ;==============================
-PROC showspace FAR
-        call	[cs:showchars],' ',0FFFFh
+proc showspace
+        invoke	showchars,' ',0FFFFh
         clc
-	ret
-ENDP showspace
+	retf
+endp
 
 
 ;==========SHOWINT===========
-;Affiche un entier %0 aprés le curseur
+;Affiche un entier %0 apres le curseur
 ;-> %0
 ;<-
 ;============================
-PROC showint FAR
-        ARG     @integer:dword
-	USES	eax,bx,cx,edx,esi
+proc showint uses eax bx cx edx esi, integer:dword
+local showbuffer 	db 50 dup (0FFh)
       	xor	cx,cx
-	mov   	eax,[@integer]
+	mov   	eax,[integer]
       	mov   	esi,10
       	mov   	bx,offset showbuffer+27
-@@decint:
+.decint:
       	xor   	edx,edx
       	div   	esi
       	add   	dl,'0'
@@ -621,33 +603,29 @@ PROC showint FAR
       	mov   	[cs:bx],dl
 	dec   	bx
       	cmp   	ax,0
-      	jne   	@@decint
+      	jne   	.decint
 	mov	ax,cx
-@@showinteger:
+.showinteger:
 	inc	bx
 	mov	cl,[cs:bx]
-        call	[cs:showchars],cx,0FFFFh
+        invoke	showchars,cx,0FFFFh
 	dec	ax
-	jnz	@@showinteger
-	ret
-
-showbuffer 	db 50 dup (0FFh)
-ENDP showint
+	jnz	.showinteger
+	retf
+endp
 
 ;==========SHOWINTL===========
-;Affiche un entier %0 aprés le curseur de taille %1 caractère centré a gauche
-;-> %0 un entier  % taille en caractères
+;Affiche un entier %0 apres le curseur de taille %1 caractere centre a gauche
+;-> %0 un entier  % taille en caracteres
 ;<-
 ;===============================
-PROC showintl FAR
-        ARG     @sizeofint:word,@integer:dword
-	USES	eax,bx,cx,edx,esi,di
-	mov	di,[@sizeofint]
+proc showintl eax bx cx edx esi di, sizeofint:word,integer:dword
+	mov	di,[sizeofint]
       	xor	cx,cx
-	mov   	eax,[@integer]
+	mov   	eax,[integer]
       	mov   	esi,10
       	mov   	bx,offset showbuffer+27
-@@decint:
+.decint:
       	xor   	edx,edx
       	div   	esi
       	add   	dl,'0'
@@ -655,44 +633,42 @@ PROC showintl FAR
       	mov   	[cs:bx],dl
 	dec   	bx
 	cmp 	cx,di
-	jae 	@@nomuch
+	jae 	.nomuch
       	cmp   	ax,0
-      	jne   	@@decint
+      	jne   	.decint
 	mov 	ax,di
   	xchg 	cx,di
 	sub 	cx,di
-@@rego:
+.rego:
 	mov 	[byte ptr cs:bx],'0'
 	dec    	bx
 	dec    	cx
-	jnz	@@rego
-	jmp 	@@finishim
-@@nomuch:
+	jnz	.rego
+	jmp 	.finishim
+.nomuch:
 	mov	ax,di
-@@finishim:
-@@showinteger:
+.finishim:
+.showinteger:
 	inc	bx
 	mov     cl,[cs:bx]
-        call	[cs:showchars],cx,0FFFFh
+        invoke	showchars,cx,0FFFFh
 	dec	ax
-	jnz	@@showinteger
-	ret
-ENDP showintl
+	jnz	.showinteger
+	retf
+endp
 
 ;==========SHOWINTR===========
-;Affiche un entier %0 aprés le curseur de taille %1 caractère centré a droite
-;-> %0 un entier  % taille en caractères
+;Affiche un entier %0 apres le curseur de taille %1 caractere centre a droite
+;-> %0 un entier  % taille en caracteres
 ;<-
 ;===============================
-PROC showintr FAR
-        ARG     @sizeofint:word,@integer:dword
-	USES	eax,bx,cx,edx,esi,di
-	mov	di,[@sizeofint]
+proc showintr uses eax bx cx edx esi di, sizeofint:word,integer:dword	
+	mov	di,[sizeofint]
       	xor	cx,cx
-	mov   	eax,[@integer]
+	mov   	eax,[integer]
       	mov   	esi,10
       	mov   	bx,offset showbuffer+27
-@@decint:
+.decint:
       	xor   	edx,edx
       	div   	esi
       	add   	dl,'0'
@@ -700,192 +676,179 @@ PROC showintr FAR
       	mov   	[cs:bx],dl
 	dec   	bx
 	cmp 	cx,di
-	jae 	@@nomuch
+	jae 	.nomuch
       	cmp   	ax,0
-      	jne   	@@decint
+      	jne   	.decint
 	mov 	ax,di
   	xchg 	cx,di
 	sub 	cx,di
-@@rego:
+.rego:
 	mov 	[byte ptr cs:bx],' '
 	dec    	bx
 	dec    	cx
-	jnz	@@rego
-	jmp 	@@finishim
-@@nomuch:
+	jnz	.rego
+	jmp 	.finishim
+.nomuch:
 	mov	ax,di
-@@finishim:
-@@showinteger:
+.finishim:
+.showinteger:
 	inc	bx
 	mov	cl,[cs:bx]
-        call	[cs:showchars],cx,0FFFFh
+        invoke	showchars,cx,0FFFFh
 	dec	ax
-	jnz	@@showinteger
-	ret
-ENDP showintr
+	jnz	.showinteger
+	retf
+endp
 
 ;==========SHOWSIGNED===========
-;Affiche un entier %0 de taille %1 aprés le curseur
+;Affiche un entier %0 de taille %1 apres le curseur
 ;-> %0 un entier, %1 la taille
 ;<-
 ;===============================
-PROC showsigned FAR
-        ARG     @sizeofint:word,@integer:dword=taille
-	USES 	ebx,cx,edx
-	mov	ebx,[@integer]	
-	mov	cx,[@sizeofint]	
+proc showsigned ebx cx edx, sizeofint:word,integer:dword
+	mov	ebx,[integer]	
+	mov	cx,[sizeofint]	
 	xor	edx,edx
 	cmp     cx,1
-	ja 	@@signed16
+	ja 	.signed16
 	mov	dl,bl
 	cmp	dl,7Fh
-	jbe	@@notsigned
+	jbe	.notsigned
 	neg 	dl
-	jmp	@@showminus
-@@signed16:
+	jmp	.showminus
+.signed16:
 	cmp     cx,2
-	ja 	@@signed32
+	ja 	.signed32
 	mov 	dx,bx
 	cmp	dx,7FFFh
-	jbe	@@notsigned
+	jbe	.notsigned
 	neg	dx
-	jmp	@@showminus
-@@signed32:	
+	jmp	.showminus
+.signed32:	
 	mov	edx,ebx
 	cmp	edx,7FFFFFFFh
-	jbe	@@notsigned
+	jbe	.notsigned
 	neg 	edx
-@@showminus:
-	call 	[cs:showchars],'-',0FFFFh
-@@notsigned:
-	call 	showint,edx
-	ret
-ENDP showsigned
+.showminus:
+	invoke 	showchars,'-',0FFFFh
+.notsigned:
+	stdcall 	showint,edx
+	retf
+endp
 
 ;==========SHOWHEX===========
-;Affiche un nombre hexadécimal %0 de taille %1 aprés le curseur
+;Affiche un nombre hexadecimal %0 de taille %1 apres le curseur
 ;-> %0 un entier, %1 la taille
 ;<-
 ;============================
-PROC showhex FAR
-        ARG     @sizeofint:word,@integer:dword=taille
-        USES  	ax,bx,cx,edx
-       	mov     edx,[@integer]
-       	mov   	cx,[@sizeofint]
+proc showhex ax bx cx edx, sizeofint:word,integer:dword 	
+       	mov     edx,[integer]
+       	mov   	cx,[sizeofint]
        	mov     ax,cx
 	shr   	ax,2
        	sub   	cx,32
        	neg   	cx
        	shl   	edx,cl
-@@Hexaize:
+.Hexaize:
        	rol   	edx,4
        	mov   	bx,dx
        	and   	bx,0fh
        	mov   	cl,[cs:bx+offset Tab]
-        call	[cs:showchars],cx,0FFFFh
+        invoke	showchars,cx,0FFFFh
        	dec   	al
-       	jnz   	@@Hexaize
-       	ret
+       	jnz   	.Hexaize
+       	retf
 
 Tab 	db '0123456789ABCDEF'
-ENDP showhex
+endp
 
 ;==========SHOWBIN===========
-;Affiche un nombre binaire %0 de taille %1 aprés le curseur
+;Affiche un nombre binaire %0 de taille %1 apres le curseur
 ;-> %0 un entier, %1 la taille
 ;<-
 ;============================
-PROC showbin FAR
-        ARG     @sizeofint:word,@integer:dword=taille
-       	USES   	ax,cx,edx
-        mov     edx,[@integer]
-       	mov   	cx,[@sizeofint]
+proc showbin ax cx edx, sizeofint:word,integer:dword	
+        mov     edx,[integer]
+       	mov   	cx,[sizeofint]
        	sub     cx,32
        	neg     cx
        	shl     edx,cl
-       	mov   	ax,[@sizeofint]
-@@binaize:
+       	mov   	ax,[sizeofint]
+.binaize:
         rol     edx,1
         mov     cl,'0'
         adc     cl,0
-        call	[cs:showchars],cx,0FFFFh
+        invoke	showchars,cx,0FFFFh
         dec     al
-        jnz     @@binaize
-        ret
-ENDP showbin
+        jnz     .binaize
+        retf
+endp
 
 ;==========SHOWBCD===========
-;Affiche un nombre en BCD %0 de taille %1 aprés le curseur
+;Affiche un nombre en BCD %0 de taille %1 apres le curseur
 ;-> %0 un entier, %1 la taille
 ;<-
 ;============================
-PROC showbcd FAR
-        ARG     @sizeofint:word,@integer:dword
-        USES    ax,cx,edx
-        mov     edx,[@integer]
-        mov     ax,[@sizeofint]
+proc showbcd ax cx edx, sizeofint:word,integer:dword
+        mov     edx,[integer]
+        mov     ax,[sizeofint]
         mov     cx,ax
         shr     ax,2
         sub     cx,32
         neg     cx
         shl     edx,cl
-@@BCDaize:
+.BCDaize:
         rol     edx,4
         mov     cl,dl
         and     cl,0fh
         add     cl,'0'
-        call	[cs:showchars],cx,0FFFFh
+        invoke	showchars,cx,0FFFFh
         dec     al
-        jnz     @@BCDaize
-        ret
-ENDP showbcd
+        jnz     .BCDaize
+        retf
+endp
 
 ;==========SHOWSTRING===========
-;Affiche une chaine de caractère pointée par ds:%1 aprés le curseur
+;Affiche une chaine de caractere pointee par ds:%1 apres le curseur
 ;-> ds:%1 pointeur chaine type pascal
 ;<-
 ;===============================
-PROC showstring FAR
-        ARG     @pointer:word
-        USES    bx,si
-        mov     si,[@pointer]
+proc showstring bx si, pointer:word
+        mov     si,[pointer]
         mov     bl,[si]
-@@strinaize:
+.strinaize:
         inc     si
-        call	[cs:showchars],[word ptr si],0FFFFh
+        invoke	showchars,[word ptr si],0FFFFh
         dec     bl
-        jnz     @@strinaize
-        ret
-ENDP showstring
+        jnz     .strinaize
+        retf
+endp
 
 ;==========showchars===========
-;Affiche un caractère %0 aprés le curseur
-;-> %0 caractère 
+;Affiche un caractere %0 apres le curseur
+;-> %0 caractere 
 ;<-
 ;===============================
-PROC showchar FAR
-        ARG     @pointer:word
-        call	[cs:showchars],[@pointer],0FFFFh
-        ret
-ENDP showchar
+proc showchar, pointer:word
+        invoke	showchars,[pointer],0FFFFh
+        retf
+endp
 
 ;==========SHOWSTRING0===========
-;Affiche une chaine de caractère pointée par ds:%1 aprés le curseur
-;-> ds:%1 pointeur chaine type zéro terminal
+;Affiche une chaine de caractere pointee par ds:%1 apres le curseur
+;-> ds:%1 pointeur chaine type zero terminal
 ;<-
 ;================================
-PROC showstring0 FAR
-        ARG     @pointer:word
-        USES    cx,si
-        mov     si,[@pointer]	
-@@strinaize0:
+proc showstring0 uses cx si, pointer:word 
+        mov     si,[pointer]	
+.strinaize0:
         mov     cl,[si]
         cmp     cl,0
-        je      @@no0
-        call	[cs:showchars],cx,0FFFFh	
+        je      .no0
+        invoke	showchars,cx,0FFFFh	
         inc     si
-        jmp     @@strinaize0
-@@no0:
-        ret
-ENDP showstring0
+        jmp     .strinaize0
+.no0:
+        retf
+endp
 

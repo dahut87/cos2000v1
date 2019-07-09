@@ -3,6 +3,7 @@ struc diskbuffer
 .size  dw 12
 .current dw 0FFFFh
 .chain   dw 128 dup (0FFFFh)
+.sizeof = $ - .size
 }
 
 struc dpt
@@ -18,6 +19,7 @@ struc dpt
 .formatbyte          db 0F6h ;Octet de formatage
 .headsettlingtime    db 000h ;Temps de repos des tˆtes
 .delaymotornormspeed db 008h ;Temps de mont‚e en vitesse du moteur
+.sizeof = $ - .steprateheadunload
 }
 
 struc entries
@@ -35,6 +37,7 @@ struc entries
 .filedate	dw 0
 .filegroup	dw 0
 .filesize	dd 0
+.sizeof = $ - .filename
 }
 
 ;Pour recherches
@@ -45,6 +48,7 @@ struc find files
 .adressdirectory		dw	0 ;En cluster
 .firstsearch		db	1 ;Premiere requete ?
 .result                  entries
+.sizeof = $ - .files
 }
 
 struc bootinfo vendor,drivename,serialnumber
@@ -69,4 +73,5 @@ struc bootinfo vendor,drivename,serialnumber
 .serialnumber      dd      01020304h                ;no de serie
 .drivename         db      'COS2000    '            ;nom de volume
 .typeoffat         db      'FAT12   '               ;FAT
+.sizeof = $ - .vendor 
 }

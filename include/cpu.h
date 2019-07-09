@@ -18,4 +18,5 @@ struc cpu
 .now3d2          db 0
 .htt             db 0
 .apic            db 0
+.sizeof = $ - .vendor
 }

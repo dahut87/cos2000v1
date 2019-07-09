@@ -111,13 +111,13 @@ macro   importing
 macro   noimporting
 {
 	 imports:
-	 dd 0
+	 ende
 }
 
 macro   noexporting
 {
 	 imports:
-	 dd 0
+	 ende
 }
 
 macro   ende
@@ -132,7 +132,7 @@ macro   endi
 
 macro   use    lib*,fonction*
 {
-	 db "&lib&::&fonction&",0
+	 db `lib,"::",`fonction,0
 fonction:
 	   dd 0
          dd 0
@@ -140,7 +140,7 @@ fonction:
 
 macro   declare    fonction*
 {
-	 db "&fonction&",0
+	 db `fonction,0
        dw fonction
 }
 
@@ -148,50 +148,27 @@ macro   declare    fonction*
 ; Macroinstructions for defining and calling procedures
 
 macro stdcall proc,[arg]		; directly call STDCALL procedure
- { common
+{ 
+common
     if ~ arg eq
    reverse
-    pushw arg
+    push arg
    common
     end if
-    call proc }
-
-macro invoke proc,[arg] 		; indirectly call STDCALL procedure
- { common
+    push cs
+    call proc 
+}
+    
+macro invoke proc,[arg]		; directly call STDCALL procedure
+ { 
+ common
     if ~ arg eq
    reverse
-     pushw arg
+    push arg
    common
     end if
-    call [proc] }
-
-macro ccall proc,[arg]			; directly call CDECL procedure
- { common
-    size@ccall = 0
-    if ~ arg eq
-   reverse
-    pushw arg
-    size@ccall = size@ccall+2
-   common
-    end if
-    call proc
-    if size@ccall
-    add sp,size@ccall
-    end if }
-
-macro cinvoke proc,[arg]		; indirectly call CDECL procedure
- { common
-    size@ccall = 0
-    if ~ arg eq
-   reverse
-    pushw arg
-    size@ccall = size@ccall+2
-   common
-    end if
-    call [proc]
-    if size@ccall
-    add sp,size@ccall
-    end if }
+    call far [cs:proc] 
+ }
 
 macro proc [args]			; define procedure
  { common
@@ -231,10 +208,6 @@ macro define@proc name,statement
 				     flag = 11b \}
    match =stdcall, statement \{ params equ
 				flag = 11b \}
-   match =c args, statement \{ params equ args
-			       flag = 10001b \}
-   match =c, statement \{ params equ
-			  flag = 10001b \}
    match =params, params \{ params equ statement
 			    flag = 0 \}
    virtual at bp+4

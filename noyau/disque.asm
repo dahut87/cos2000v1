@@ -1,16 +1,9 @@
-model tiny,stdcall
-p486
-locals
-jumps
-codeseg
-option procalign:byte
-
 include "..\include\mem.h"
 include "..\include\fat.h"
 
 org 0h
 
-header exe <"CE",1,0,0,offset exports,offset imports,,>
+header exe 1
 
 
 exporting		
@@ -52,10 +45,10 @@ endi
 
 
 ;DPT disquette 
-mydpt dpt <>
+mydpt dpt
 
 ;Secteur de boot
-myboot bootinfo <>
+myboot bootinfo
 
 ;Parametres
 support                 db      0
@@ -75,14 +68,12 @@ currentdir		dw	0 ;En cluster
 currentdirstr		db      128 dup (0)
 
 
-PROC getfat near
-	uses  	ax,bx,dx,si,ds,es
+proc getfat	uses ax bx dx si ds es
    push    cs
    pop     ds
-   
    push cs
    pop es
-   call    [cs:mbfindsb],offset datafat,cs
+   invoke    mbfindsb,datafat,cs
    mov     es,ax
 	mov	ax,cx
 	mov	bx,ax
@@ -109,75 +100,78 @@ endfat:
 	cmp	ax,0FF0h
 	jbe	nocarry
 	stc
-	ret
+	retf
 nocarry:
 	clc
-	ret
-endp getfat 
+	retf
+endp 
 
 ;============loadfile===============
 ;Charge le fichier ds:%0 en ds:%1 ->ax taille
 ;-> AH=4
 ;<- Flag Carry si erreur
 ;=====================================================
-PROC loadfile FAR
-    ARG     @name:word,@pointer:word
-    LOCAL   @@temp:word:48
-	USES	cx,si,di,ds,es
+proc loadfile uses cx si di ds es, name:word,pointer:word
+local temp[48]:WORD
    	push    ss
 	pop     es 
-    lea     di,[@@temp]
+    lea     di,[temp]
     push    ds di 
-    mov     si,[@name]
+    mov     si,[name]
     mov     cx,48/4
     cld
     rep     movsd
    	push    ss
 	pop     ds
     pop     di es
-	call	searchfile,di
+	stdcall	searchfile,di
 	jne   	errorload
 	jc	    errorload
-	mov	    cx,[(find di).result.filegroup]
-	mov	    eax,[(find di).result.filesize]
+	virtual at di
+  		.find find
+	end virtual
+	mov	    cx,[.find.result.filegroup]
+	mov	    eax,[.find.result.filesize]
     push    es
     pop     ds
-    call    loadway,cx,eax,[@pointer]
+    stdcall    loadway,cx,eax,[pointer]
 	jc    	errorload
 	clc
-	ret
+	retf
 errorload:
 	stc
 	xor eax,eax
-	ret
-endp loadfile
+	retf
+endp
 	
 ;============execfile (Fonction 18)===============
 ;Execute le fichier ds:si
 ;-> AH=18
 ;<- Flag Carry si erreur
 ;=====================================================
-PROC execfile FAR
-        ARG     @file:word
+proc execfile, file:word
         pushad
         push    ds es fs gs
-        mov     di,[@file]
-	    call	uppercase,di
-        call    projfile,di
-        jc      @@reallyerrornoblock
-        call    [cs:mbfind],di
-        jc      @@reallyerror
-        call    [cs:mbchown],ax,[word ptr ss:bp+4]
-        jc      @@reallyerror
+        mov     di,[file]
+	    stdcall	uppercase,di
+        stdcall    projfile,di
+        jc      .reallyerrornoblock
+        invoke    mbfind,di
+        jc      .reallyerror
+        invoke    mbchown,ax,word [ss:bp+4]
+        jc      .reallyerror
         push    ax
         pop     ds
-        cmp     [word ptr ds:0x0],'EC'
-        jne     @@reallyerror
+        cmp     word [ds:0x0],'EC'
+        jne     .reallyerror
         push    ax
         push    cs
-        push    offset @@arrive
+        push    .arrive
         push    ds
-        push    [word ptr (exe).starting]
+	virtual at 0
+  		.exe exe
+	end virtual
+        push    word [.exe.starting]
         push    ds
         push    ds
         push    ds
@@ -195,38 +189,36 @@ PROC execfile FAR
         popf
         sti
         db      0CBh
-@@arrive:
+.arrive:
         ;cli
         ;pop     ax
-        ;call    [cs:mbfree],ax
-        call    [cs:mbfree]
+        ;invoke    mbfree,ax
+        invoke    mbfree
         pop     gs fs es ds
 	    popad
         clc
-	    ret
-@@reallyerror:
-        call    [cs:mbfree],ax
-@@reallyerrornoblock:
+	    retf
+.reallyerror:
+        invoke    mbfree,ax
+.reallyerrornoblock:
         pop     gs fs es ds
 	    popad
 	    stc
-	    ret
-endp execfile
+	    retf
+endp
 
 ;============projfile (Fonction 17)===============
 ;Charge le fichier ds:%0 sur un bloc mémoire -> eax taille 
 ;-> eax taille fichier
 ;<- Flag Carry si erreur
 ;=====================================================
-PROC projfile FAR
-ARG     @pointer:word
-LOCAL   @@temp:word:64
-USES	cx,si,di,ds,es
+proc projfile uses cx si di ds es, pointer:word
+local   temp[64]:WORD
    	push    ss
 	pop     es 
-    lea     di,[@@temp]
+    lea     di,[temp]
     push    di
-    mov     si,[@pointer]
+    mov     si,[pointer]
     mov     cx,64/4
     cld
     rep     movsd
@@ -234,38 +226,41 @@ USES	cx,si,di,ds,es
 	pop     ds
     pop     di 
 pushad
-call [cs:biosprint],di
+invoke biosprint,di
 popad
-	call	uppercase,di
-    call    [cs:mbfind],di
-    jnc     @@notace
-	call    searchfile,di
-	jne   	@@errorload
-	jc	    @@errorload	
-	mov	    eax,[es:(find di).result.filesize]
-	call    [cs:mbcreate],di,ax
-	jc      @@errorload
-    call    [cs:mbchown],ax,[word ptr ss:bp+4]
-    jc      @@errorload
+	stdcall	uppercase,di
+    invoke    mbfind,di
+    jnc     .notace
+	stdcall    searchfile,di
+	jne   	.errorload
+	jc	    .errorload
+	virtual at di
+  		.find find
+	end virtual	
+	mov	    eax,[es:.find.result.filesize]
+	invoke    mbcreate,di,ax
+	jc      .errorload
+    invoke    mbchown,ax,word [ss:bp+4]
+    jc      .errorload
 	mov     ds,ax
-    mov     cx,[es:(find di).result.filegroup]
-   	mov	    eax,[es:(find di).result.filesize]
-    call    loadway,cx,eax,0
-	jc    	@@errorload
-    cmp     [word ptr ds:0x0],'EC'
-    jne     @@notace
-        call    [cs:mbloadfuncs],ds
-        jc      @@errorload
-        call    [cs:mbloadsection],ds
-        jc      @@errorload
- @@notace:
+    mov     cx,[es:.find.result.filegroup]
+   	mov	    eax,[es:.find.result.filesize]
+    stdcall    loadway,cx,eax,0
+	jc    	.errorload
+    cmp     word [ds:0x0],'EC'
+    jne     .notace
+        invoke    mbloadfuncs,ds
+        jc      .errorload
+        invoke    mbloadsection,ds
+        jc      .errorload
+ .notace:
 	clc
-	ret
-@@errorload:
+	retf
+.errorload:
 	xor eax,eax
 	stc
-	ret
-endp projfile
+	retf
+endp
 
 
 ;=============SearchFile===============
@@ -273,188 +268,185 @@ endp projfile
 ;->
 ;<- Flag Carry si erreur
 ;======================================
-PROC searchfile FAR
-ARG     @pointer:word
-	USES	bx,cx,si,di,ds,es
-	mov     si,[@pointer]
-	lea     bx,[es:(find si).result]
-	call	uppercase,si
-	call	findfirstfile,si	
-    jc	    @@errorsearch
-	jmp	    @@founded
-@@nextsearch:
-	call	findnextfile,si
-    jc	    @@errorsearch	
-@@founded:
-	cmp	    [byte ptr bx],0
-	je	    @@notgood
-	cmp	    [byte ptr bx+entries.fileattr],0Fh
-	je	     @@nextsearch	
-	call	cmpnames,si,bx
-    jc    	@@nextsearch
-@@okfound:
+proc searchfile uses bx cx si di ds es, pointer:word
+	mov     si,[pointer]
+	virtual at si
+  		.find find
+	end virtual
+	lea     bx,[es:.find.result]
+	stdcall	uppercase,si
+	stdcall	findfirstfile,si	
+    jc	    .errorsearch
+	jmp	    .founded
+.nextsearch:
+	stdcall	findnextfile,si
+    jc	    .errorsearch	
+.founded:
+	cmp	    byte [bx],0
+	je	    .notgood
+	virtual at bx
+  		.entries entries
+	end virtual
+	cmp	    byte [.entries.fileattr],0Fh
+	je	     .nextsearch	
+	stdcall	cmpnames,si,bx
+    jc    	.nextsearch
+.okfound:
 	clc
-	ret
-@@notgood:
+	retf
+.notgood:
 	cmp   	si,0FF5h
-	ret
-@@errorsearch:
+	retf
+.errorsearch:
 	stc
-	ret
-endp searchfile
+	retf
+endp
 
 ;Transforme la chaine ds:%0 en maj
-PROC uppercase FAR
-        ARG     @strs:word
-	USES 	si,ax
-	mov     si,[@strs]
-@@uppercaser:
+proc uppercase uses si ax, strs:word 	
+	mov     si,[strs]
+.uppercaser:
 	mov 	al,[si]
 	cmp 	al,0
-	je 	@@enduppercase
+	je 	.enduppercase
 	cmp 	al,'a'
-	jb 	@@nonmaj
+	jb 	.nonmaj
 	cmp 	al,'z'
-	ja 	@@nonmaj
+	ja 	.nonmaj
 	sub 	al,'a'-'A'
 	mov 	[si],al
-@@nonmaj:
+.nonmaj:
 	inc 	si
-	jmp 	@@uppercaser
-@@enduppercase:
+	jmp 	.uppercaser
+.enduppercase:
 	clc
-	ret
-endp uppercase
+	retf
+endp
 
 ;Compare le nom ds:%0 '.' avec ds:%1
-PROC cmpnames FAR
-        ARG     @off1:word,@off2:word
-	USES 	ax,cx,si,di,es
-	mov     si,[@off1]
-	mov     di,[@off2]
-    cmp     [byte ptr si],"."
-    jne     @@notaredir
-    cmp     [word ptr si],".."
-    jne     @@onlyonedir
-    cmp     [word ptr di],".."   
-    je      @@itok
-    jmp     @@notequal
-@@onlyonedir:
-    cmp     [word ptr di]," ."
-    je      @@itok
-@@notaredir:
+proc cmpnames uses ax cx si di es, off1:word,off2:word
+	mov     si,[off1]
+	mov     di,[off2]
+    cmp     byte [si],"."
+    jne     .notaredir
+    cmp     word [si],".."
+    jne     .onlyonedir
+    cmp     word [di],".."   
+    je      .itok
+    jmp     .notequal
+.onlyonedir:
+    cmp     word [di]," ."
+    je      .itok
+.notaredir:
 	push    ds
 	pop     es             	
 	mov 	cx,8
 	repe 	cmpsb
-	jne 	@@nequal
+	jne 	.nequal
 	inc 	si
-	jmp     @@equal
-@@nequal:
-        cmp 	[byte ptr es:di-1],' '
-        jne     @@notequal	
-@@equal:
-	cmp 	[byte ptr si-1],'.'
-	jne 	@@trynoext
+	jmp     .equal
+.nequal:
+        cmp 	byte [es:di-1],' '
+        jne     .notequal	
+.equal:
+	cmp 	byte [si-1],'.'
+	jne 	.trynoext
 	mov 	al,' '
 	rep 	scasb
 	mov 	cx,3
 	rep 	cmpsb
-	jne 	@@nequal2
+	jne 	.nequal2
         inc     si
-        jmp     @@equal2
-@@nequal2:
-        cmp 	[byte ptr es:di-1],' '
-        jne     @@notequal
-@@equal2:
-	cmp 	[byte ptr si-1],0
-	jne     @@notequal
-@@itok:
+        jmp     .equal2
+.nequal2:
+        cmp 	byte [es:di-1],' '
+        jne     .notequal
+.equal2:
+	cmp 	byte [si-1],0
+	jne     .notequal
+.itok:
     clc
-	ret
-@@notequal:
+	retf
+.notequal:
 	stc
-	ret	
-@@trynoext:
-	cmp	[byte ptr si-1],0
-	jne	@@notequal
-	jmp	@@itok
-endp cmpnames
+	retf	
+.trynoext:
+	cmp	byte [si-1],0
+	jne	.notequal
+	jmp	.itok
+endp
 
 ;charge le fichier de de groupe %0 et de taille %1
-PROC loadway NEAR
-     ARG     @sector:word,@size:dword,@offset:word
-	USES 	eax,bx,cx,dx,si,di,ds,es
+proc loadway uses eax bx cx dx si di ds es, sector:word,size:dword,offset:word
     push  ds
     pop   es
-    mov   eax,[@size]		
+    mov   eax,[size]		
 	cmp   eax,0
-	je	  @@zeroload
+	je	  .zeroload
 	rol	  eax,16
 	mov	  dx,ax
 	ror	  eax,16
 	div	  [cs:clustersize]
 	mov	  bx,ax
-	mov   cx,[@sector]
-	mov   di,[@offset]
+	mov   cx,[sector]
+	mov   di,[offset]
 	cmp	  bx,1
-	jb	  @@adjustlast
-@@loadfat:
-	call   readcluster,cx,di
-	jc 	   @@noway
+	jb	  .adjustlast
+.loadfat:
+	stdcall   readcluster,cx,di
+	jc 	   .noway
 	add	   di,[cs:clustersize]
-	call   getfat
+	stdcall   getfat
 	dec	   bx
-	jnz	   @@loadfat
-@@adjustlast:
+	jnz	   .loadfat
+.adjustlast:
     cmp     dx,0
-    je      @@zeroload
+    je      .zeroload
 	push	cs
 	pop 	ds
-	mov	    si,offset bufferread
-	call	readcluster,cx,si
-	jc	    @@noway
+	mov	    si,bufferread
+	stdcall	readcluster,cx,si
+	jc	    .noway
 	mov	    cx,dx   
 	cld
 	rep	movsb
-@@zeroload:
+.zeroload:
 	clc
-	ret
-@@noway:	
+	retf
+.noway:	
 	stc
-	ret
-endp loadway	
+	retf
+endp	
 
 ;=============INITDRIVE===============
 ;Initialise le lecteur pour une utilisation ultérieure
 ;->
 ;<- Flag Carry si erreur
 ;=====================================
-PROC initdrive FAR
-	USES 	eax,bx,cx,edx,si,di,ds,es
+proc initdrive uses eax bx cx edx si di ds es
 	push 	cs
 	pop 	ds
 	push	cs
 	pop	es
 	mov	di,3
-@@againtry:
+.againtry:
         xor  	ax,ax
 	mov	dl,[support]
 	xor     dh,dh
         int  	13h
-	mov	bx,offset bufferread
+	mov	bx,bufferread
 	mov	ax,0201h
 	mov	cx,0001h
         mov     dl,[support]
         xor     dh,dh
 	int	13h
-	jnc	@@oknoagaintry
+	jnc	.oknoagaintry
 	dec	di
-	jnz	@@againtry
-@@oknoagaintry:
-        mov     si,offset bufferread+3
-        mov     di,offset myboot
-        mov     cx,size myboot
+	jnz	.againtry
+.oknoagaintry:
+        mov     si,bufferread+3
+        mov     di,myboot
+        mov     cx,myboot.sizeof
         cld
         rep     movsb
 	mov	ax,[myboot.sectorsize]
@@ -498,165 +490,175 @@ PROC initdrive FAR
        xor     eax,eax
         mov     ax,[buffer.size]
        	mul	[myboot.sectorsize]
-        call    [cs:mbfindsb],offset databuffer,cs
-        jnc     @@hadabufferblock
-        call    [cs:mbcreate],offset databuffer,ax
-        jc      @@errorinit
-        call    [cs:mbresident],ax
-        jc      @@errorinit
-        call    [cs:mbchown],ax,cs
-        jc      @@errorinit
-@@hadabufferblock:
+        invoke    mbfindsb,databuffer,cs
+        jnc     .hadabufferblock
+        invoke    mbcreate,databuffer,ax
+        jc      .errorinit
+        invoke    mbresident,ax
+        jc      .errorinit
+        invoke    mbchown,ax,cs
+        jc      .errorinit
+.hadabufferblock:
     mov  [buffer.current],0FFFFh
     mov  ax,0FFFFh
     mov  cx,[buffer.size]
-    mov  di,offset buffer.chain
+    mov  di,buffer.chain
     cld
     rep  stosw
         xor     eax,eax
         mov     ax,[myboot.sectorsperfat]
        	mul	[myboot.sectorsize]
-        call    [cs:mbfindsb],offset datafat,cs
-        jnc     @@hadafatbloc
-        call    [cs:mbcreate],offset datafat,ax
-        jc      @@errorinit
-        call    [cs:mbresident],ax
-        jc      @@errorinit
-        call    [cs:mbchown],ax,cs
-        jc      @@errorinit
-@@hadafatbloc:
+        invoke    mbfindsb,datafat,cs
+        jnc     .hadafatbloc
+        invoke    mbcreate,datafat,ax
+        jc      .errorinit
+        invoke    mbresident,ax
+        jc      .errorinit
+        invoke    mbchown,ax,cs
+        jc      .errorinit
+.hadafatbloc:
 	mov	dx,[myboot.sectorsperfat]
 	mov	cx,[adressfat]
         xor     di,di
         ;mov      di,offset fatter
         mov     ds,ax
-@@seefat:
-	call	readsector,cx,di
-	jc	@@errorinit
+.seefat:
+	stdcall	readsector,cx,di
+	jc	.errorinit
 	add	di,[cs:myboot.sectorsize]
 	inc	cx
 	dec	dx
-	jnz	@@seefat
+	jnz	.seefat
 	clc
-	ret
-@@errorinit:
+	retf
+.errorinit:
 	stc
-	ret
-endp initdrive
+	retf
+endp
 
 datafat db '/fat',0
 databuffer db '/buffer',0
 
-buffer diskbuffer <>
+buffer diskbuffer
 
 ;=============FindFirstFile==============
 ;Renvois dans DS:%1 un bloc d'info
 ;->
 ;<- Flag Carry si erreur
 ;========================================
-PROC findfirstfile FAR
-        ARG     @pointer:word
-	USES	cx,si
-	mov     si,[@pointer]
+proc findfirstfile uses cx si, pointer:word
+	mov     si,[pointer]
 	mov 	cx,[cs:currentdir]
-	mov 	[(find si).adressdirectory],cx
+	virtual at si
+  		.find find
+	end virtual
+	mov 	[.find.adressdirectory],cx
 	xor	    cx,cx
-	mov 	[(find si).entryplace],cx
-	mov	    [(find si).firstsearch],1
-	call 	findnextfile,[@pointer]
-	ret
-endp findfirstfile
+	mov 	[.find.entryplace],cx
+	mov	    [.find.firstsearch],1
+	stdcall 	findnextfile,[pointer]
+	retf
+endp
 
 ;=============FindnextFile==============
 ;Renvois dans DS:%0 un bloc d'info
 ;->
 ;<- Flag Carry si erreur
 ;=======================================
-PROC findnextfile FAR
-        ARG     @pointer:word
-	USES	ax,bx,cx,di,si,ds,es
+proc findnextfile	uses ax bx cx di si ds es, pointer:word
 	push    cs
 	push    ds
 	pop     es
 	pop     ds
-	mov     si,[@pointer]	
-	mov	    cx,[es:(find si).adressdirectory]
-	mov	    bx,[es:(find si).entryplace]
-@@findnextfileagain:
-	cmp	    [es:(find si).firstsearch],1
-	je	    @@first
-	add	    bx,size entries
+	mov     si,[pointer]	
+	virtual at si
+  		.find find
+	end virtual
+	mov	    cx,[es:.find.adressdirectory]
+	mov	    bx,[es:.find.entryplace]
+.findnextfileagain:
+	cmp	    [es:.find.firstsearch],1
+	je	    .first
+	virtual at 0
+  		.entries2 entries
+	end virtual
+	add	    bx,.entries2.sizeof
 	cmp	    bx,[cs:clustersize]
-	jb	    @@nopop
-@@first:
-	mov	    di,offset bufferentry
+	jb	    .nopop
+.first:
+	mov	    di,bufferentry
 	mov	    bx,0
 	cmp	    [cs:currentdir],0
-	jne	@@notrootdir
-	cmp	[es:(find si).firstsearch],1
-	je	@@noaddfirst1
+	jne	.notrootdir
+	cmp	[es:.find.firstsearch],1
+	je	.noaddfirst1
 	inc	cx
-@@noaddfirst1:
+.noaddfirst1:
 	add	cx,[cs:adressparent]
 	mov	al,[cs:myboot.sectorspercluster]
-@@readroot:
-	call	readsector,cx,di
-	jc	@@notwell
+.readroot:
+	stdcall	readsector,cx,di
+	jc	.notwell
 	add	di,[cs:myboot.sectorsize]
 	dec	al
-	jnz	@@readroot
+	jnz	.readroot
 	sub	cx,[cs:adressparent]
-	jmp	@@nopop
-@@notrootdir:
-	cmp	[es:(find si).firstsearch],1
-	je	@@noaddfirst2
-	call	getfat
-@@noaddfirst2:
-	jc	@@notwell
-	call	readcluster,cx,di
-	jc	@@notwell
-@@nopop:
-	mov	[es:(find si).firstsearch],0
-	mov di,offset bufferentry
+	jmp	.nopop
+.notrootdir:
+	cmp	[es:.find.firstsearch],1
+	je	.noaddfirst2
+	stdcall	getfat
+.noaddfirst2:
+	jc	.notwell
+	stdcall	readcluster,cx,di
+	jc	.notwell
+.nopop:
+	mov	[es:.find.firstsearch],0
+	mov di,bufferentry
 	add	di,bx
-	cmp	[byte ptr di],0
-	je	@@notwell
-	mov	[es:(find si).entryplace],bx
-	mov	[es:(find si).adressdirectory],cx
-	cmp	[byte ptr di],0E5h
-	je	@@findnextfileagain
-	cmp	[byte ptr di+entries.fileattr],28h
-	je	@@findnextfileagain
-	cmp	[byte ptr di+entries.fileattr],0Fh
-	je	@@findnextfileagain
+	cmp	byte [di],0
+	je	.notwell
+	mov	[es:.find.entryplace],bx
+	mov	[es:.find.adressdirectory],cx
+	cmp	byte [di],0E5h
+	je	.findnextfileagain
+	virtual at di
+  		.entries entries
+	end virtual
+	cmp	byte [.entries.fileattr],28h
+	je	.findnextfileagain
+	cmp	byte [.entries.fileattr],0Fh
+	je	.findnextfileagain
 	mov si,di
-    mov di,[@pointer]
-    lea di,[es:(find di).result]	
-	mov	cx,size entries
+    mov di,[pointer]
+	virtual at di
+  		.find2 find
+	end virtual
+    lea di,[es:.find2.result]	
+	mov	cx,.entries2.sizeof
 	cld
 	rep	movsb
 	clc
-	ret
-@@notwell:
+	retf
+.notwell:
 	stc
-	ret
-endp findnextfile
+	retf
+endp
 
 ;=============GetFreeSpace===============
 ;Renvoie en EDX l'espace disque libre du volume
 ;->
 ;<- Flag Carry si erreur
 ;========================================
-PROC getfreespace FAR
-	USES  	eax,bx
+proc getfreespace uses eax bx
 	xor	eax,eax
-	call	getsector
+	stdcall	getsector
 	mul	[cs:myboot.sectorsize]
 	shl	edx,16
 	add	edx,eax
 	pop   	eax
-	ret
-endp getfreespace
+	retf
+endp
 
 ;ax=défectueux bx=libre
 getsector:
@@ -668,7 +670,7 @@ getsector:
 	mov	cx,0
 goget:
 	push	cx	
-	call	getfat
+	stdcall	getfat
 	cmp	cx,0FF7h
 	jne	notdefect
 	inc	bx
@@ -694,56 +696,52 @@ errorfree:
 ;->
 ;<- Flag Carry si erreur
 ;=======================================
-PROC readcluster FAR
-        ARG     @sector:word,@pointer:word
-	USES	ax,bx,dx,si
+proc readcluster uses ax bx dx si, sector:word,pointer:word
 	mov	al,[cs:myboot.sectorspercluster]
 	xor	ah,ah
     mov bx,ax
-	mul	[@sector]
+	mul	[sector]
 	add	ax,[cs:addingvalue]
-	mov     si,[@pointer]
-@@readsectors:
-	call	readsector,ax,si
-	jc	@@errorreadincluster
+	mov     si,[pointer]
+.readsectors:
+	stdcall	readsector,ax,si
+	jc	.errorreadincluster
 	add	si,[cs:myboot.sectorsize]
 	inc	ax
 	dec	bx
-	jnz	@@readsectors
+	jnz	.readsectors
 	clc
-	ret
-@@errorreadincluster:
+	retf
+.errorreadincluster:
 	stc
-	ret
-endp readcluster
+	retf
+endp
 
 ;=============WRITECLUSTER===============
 ;Ecrit le cluster %0 et le met en ds:%1
 ;->
 ;<- Flag Carry si erreur
 ;=====================================================
-PROC writecluster FAR
-        ARG     @sector:word,@pointer:word
-	USES	ax,bx,dx,si
+proc writecluster uses ax bx dx si, sector:word,pointer:word
 	mov	al,[cs:myboot.sectorspercluster]
 	xor	ah,ah
     mov bx,ax
-	mul	[@sector]
+	mul	[sector]
 	add	ax,[cs:addingvalue]
-	mov     si,[@pointer]
-@@writesectors:
-	call	writesector,ax,si
-	jc	@@errorwriteincluster
+	mov     si,[pointer]
+.writesectors:
+	stdcall	writesector,ax,si
+	jc	.errorwriteincluster
 	add	si,[cs:myboot.sectorsize]
 	inc	ax
 	dec	bx
-	jnz	@@writesectors
+	jnz	.writesectors
 	clc
-	ret
-@@errorwriteincluster:
+	retf
+.errorwriteincluster:
 	stc
-	ret
-endp writecluster
+	retf
+endp
 
 
 ;=============READSECTOR===============
@@ -751,56 +749,54 @@ endp writecluster
 ;->
 ;<- Flag Carry si erreur
 ;======================================
-PROC readsector FAR
-    ARG     @sector:word,@pointer:word
-	USES 	ax,bx,cx,dx,si,di,ds,es
-    LOCAL   @tempsec
+proc readsector uses ax bx cx dx si di ds es, sector:word,pointer:word
+    local   tempsec:WORD
     push    ds
     push    cs
     pop     ds
-    call    [cs:mbfindsb],offset databuffer,cs
+    invoke    mbfindsb,databuffer,cs
     pop     ds
     mov     es,ax
-    jc      @@error
-    mov     si,offset buffer.chain
+    jc      .error
+    mov     si,buffer.chain
     xor     cx,cx
-    mov     ax,[@sector]
+    mov     ax,[sector]
     mov     bx,0FFFFh
-@@searchbuffer:
+.searchbuffer:
     cmp     [cs:si],ax
-    je      @@preprepcopy
-    cmp     [word ptr cs:si],0FFFEh
-    jne     @@notfree
+    je      .preprepcopy
+    cmp     word [cs:si],0FFFEh
+    jne     .notfree
     mov     bx,cx
-@@notfree: 
-    cmp     [word ptr cs:si],0FFFFh
-    je      @@theend
+.notfree: 
+    cmp     word [cs:si],0FFFFh
+    je      .theend
     inc     si
     inc     si
     inc     cx
     cmp     cx,[cs:buffer.size]
-    jb      @@searchbuffer
-@@theend:
+    jb      .searchbuffer
+.theend:
     cmp     bx,0FFFFh
-    jnz     @@prepread
+    jnz     .prepread
     cmp     cx,[cs:buffer.size]
-    jb      @@read 
+    jb      .read 
     mov     cx,[cs:buffer.current]
-@@searchnext:
+.searchnext:
     inc     cx
     cmp     cx,[cs:buffer.size]
-    jb      @@read
+    jb      .read
     xor     cx,cx
-    jmp     @@read
-@@prepread:
+    jmp     .read
+.prepread:
     mov     cx,bx
-@@read: 
+.read: 
     mov     [cs:buffer.current],cx   
-    mov     [@tempsec],cx
+    mov     [tempsec],cx
     mov     ax,[cs:myboot.sectorsize]
     mul     cx
     mov     di,ax
-	mov	    ax,[@sector]
+	mov	    ax,[sector]
 	xor   	dx,dx
 	div   	[cs:myboot.sectorspertrack]
 	inc   	dl
@@ -815,112 +811,106 @@ PROC readsector FAR
 	or 	    cl,bl       
 	mov 	bx,di
 	mov 	si,3
-@@tryagain:
+.tryagain:
 	mov 	ax,0201h
   	int 	13h
-  	jnc 	@@prepcopy
+  	jnc 	.prepcopy
   	dec 	si
-  	jnz 	@@tryagain
-    mov     bx,[@tempsec]
+  	jnz 	.tryagain
+    mov     bx,[tempsec]
     shl     bx,1
-    mov     [word ptr bx+offset buffer.chain],0FFFEh
-@@error:
+    mov     word [bx+buffer.chain],0FFFEh
+.error:
     stc
-    ret
-@@preprepcopy:
-    mov     [@tempsec],cx
-@@prepcopy:
-    mov     bx,[@tempsec]
-    mov     ax,[@tempsec]
-    mov     cx,[@sector]
+    retf
+.preprepcopy:
+    mov     [tempsec],cx
+.prepcopy:
+    mov     bx,[tempsec]
+    mov     ax,[tempsec]
+    mov     cx,[sector]
     shl     bx,1
-    mov     [cs:bx+offset buffer.chain],cx
+    mov     [cs:bx+buffer.chain],cx
     mov     cx,[cs:myboot.sectorsize]
     mul     cx
     mov     di,ax
-@@copy:
+.copy:
     push    ds
     push    es
     pop     ds
     pop     es
     mov     si,di
-    mov     di,[@pointer]
+    mov     di,[pointer]
     cld 
     rep     movsb
-@@done:
-    ret
-endp readsector
+.done:
+    retf
+endp
 
 ;=============SETBUFFER============
 ;change la taille des buffers a %0
 ;->
 ;<- Flag Carry si erreur
 ;====================================
-PROC setbuffer FAR
-        ARG     @size:word
-	USES 	ax,cx,di,ds,es
+proc setbuffer uses ax cx di ds es, size:word
     push    cs
     push    cs
     pop     ds
     pop     es
-    call    [cs:mbfindsb],offset databuffer,cs
-    jc      @@nodatabuffer
-    call    [cs:mbfree],ax
-@@nodatabuffer:
-    mov  ax,[@size]
+    invoke    mbfindsb,databuffer,cs
+    jc      .nodatabuffer
+    invoke    mbfree,ax
+.nodatabuffer:
+    mov  ax,[size]
     mov  cx,ax
     mov  [buffer.size],ax
        	mul	[myboot.sectorsize]
-        call    [cs:mbcreate],offset databuffer,ax
-        jc      @@errorinit
-        call    [cs:mbresident],ax
-        jc      @@errorinit
-        call    [cs:mbchown],ax,cs
-        jc      @@errorinit
+        invoke    mbcreate,databuffer,ax
+        jc      .errorinit
+        invoke    mbresident,ax
+        jc      .errorinit
+        invoke    mbchown,ax,cs
+        jc      .errorinit
     mov  [buffer.current],0FFFFh
     mov  ax,0FFFFh
-    mov  di,offset buffer.chain
+    mov  di,buffer.chain
     cld
     rep  stosw
     clc
-    ret
-@@errorinit:
+    retf
+.errorinit:
     stc
-    ret
-endp setbuffer
+    retf
+endp
 
 ;=============GETBUFFER============
 ;renvoie la structure de buffer en %0
 ;->
 ;<- Flag Carry si erreur
 ;====================================
-PROC getbuffer FAR
-    ARG     @pointer:word
-	USES 	ax,cx,di,ds,es
+proc getbuffer uses ax cx di ds es, pointer:word
     push    cs
     push    ds
     pop     es
     pop     ds
-    mov     si,offset buffer
-    mov     di,[@pointer]
-    mov     cx,size buffer
+    mov     si,buffer
+    mov     di,[pointer]
+    mov     cx,buffer.sizeof
     cld
     rep     movsb
     clc
-    ret
-endp getbuffer
+    retf
+endp
    
 ;=============WRITESECTOR============
 ;Ecrit le secteur %0 pointé par ds:%1
 ;->
 ;<- Flag Carry si erreur
 ;====================================
-PROC writesector FAR
-        ARG     @sector:word,@pointer:word
-	USES 	ax,bx,cx,dx,si,es
+proc writesector uses ax bx cx dx si es, sector:word,pointer:word
 	push    ds
 	pop     es
-	mov	ax,[@sector]
+	mov	ax,[sector]
 	xor   	dx,dx
 	div   	[cs:myboot.sectorspertrack]
 	inc   	dl
@@ -933,128 +923,122 @@ PROC writesector FAR
 	xchg 	cl,ch             
 	shl 	cl,6                
 	or 	cl, bl         
-	mov 	bx,[@pointer]
+	mov 	bx,[pointer]
 	mov 	si,3
-@@tryagain:
+.tryagain:
 	mov 	ax,0301h
   	int 	13h
-  	jnc 	@@done
+  	jnc 	.done
   	dec 	si
-  	jnz 	@@tryagain
-@@done:
-        ret
-endp writesector
+  	jnz 	.tryagain
+.done:
+        retf
+endp
 
 ;=============Getname==============
 ;Renvoie le nom en DS:%0
 ;-> AH=11
 ;<- Flag Carry si erreur
 ;==================================
-PROC getname FAR
-        ARG     @pointer:word
-	USES 	ax,cx,si,di,ds,es	
+proc getname uses ax cx si di ds es, pointer:word 		
 	push    ds
 	pop     es
         push	cs
 	pop	ds
-	mov	di,[@pointer]
-	mov	si,offset myboot.drivename
+	mov	di,[pointer]
+	mov	si,myboot.drivename
 	mov	cx,11
 	rep	movsb
 	mov	al,' '
-	mov	di,[@pointer]
+	mov	di,[pointer]
 	mov	cx,11
 	repne	scasb
-	mov 	[byte ptr es:di],0
-	ret
-endp getname
+	mov 	byte [es:di],0
+	retf
+endp
 ;=============Getserial==============
 ;Renvoie le numéro de serie en EAX
 ;->
 ;<- Flag Carry si erreur
 ;====================================
-PROC getserial FAR
+proc getserial FAR
 	mov	eax,[cs:myboot.serialnumber]
-	ret
-endp getserial
+	retf
+endp
 
 ;=============VERIFYSECTOR==============
 ;Vérifie le secteur %0
 ;->
 ;<- Flag Carry si erreur, Flag Equal si secteurs égaux
 ;=======================================
-PROC verifysector FAR
-    ARG     @sector:word
-	USES 	ecx,si,di,ds,es
+proc verifysector uses ecx si di ds es, sector:word 	
 	push 	cs
 	pop 	es
 	push 	cs
 	pop 	ds
-	mov 	si,offset bufferread
-	call 	readsector,cx,si
-	call 	inverse
-	call 	writesector,cx,si
-	jc 	@@errorverify
+	mov 	si,bufferread
+	stdcall 	readsector,cx,si
+	stdcall 	inverse
+	stdcall 	writesector,cx,si
+	jc 	.errorverify
 
-	mov 	si,offset bufferwrite
-	call 	readsector,cx,si	
-	call 	inverse
-	jc 	@@errorverify
+	mov 	si,bufferwrite
+	stdcall 	readsector,cx,si	
+	stdcall 	inverse
+	jc 	.errorverify
 	
-	mov 	si,offset bufferread
-	call 	inverse
-	call 	writesector,cx,si
-	jc 	@@errorverify
+	mov 	si,bufferread
+	stdcall 	inverse
+	stdcall 	writesector,cx,si
+	jc 	.errorverify
 	
 	xor     ecx,ecx
 	mov 	cx,[cs:myboot.sectorsize]
 	shr	cx,2
-	mov 	si,offset bufferread
-	mov 	di,offset bufferwrite
+	mov 	si,bufferread
+	mov 	di,bufferwrite
 	cld
 	rep 	cmpsd
-@@errorverify:
-	ret
+.errorverify:
+	retf
 
-endp verifysector
+endp
 
 inverse:
     push    si cx
 	xor     cx,cx
 invert:
-	not 	[dword ptr si]
+	not 	dword [si]
 	add 	si,4
 	add     cx,4
 	cmp     cx,[cs:myboot.sectorsize]
 	jb 	    invert
 	pop     cx si
-	ret
+	retf
 
 ;=============DecompressRle (Fonction 05H)==============
 ;decompress ds:si en es:di taille bp d‚compress‚ cx compress‚
 ;-> AH=5
 ;<- Flag Carry si erreur, Flag Equal si secteurs égaux
 ;=====================================================
-PROC decompressrle FAR
-    ARG     @seg1:word,@off1:word,@seg2:word,@off2:word,@size:word
-	USES 	ecx,dx,si,di,ds,es
-    mov     ds,[@seg1]
-    mov     es,[@seg2]
-    mov     si,[@off1]
-    mov     di,[@off2]
-	mov 	dx,[@size]
-@@decompression:
+proc decompressrle uses	ecx dx si di ds es,seg1:word,off1:word,seg2:word,off2:word,size:word
+    mov     ds,[seg1]
+    mov     es,[seg2]
+    mov     si,[off1]
+    mov     di,[off2]
+	mov 	dx,[size]
+.decompression:
 	mov 	eax,[ds:si]
 	cmp 	al,'/'
-	jne 	@@nocomp
+	jne 	.nocomp
 	cmp 	si,07FFFh-6
-	jae 	@@thenen
+	jae 	.thenen
 	mov 	ecx,eax
 	ror 	ecx,16
 	cmp 	cl,'*'
-	jne 	@@nocomp
-	cmp 	[byte ptr ds:si+4],'/'
-	jne 	@@nocomp
+	jne 	.nocomp
+	cmp 	byte [ds:si+4],'/'
+	jne 	.nocomp
 	mov 	al,ch
 	mov 	cl,ah
 	xor 	ah,ah
@@ -1063,46 +1047,44 @@ PROC decompressrle FAR
 	rep 	stosb
 	add 	si,5
 	sub 	dx,5
-	jnz 	@@decompression
-	jmp 	@@thenen
-@@nocomp:
+	jnz 	.decompression
+	jmp 	.thenen
+.nocomp:
 	mov 	[es:di],al
 	inc 	si
 	inc 	di
 	dec 	dx
-	jnz 	@@decompression
-@@thenen:
+	jnz 	.decompression
+.thenen:
     xor     eax,eax
 	mov 	ax,di
-	sub 	ax,[@off2]  
+	sub 	ax,[off2]  
 	clc
-	ret
-endp decompressrle
+	retf
+endp
 
 ;=============CompressRle (Fonction 06H)==============
 ;compress ds:si en es:di taille cx d‚compress‚ BP compress‚
 ;-> AH=6
 ;<- Flag Carry si erreur, Flag Equal si secteurs égaux
 ;=====================================================
-PROC compressrle FAR
-    ARG     @seg1:word,@off1:word,@seg2:word,@off2:word,@size:word
-	USES 	ax,bx,cx,dx,si,di,ds,es
-    mov     es,[@seg1]
-    mov     ds,[@seg2]
-    mov     di,[@off1]
-    mov     si,[@off2]
-	mov 	dx,[@size]
-@@againcomp:
+proc compressrle uses ax bx cx dx si di ds es, seg1:word,off1:word,seg2:word,off2:word,size:word
+    mov     es,[seg1]
+    mov     ds,[seg2]
+    mov     di,[off1]
+    mov     si,[off2]
+	mov 	dx,[size]
+.againcomp:
 	mov 	bx,di
 	mov 	al,[es:di]
 	mov 	cx,dx
 	cmp 	ch,0
-	je 	    @@poo
+	je 	    .poo
 	mov 	cl,0ffh
 	;mov 	cx,bp
 	;sub 	cx,di
 	;mov 	ah,cl
-@@poo:
+.poo:
 	mov 	ah,cl
 	inc 	di
 	xor 	ch,ch
@@ -1110,67 +1092,68 @@ PROC compressrle FAR
 	sub 	cl,ah
 	neg 	cl
 	cmp 	cl,6
-	jbe 	@@nocomp2
-	mov 	[dword ptr si],' * /'
-	mov 	[byte ptr si+4],'/'
+	jbe 	.nocomp2
+	mov 	dword [si],' * /'
+	mov 	byte [si+4],'/'
 	mov 	[si+1],cl
 	mov 	[si+3],al
 	add 	si,5
 	dec 	di
 	xor 	ch,ch
 	sub 	dx,cx
-	jnz 	@@againcomp
-	jmp 	@@fini
-@@nocomp2:
+	jnz 	.againcomp
+	jmp 	.fini
+.nocomp2:
 	mov 	[si],al
 	inc 	si
 	inc 	bx
 	mov 	di,bx
 	dec 	dx
-	jnz 	@@againcomp
-@@fini:
+	jnz 	.againcomp
+.fini:
     mov     ax,si
-	sub 	ax,[@off2]
+	sub 	ax,[off2]
 	clc
-	ret
-endp compressrle
+	retf
+endp
 
 ;=============Changedir (Fonction 13)==============
 ;Change le repertoire courant a DS:SI
 ;-> AH=13
 ;<- Flag Carry si erreur, Flag Equal si secteurs égaux
 ;=====================================================
-PROC changedir FAR
-ARG     @pointer:word
-LOCAL   @@temp:word:64
-USES	cx,si,di,ds,es
+proc changedir uses cx si di ds es, pointer:word
+local   temp[64]:WORD	
    	push    ss
 	pop     es 
-    lea     di,[@@temp]
+    lea     di,[temp]
     push    di
-    mov     si,[@pointer]
+    mov     si,[pointer]
     mov     cx,64/4
     cld
     rep     movsd
    	push    ss
 	pop     ds
     pop     di 
-	call    searchfile,di
-	jne   	@@noch
-	jc	    @@noch	
+	stdcall    searchfile,di
+	jne   	.noch
+	jc	    .noch	
 	;cmp	[si],005Ch ;'/',0 (root dir)
-	mov	  cx,[es:(find di).result.filegroup]
+	virtual at di
+  		.find find
+	end virtual
+	mov	  cx,[es:.find.result.filegroup]
 	mov	[cs:currentdir],cx
 	mov	[cs:adressdirectory],cx
-	cmp	[dword ptr es:(find di).result.filename],'   .'
-	je	@@theend
-	cmp	[dword ptr es:(find di).result.filename],'  ..'
-	jne	@@notback
+	cmp	dword [es:.find.result.filename],'   .'
+	je	.theend
+	cmp	dword [es:.find.result.filename],'  ..'
+	jne	.notback
     push      cs
     push      cs
     pop       ds
     pop       es
-	mov	di,offset currentdirstr
+	mov	di,currentdirstr
 	mov	cx,128
 	mov	al,0
 	cld
@@ -1179,14 +1162,14 @@ USES	cx,si,di,ds,es
 	std	
 	repne	scasb
 	inc 	di
-	mov	[byte ptr es:di],0
-	jmp	@@theend
-@@notback:
+	mov	byte [es:di],0
+	jmp	.theend
+.notback:
     push      cs
     push      cs
     pop       ds
     pop       es
-	mov	di,offset currentdirstr
+	mov	di,currentdirstr
 	mov	cx,128
 	mov	al,0
 	cld
@@ -1198,7 +1181,7 @@ USES	cx,si,di,ds,es
 	mov	dx,di
 	push	ss
 	pop	es
-	lea     di,[@@temp]
+	lea     di,[temp]
     mov     si,di
 	mov	cx,128
 	mov	al,0
@@ -1213,25 +1196,23 @@ USES	cx,si,di,ds,es
 	mov	di,dx
 	cld
         rep	movsb
-@@theend:
+.theend:
 	clc
-	ret
-@@noch:
+	retf
+.noch:
 	stc
-	ret
-endp changedir
+	retf
+endp
 
 ;=============getdir==============
 ;Recupere le repertoire courant a DS:%0
 ;->
 ;<- Flag Carry si erreur
 ;=================================
-PROC getdir FAR
-        ARG     @pointer:word
-	USES	ax,cx,si,di,ds,es
+proc getdir uses ax cx si di ds es, pointer:word
 	push	cs
 	pop	es
-	mov	di,offset currentdirstr
+	mov	di,currentdirstr
 	mov	cx,128
 	mov	al,0
 	cld
@@ -1242,13 +1223,13 @@ PROC getdir FAR
 	pop     es
 	push	cs
 	pop	ds
-	mov	si,offset currentdirstr
-	mov     di,[@pointer]
+	mov	si,currentdirstr
+	mov     di,[pointer]
 	cld
 	rep	movsb
 	clc
-	ret
-endp getdir
+	retf
+endp
 	
 bufferread  	db 512 dup (0)
 bufferwrite 	db 512 dup (0)
