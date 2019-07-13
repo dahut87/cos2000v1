@@ -1,0 +1,9 @@
+target remote localhost:1234
+set disassembly-flavor intel
+set architecture i386
+display/20i $pc+$cs*16
+break *0x80010
+cont
+clear *0x80010
+
+

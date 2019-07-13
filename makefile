@@ -20,14 +20,14 @@ copy:
 
 test: all copy qemu
 
-view:
+view: final/cos2000.img
 	(hexdump  -C ./final/cos2000.img|head -c10000)
+
+view2: boot/boot12.bin
+	(objdump -D -b binary -mi386 -Maddr16,data16 ./boot/boot12.bin)
 
 debug-boot: all copy qemu-debug
 	(sleep 2;cgdb -x ./debug/boot.txt)
-
-debug-loader: all copy qemu-debug
-	(sleep 2;cgdb -x ./debug/loader.txt)
 
 debug-system: all copy qemu-debug
 	(sleep 2;cgdb -x ./debug/system.txt)
