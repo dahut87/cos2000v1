@@ -45,7 +45,7 @@ proc enableirq uses ax cx dx, irq:word
         in     al,dx
         and    al,ah
         out    dx,al
-        retf
+        ret
 endp
 
 ;Desactive une interruption ‚lectronique
@@ -66,7 +66,7 @@ proc disableirq uses ax cx dx, irq:word
         in     al,dx
         or     al,ah
         out    dx,al
-        retf
+        ret
 endp
 
 
@@ -80,7 +80,7 @@ proc seteoi uses ax dx, irq:word
 .master:
        mov     al,EOI
        out     MASTERPIC,al
-       retf
+       ret
 endp
 
 
@@ -95,7 +95,7 @@ proc readimr uses bx dx, controleur:word
        xor     ah,ah
        in      al,dx
        pop     dx
-       retf
+       ret
 endp
 
 ;Lit le registre d'‚tat d'un contr“leur IRQ dans ax, 0 master ou slave 1 ds %1
@@ -110,7 +110,7 @@ proc readisr uses bx dx, controleur:word
        out     dx,al
        xor     ah,ah
        in      al,dx
-       retf
+       ret
 endp
 
 
@@ -126,7 +126,7 @@ proc readirr uses bx dx, controleur:word
        out     dx,al
        xor     ah,ah
        in      al,dx
-       retf
+       ret
 endp
 
 ;carry si enable et pas carry si pas enable
@@ -142,7 +142,7 @@ proc isenableirq uses ax cx dx, irq:word
         in     al,dx
         neg    al
         bt     ax,cx
-        retf
+        ret
 endp
 
 
@@ -161,7 +161,7 @@ proc isinserviceirq uses ax cx dx, irq:word
         in     al,dx
         neg    al
         bt     ax,cx
-        retf
+        ret
 endp
 
 
@@ -180,7 +180,7 @@ proc isrequestirq uses ax cx dx, irq:word
         in     al,dx
         neg    al
         bt     ax,cx
-        retf
+        ret
 endp
 
 
@@ -258,7 +258,7 @@ proc installirqhandler uses eax bx cx edx si di ds es
 .end:
        pop     fs
        sti
-       retf
+       ret
 endp
 
 
@@ -309,7 +309,7 @@ pop   [.regs.secx]
 pop   [.regs.sebx]
 pop   [.regs.seax]
 pop   [.regs.seflags]
-retf
+ret
 endp
 
 proc restorecontextg, pointer:word
@@ -332,7 +332,7 @@ mov ds,[cs:.regs.sds]
 popfd
 pop esi
 pop [cs:dummy]
-db 0xCA,0x02,0x00 ;retf 2
+db 0xCA,0x02,0x00 ;ret 2
 endp
 
 

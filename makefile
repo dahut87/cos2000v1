@@ -26,6 +26,10 @@ view: final/cos2000.img
 view2: boot/boot12.bin
 	(objdump -D -b binary -mi386 -Maddr16,data16 ./boot/boot12.bin)
 
+debug: debug-system
+
+redebug: clean debug
+
 debug-boot: all copy qemu-debug
 	(sleep 2;cgdb -x ./debug/boot.txt)
 
@@ -33,10 +37,10 @@ debug-system: all copy qemu-debug
 	(sleep 2;cgdb -x ./debug/system.txt)
 
 qemu-debug:
-	(qemu-system-i386 -m 1G -fda ./final/cos2000.img -s -S &)
+	(killall qemu-system-i386;qemu-system-i386 -m 1G -fda ./final/cos2000.img -s -S &)
 
 qemu:
-	(qemu-system-i386 -m 1G -fda ./final/cos2000.img -s)    
+	(killall qemu-system-i386;qemu-system-i386 -m 1G -fda ./final/cos2000.img -s)    
 	
 noyau/systeme.sys:
 	make -C noyau

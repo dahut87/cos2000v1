@@ -150,25 +150,35 @@ macro   declare    fonction*
 
 macro stdcall proc,[arg]		; directly call STDCALL procedure
 { 
-common
+ common
+    size@ccall = 0
     if ~ arg eq
    reverse
     push arg
+    size@ccall = size@ccall+2
    common
     end if
     push cs
     call proc 
+    if size@ccall
+    add sp,size@ccall
+    end if 
 }
     
 macro invoke proc,[arg]		; directly call STDCALL procedure
  { 
  common
+    size@ccall = 0
     if ~ arg eq
    reverse
     push arg
+    size@ccall = size@ccall+2
    common
     end if
     call far [cs:proc] 
+    if size@ccall
+    add sp,size@ccall
+    end if 
  }
 
 macro proc [args]			; define procedure
@@ -195,11 +205,7 @@ macro epiloguedef procname,flag,parmbytes,localbytes,reglist
    if parmbytes | localbytes
     leave
    end if
-   if flag and 10000b
-    retn
-   else
-    retn parmbytes
-   end if }
+    retf }
 
 macro define@proc name,statement
  { local params,flag,regs,parmbytes,localbytes,current
@@ -211,7 +217,7 @@ macro define@proc name,statement
 				flag = 11b \}
    match =params, params \{ params equ statement
 			    flag = 0 \}
-   virtual at bp+4
+   virtual at bp+6
    match =uses reglist=,args, params \{ regs equ reglist
 					params equ args \}
    match =regs =uses reglist, regs params \{ regs equ reglist
@@ -219,7 +225,7 @@ macro define@proc name,statement
    match =regs, regs \{ regs equ \}
    match =,args, params \{ defargs@proc args \}
    match =args@proc args, args@proc params \{ defargs@proc args \}
-   parmbytes = $ - (bp+4)
+   parmbytes = $ - (bp+6)
    end virtual
    name # % = parmbytes/2
    all@vars equ
@@ -248,7 +254,7 @@ macro define@proc name,statement
       current = $-(bp-localbytes)
       end virtual \}
    macro ret operand
-   \{ match any, operand \\{ retn operand \\}
+   \{ match any, operand \\{ retf operand \\}
       match , operand \\{ match epilogue:reglist, epilogue@proc:<regs>
 			  \\\{ epilogue name,flag,parmbytes,localbytes,reglist \\\} \\} \}
    macro finish@proc \{ localbytes = (((current-1) shr 2)+1) shl 2

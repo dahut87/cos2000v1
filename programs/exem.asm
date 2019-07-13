@@ -1,3 +1,5 @@
+use16
+align 1
 
 include "..\include\mem.h"
 include "..\include\divers.h"

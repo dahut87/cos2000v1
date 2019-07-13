@@ -1,3 +1,6 @@
+use16
+align 1
+
 include "..\include\mem.h"
 include "..\include\cpu.h"
 include "..\include\pci.h"

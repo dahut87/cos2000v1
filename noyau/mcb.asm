@@ -20,7 +20,7 @@ proc biosprinth uses ax bx cx edx si di, num:dword
         int     10h
         dec     di
         jnz     .hexaize
-        retf
+        ret
 .tab db '0123456789ABCDEF'
 endp
 
@@ -42,7 +42,7 @@ proc biosprint uses ax bx cx si, pointer:word
         int    10h
         jmp    .again
 .fin:
-        retf
+        ret
 endp
 
 proc enablea20 uses ax
@@ -55,7 +55,7 @@ proc enablea20 uses ax
         ;mov     al,0ffh
         ;out     64h,al
         ;call    a20wait
-        retf
+        ret
 endp
 
 proc disablea20 uses ax
@@ -68,7 +68,7 @@ proc disablea20 uses ax
         ;mov     al,0ffh
         ;out     64h,al
         ;call    a20wait
-        retf
+        ret
 endp
 
 a20wait:
@@ -114,7 +114,7 @@ proc flatmode uses eax bx ds
         jmp     .suite2
 .suite2:
         sti                     ; resume handling interrupts
-        retf                     ;
+        ret                     ;
         
 .gdt:
 gdtitse descriptor .gdtend - .gdt - 1, .gdt, 0, 0, 0, 0  ; the GDT itself
@@ -126,7 +126,7 @@ endp
 proc bioswaitkey uses ax
         xor    ax,ax
         int    16h
-        retf
+        ret
 endp
 
 firstmb dw 0
@@ -184,16 +184,16 @@ popad
         dec     si
         jmp     .finishloading
 .finishdepands:
-        retf
+        ret
 .notace:
         stc
-        retf
+        ret
 .error:
         stc
-        retf
+        ret
 .depandserror:
         stc
-        retf
+        ret
        .toresov dw 60 dup (0)
 endp
         
@@ -215,10 +215,10 @@ proc mbinit uses ax cx si di ds es
         mov     cx,.mb.sizeof
         rep     movsb
 	clc
-	retf
+	ret
 .alreadyok:
 	stc
-	retf
+	ret
 endp
 
 afree mb "HN",0,0,0,0A000h-memorystart,"Libre"
@@ -294,7 +294,7 @@ proc mbcreate uses bx cx dx si di ds es, blocks:word, size:word
 	mov	ax,bx
 	pop     gs
 	clc
-	retf
+	ret
 .notsogood:
         inc     bx
         inc     bx
@@ -303,11 +303,11 @@ proc mbcreate uses bx cx dx si di ds es, blocks:word, size:word
 .memoryerror:
 	pop     gs
 	stc
-	retf
+	ret
 .notenougtmem:
         pop     gs
         stc
-        retf
+        ret
 endp
 
 ;Libère le bloc de mémoire %0 et ses sous blocs
@@ -359,16 +359,16 @@ proc mbfree uses ax bx cx si di ds es, blocks:word
         cmp	[es:.mb.isnotlast],true
 	je	.searchtofree
         stdcall    mbclean	
-	retf
+	ret
 .memoryerror:
 	stc
-	retf
+	ret
 .wasfree:
 	stc
-	retf
+	ret
 .wasresident:
 	stc
-	retf
+	ret
         	
 .isfree db "libre",0
 endp
@@ -422,13 +422,13 @@ proc mbclean uses ax bx dx es gs
         mov     [es:.mb.isnotlast],false
 .reallyfinish:
 	clc
-	retf
+	ret
 .notenougtmem:
         stc
-        retf
+        ret
 .memoryerror:
 	stc
-	retf
+	ret
 endp
 
 ;Rend le segment %0 résident
@@ -443,10 +443,10 @@ proc mbresident uses bx es, blocks:word
 	cmp	word [es:.mb.check],"NH"
 	jne	.memoryerror	
 	mov	[es:.mb.isresident],true
-	retf
+	ret
 .memoryerror:
         stc
-        retf
+        ret
 endp
 	
 ;Rend le segment %0 non résident
@@ -461,10 +461,10 @@ proc mbnonresident uses bx es, blocks:word
 	cmp	word [es:.mb.check],"NH"
 	jne	.memoryerror	
 	mov	[es:.mb.isresident],false
-	retf
+	ret
 .memoryerror:
         stc
-        retf
+        ret
 endp
 
 
@@ -483,13 +483,13 @@ proc mbchown uses bx dx es,blocks:word, owner:word
 	je	.wasfree
 	mov     dx,[owner]
 	mov	[es:.mb.reference],dx
-	retf
+	ret
 .memoryerror:
 	stc
-	retf
+	ret
 .wasfree:
 	stc
-	retf
+	ret
 endp
 	
 ;Alloue un bloc /data de CX caractere pour le process appelant -> ax
@@ -498,7 +498,7 @@ proc mballoc uses si ds, size:word
 	pop     ds
 	stdcall    mbcreate,.data,[size]
 	stdcall    mbchown,ax,word [ss:bp+4]
-	retf
+	ret
 
 .data db '/data',0
 endp
@@ -529,16 +529,16 @@ proc mbget uses bx dx es, num:word
 	je	.searchfree
 .memoryerror:
 	stc
-	retf
+	ret
 .foundmcb:
         mov     ax,es
         inc     ax
         inc     ax
 	clc
-	retf
+	ret
 .notfound:
  	stc
-	retf
+	ret
 endp 		
 	
 ;Renvoie en AX le MCB qui correspond a ds:%0
@@ -577,16 +577,16 @@ proc mbfind uses bx si di es, blocks:word
 	je	.search
 .notfound:
 	stc
-	retf
+	ret
 .memoryerror:
         stc
-        retf
+        ret
 .foundmcb:
         mov     ax,es
         inc     ax
         inc     ax
 	clc
-	retf
+	ret
 endp
 
 		
@@ -630,16 +630,16 @@ proc mbfindsb uses bx dx si di es, blocks:word, owner:word
 	je	.search
 .notfound:
 	stc
-	retf
+	ret
 .foundmcb:
         mov     ax,es
         inc     ax
         inc     ax
 	clc
-	retf
+	ret
 .memoryerror:
         stc
-        retf
+        ret
 endp
 
 ;Resouds les dépendances du bloc de mémoire %0
@@ -689,16 +689,16 @@ proc mbloadfuncs uses ax bx cx dx si ds, blocks:word
         jmp     .loadfuncs
 .endofloading:
         clc
-        retf
+        ret
 .notace:
         stc
-        retf
+        ret
 .libnotexist:
         stc
-        retf
+        ret
 .erroronload:
         stc
-        retf
+        ret
 endp
 
 
@@ -751,8 +751,8 @@ proc mbsearchfunc uses bx si di es, func:word
         mov     dx,es
         mov     ax,[es:di+1]
         clc
-        retf
+        ret
 .notfoundattallthesb:
         stc
-        retf
+        ret
 endp
