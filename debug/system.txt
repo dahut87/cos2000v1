@@ -1,9 +1,9 @@
 target remote localhost:1234
 set disassembly-flavor intel
 set architecture i8086
-display/20i $pc+$cs*16
+set tdesc filename ./debug/target.xml
 break *0x80010
-cont
+continue
 clear *0x80010
 
 

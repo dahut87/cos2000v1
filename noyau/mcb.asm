@@ -134,12 +134,13 @@ firstmb dw 0
 
 ;Charge les sections du block %0
 proc mbloadsection uses ax bx cx si di ds es, blocks:word
+       local toresov[200]:WORD
        	mov     ax,[blocks]
        	mov     es,ax
        	mov     ds,ax
         cmp     word [0],"EC"
         jne     .notace
-        lea     si,[.toresov]
+        lea     si,[toresov]
         mov     word [ss:si],0FFFFh
 	virtual at 0
 	.exe exe
@@ -194,7 +195,6 @@ popad
 .depandserror:
         stc
         ret
-       .toresov dw 60 dup (0)
 endp
         
 
@@ -209,10 +209,8 @@ proc mbinit uses ax cx si di ds es
         mov     es,ax
         mov     si,afree
         xor     di,di
-	virtual at 0
-	.mb mb
-	end virtual
-        mov     cx,.mb.sizeof
+        mov     cx,mb.sizeof
+	cld
         rep     movsb
 	clc
 	ret
@@ -221,8 +219,7 @@ proc mbinit uses ax cx si di ds es
 	ret
 endp
 
-afree mb "HN",0,0,0,0A000h-memorystart,"Libre"
-         db 0
+afree mb 0A000h-memorystart,"Libre"
 
 ;Creér un bloc de nom %0 de taille %1 (octets) -> n°segment dans AX
 proc mbcreate uses bx cx dx si di ds es, blocks:word, size:word
@@ -248,23 +245,20 @@ proc mbcreate uses bx cx dx si di ds es, blocks:word, size:word
 	cmp	dl,false
 	je	.notenougtmem
 	mov     es,bx
-	virtual at 0
-	.mb mb
-	end virtual
-	cmp	word [es:.mb.check],"NH"
+	cmp	word [es:mb.check],"NH"
 	jne	.memoryerror
-	cmp	[es:.mb.isnotlast],true
+	cmp	[es:mb.isnotlast],true
 	sete    dl
-	cmp	[es:.mb.reference],free
+	cmp	[es:mb.reference],free
 	jne	.notsogood
-	mov	ax,[es:.mb.sizes]
+	mov	ax,[es:mb.sizes]
 	cmp	cx,ax
 	ja	.notsogood
-        mov     word [es:.mb.check],"NH"
-	mov	[es:.mb.isnotlast],true
-	mov	[es:.mb.reference],gs
-	mov	[es:.mb.isresident],false
-	lea     di,[es:.mb.names]
+        mov     word [es:mb.check],"NH"
+	mov	[es:mb.isnotlast],true
+	mov	[es:mb.reference],gs
+	mov	[es:mb.isresident],false
+	lea     di,[es:mb.names]
 	push    cx
 	mov 	cx,24/4
 	mov     si,[blocks]
@@ -278,18 +272,18 @@ proc mbcreate uses bx cx dx si di ds es, blocks:word, size:word
 	je      .nofree
 	dec	ax
 	dec	ax
-	mov	[es:.mb.sizes],cx
+	mov	[es:mb.sizes],cx
 	add	cx,bx
 	mov	es,cx
         mov     si,afree
         xor     di,di
-        mov     cx,.mb.sizeof
+        mov     cx,mb.sizeof
         push    cs
         pop     ds
         cld
         rep     movsb	
-	mov	[es:.mb.isnotlast],dl
-	mov	[es:.mb.sizes],ax
+	mov	[es:mb.isnotlast],dl
+	mov	[es:mb.sizes],ax
 .nofree:
 	mov	ax,bx
 	pop     gs
@@ -298,7 +292,7 @@ proc mbcreate uses bx cx dx si di ds es, blocks:word, size:word
 .notsogood:
         inc     bx
         inc     bx
-	add	bx,[es:.mb.sizes]
+	add	bx,[es:mb.sizes]
 	jmp	.searchfree
 .memoryerror:
 	pop     gs
@@ -317,20 +311,17 @@ proc mbfree uses ax bx cx si di ds es, blocks:word
 	dec     bx
 	dec     bx
 	mov	es,bx
-	virtual at 0
-	.mb mb
-	end virtual
-	cmp	word [es:.mb.check],"NH"
+	cmp	word [es:mb.check],"NH"
 	jne	.memoryerror
-	cmp	[es:.mb.reference],free
+	cmp	[es:mb.reference],free
 	je	.wasfree
-	cmp	[es:.mb.isresident],true
+	cmp	[es:mb.isresident],true
 	je	.wasresident
-	mov	[es:.mb.reference],free
+	mov	[es:mb.reference],free
 	push    cs
 	pop     ds
 	mov     si,.isfree
-	lea     di,[es:.mb.names]
+	lea     di,[es:mb.names]
         mov     cx,6
         cld
         rep     movsb
@@ -339,24 +330,24 @@ proc mbfree uses ax bx cx si di ds es, blocks:word
 	dec	bx
 .searchtofree:
 	mov     es,bx
-	cmp	word [es:.mb.check],"NH"
+	cmp	word [es:mb.check],"NH"
 	jne	.memoryerror
         inc     bx
         inc     bx
-	add	bx,[es:.mb.sizes]
-	cmp     [es:.mb.sizes],0
+	add	bx,[es:mb.sizes]
+	cmp     [es:mb.sizes],0
 	je      .nottofree
-	cmp     ax,[es:.mb.reference]
+	cmp     ax,[es:mb.reference]
 	jne     .nottofree
-	mov	[es:.mb.isresident],false
-	mov	[es:.mb.reference],free
+	mov	[es:mb.isresident],false
+	mov	[es:mb.reference],free
 	mov     si,.isfree
-	lea     di,[es:.mb.names]
+	lea     di,[es:mb.names]
         mov     cx,6
         cld
         rep     movsb
 .nottofree:
-        cmp	[es:.mb.isnotlast],true
+        cmp	[es:mb.isnotlast],true
 	je	.searchtofree
         stdcall    mbclean	
 	ret
@@ -382,23 +373,20 @@ proc mbclean uses ax bx dx es gs
 	xor     dx,dx
 .searchfree:
 	mov     gs,bx
-	virtual at 0
-	.mb mb
-	end virtual
-	cmp	word [gs:.mb.check],"NH"
+	cmp	word [gs:mb.check],"NH"
 	jne	.memoryerror
         inc     bx
         inc     bx
-	add	bx,[gs:.mb.sizes]
-	cmp     word [gs:.mb.sizes],0
+	add	bx,[gs:mb.sizes]
+	cmp     word [gs:mb.sizes],0
 	je      .notenougtmem
-	cmp	[gs:.mb.reference],free
+	cmp	[gs:mb.reference],free
 	jne     .notfree
 	cmp     ax,0
 	je      .notmeetfree
-	add     dx,[gs:.mb.sizes]
-	mov     word [gs:.mb.check],0
-	mov	dword [gs:.mb.names],0	
+	add     dx,[gs:mb.sizes]
+	mov     word [gs:mb.check],0
+	mov	dword [gs:mb.names],0	
 	inc     dx
 	inc     dx
 	jmp     .nottrigered
@@ -410,16 +398,16 @@ proc mbclean uses ax bx dx es gs
         cmp     ax,0
         je      .nottrigered
         mov     es,ax
-        add     [es:.mb.sizes],dx
+        add     [es:mb.sizes],dx
         xor     ax,ax
 .nottrigered:
-	cmp	[gs:.mb.isnotlast],true
+	cmp	[gs:mb.isnotlast],true
 	je	.searchfree
 	cmp     ax,0
 	je      .reallyfinish
 	mov     es,ax
-        add     [es:.mb.sizes],dx
-        mov     [es:.mb.isnotlast],false
+        add     [es:mb.sizes],dx
+        mov     [es:mb.isnotlast],false
 .reallyfinish:
 	clc
 	ret
@@ -437,12 +425,9 @@ proc mbresident uses bx es, blocks:word
 	dec	bx
 	dec     bx
 	mov	es,bx
-	virtual at 0
-	.mb mb
-	end virtual
-	cmp	word [es:.mb.check],"NH"
+	cmp	word [es:mb.check],"NH"
 	jne	.memoryerror	
-	mov	[es:.mb.isresident],true
+	mov	[es:mb.isresident],true
 	ret
 .memoryerror:
         stc
@@ -455,12 +440,9 @@ proc mbnonresident uses bx es, blocks:word
 	dec	bx
 	dec     bx
 	mov	es,bx
-	virtual at 0
-	.mb mb
-	end virtual
-	cmp	word [es:.mb.check],"NH"
+	cmp	word [es:mb.check],"NH"
 	jne	.memoryerror	
-	mov	[es:.mb.isresident],false
+	mov	[es:mb.isresident],false
 	ret
 .memoryerror:
         stc
@@ -474,15 +456,12 @@ proc mbchown uses bx dx es,blocks:word, owner:word
 	dec     bx
 	dec     bx
 	mov	es,bx
-	virtual at 0
-	.mb mb
-	end virtual
-	cmp	word [es:.mb.check],"NH"
+	cmp	word [es:mb.check],"NH"
 	jne	.memoryerror
-	cmp	[es:.mb.reference],free
+	cmp	[es:mb.reference],free
 	je	.wasfree
 	mov     dx,[owner]
-	mov	[es:.mb.reference],dx
+	mov	[es:mb.reference],dx
 	ret
 .memoryerror:
 	stc
@@ -511,21 +490,18 @@ proc mbget uses bx dx es, num:word
 	xor     dx,dx
 .searchfree:
 	mov     es,bx
-	virtual at 0
-	.mb mb
-	end virtual
-	cmp	word [es:.mb.check],"NH"
+	cmp	word [es:mb.check],"NH"
 	jne	.memoryerror
         inc     bx
         inc     bx
-	add	bx,[es:.mb.sizes]
-	cmp     [es:.mb.sizes],0
+	add	bx,[es:mb.sizes]
+	cmp     [es:mb.sizes],0
 	je      .memoryerror
 	cmp     dx,[num]
 	je      .foundmcb
 	ja      .notfound
         inc     dx
-	cmp	[es:.mb.isnotlast],true
+	cmp	[es:mb.isnotlast],true
 	je	.searchfree
 .memoryerror:
 	stc
@@ -549,16 +525,13 @@ proc mbfind uses bx si di es, blocks:word
 	mov     si,[blocks]
 .search:
 	mov     es,bx
-	virtual at 0
-	.mb mb
-	end virtual
-	lea     di,[es:.mb.names]
-	cmp	word [es:.mb.check],"NH"
+	lea     di,[es:mb.names]
+	cmp	word [es:mb.check],"NH"
 	jne	.memoryerror
         inc     bx
         inc     bx
-	add	bx,[es:.mb.sizes]
-	cmp     [es:.mb.sizes],0
+	add	bx,[es:mb.sizes]
+	cmp     [es:mb.sizes],0
 	je      .memoryerror
 	push    si di
 .cmpnames:
@@ -573,7 +546,7 @@ proc mbfind uses bx si di es, blocks:word
 .ok:
         pop     di si
 	je      .foundmcb
-	cmp	[es:.mb.isnotlast],true
+	cmp	[es:mb.isnotlast],true
 	je	.search
 .notfound:
 	stc
@@ -596,19 +569,16 @@ proc mbfindsb uses bx dx si di es, blocks:word, owner:word
 	dec	bx
 	dec	bx
 	mov     si,[blocks]
-	virtual at 0
-	.mb mb
-	end virtual
-	lea     di,[es:.mb.names]
+	lea     di,[es:mb.names]
 	mov     dx,[owner]
 .search:
 	mov     es,bx
-	cmp	word [es:.mb.check],"NH"
+	cmp	word [es:mb.check],"NH"
 	jne	.memoryerror
         inc     bx
         inc     bx
-	add	bx,[es:.mb.sizes]
-	cmp     [es:.mb.sizes],0
+	add	bx,[es:mb.sizes]
+	cmp     [es:mb.sizes],0
 	je      .memoryerror
 	push    si di
 .cmpnames:
@@ -623,10 +593,10 @@ proc mbfindsb uses bx dx si di es, blocks:word, owner:word
 .ok:
         pop     di si
 	jne     .notfoundmcb
-	cmp     [es:.mb.reference],dx
+	cmp     [es:mb.reference],dx
 	je      .foundmcb
 .notfoundmcb:
-	cmp	[es:.mb.isnotlast],true
+	cmp	[es:mb.isnotlast],true
 	je	.search
 .notfound:
 	stc

@@ -60,18 +60,21 @@ struc ints ;bloc interruption
 .vector8 vector ?
 .sizeof = $ - .number
 }
- 
-struc mb check,isnotlast,isresident,reference,sizes,names
-;Bloc de mémoire
+
+struc mb asize,aname ;Bloc de mémoire
 {
 .check 	        db "NH"         ;signature du bloc de mémoire.
 .isnotlast 	db 0             ;flag indiquant le dernier bloc
 .isresident	db 0             ;flag indiquant que le bloc est resident
 .reference	dw 0             ;pointeur vers le bloc parent
-.sizes		dw 0             ;taille du bloc en paragraphe de 16 octet
-.names		db 24 dup (0)    ;nom du bloc
-.sizeof = $ - .check
+.sizes	dw asize             ;taille du bloc en paragraphe de 16 octet
+.names	db aname    ;nom du bloc
+.endofstr		db 0
+.sizeof = 32
 }
+virtual at 0
+mb mb ?,?
+end virtual
 
 struc exe major        
 ;Executable COS

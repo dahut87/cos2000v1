@@ -31,10 +31,10 @@ debug: debug-system
 redebug: clean debug
 
 debug-boot: all copy qemu-debug
-	(sleep 2;cgdb -x ./debug/boot.txt)
+	(sleep 2;gdb -ix ./debug/gdb_init_real_mode.txt -x ./debug/boot.txt)
 
 debug-system: all copy qemu-debug
-	(sleep 2;cgdb -x ./debug/system.txt)
+	(sleep 2;gdb -ix ./debug/gdb_init_real_mode.txt -x ./debug/system.txt)
 
 qemu-debug:
 	(killall qemu-system-i386;qemu-system-i386 -m 1G -fda ./final/cos2000.img -s -S &)

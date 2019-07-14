@@ -455,9 +455,6 @@ showbuffers db '\l\c02Contenu des tampons disquette\l\l\c07'
 diskbuffers diskbuffer 
 
 code_dump:
-	virtual at 0
-	.mb mb
-	end virtual
         invoke    gettypeditem,di,0,' '     
         invoke    mbfind,di
         jc      notmbfind
@@ -472,10 +469,7 @@ code_dump:
 notace2:
         push     non
 suitelikeace2:
-	virtual at 0
-	.mb mb
-	end virtual
-        cmp     word [gs:.mb.isnotlast],true
+        cmp     word [gs:mb.isnotlast],true
         je      notlast2
         push     oui ;CE? str0 2 
         jmp     suitelikelast2
@@ -485,29 +479,20 @@ suitelikelast2:
         mov     dx,gs
         push    edx          ;Emplacement memoire hex 2
 ;parent
-	virtual at 0
-	.mb mb
-	end virtual
-        cmp     [gs:.mb.reference],0
+        cmp     [gs:mb.reference],0
         jne     nextdetect2
         push    cs
         push     none        ;parent lstr0 2x2 
-        add     bx,[gs:.mb.sizes]
+        add     bx,[gs:mb.sizes]
         jmp     suitemn2
 nextdetect2:
-	virtual at 0
-	.mb mb
-	end virtual
-        mov     dx,[gs:.mb.reference]
+        mov     dx,[gs:mb.reference]
         dec     dx
         dec     dx
         push    dx                    ;parent lstr0 2x2 
-        push     .mb.names
+        push     mb.names
 suitemn2:
-	virtual at 0
-	.mb mb
-	end virtual
-        cmp     [gs: .mb.isresident],true
+        cmp     [gs: mb.isresident],true
         jne     notresident2
         push     oui        ;resident str0 2 
         jmp     suitelistmcb2
@@ -515,14 +500,11 @@ notresident2:
         push     non     ;resident str0 2
 suitelistmcb2:
         xor     edx,edx
-	virtual at 0
-	.mb mb
-	end virtual
-        mov     dx,[gs:.mb.sizes]
+        mov     dx,[gs:mb.sizes]
         shl     edx,4
         push    edx
         push    gs                   ;nom lstr0 2x2 
-        push     .mb.names
+        push     mb.names
         push     dumpshow        ;ligne
         invoke    print
         cmp     word [fs:0x0],'EC'
@@ -1037,29 +1019,20 @@ suitelikeace:
         mov     dx,fs
         push    edx          ;Emplacement memoire hex 2
 ;parent
-	virtual at 0
-	.mb mb
-	end virtual
-        cmp     [gs:.mb.reference],0
+        cmp     [gs:mb.reference],0
         jne     nextdetect
         push    cs
         push    none        ;parent lstr0 2x2 
-        add     bx,[gs:.mb.sizes]
+        add     bx,[gs:mb.sizes]
         jmp     suitemn
 nextdetect:
-	virtual at 0
-	.mb mb
-	end virtual
-        mov     dx,[gs:.mb.reference]
+        mov     dx,[gs:mb.reference]
         dec     dx
         dec     dx
         push    dx                    ;parent lstr0 2x2 
-        push    .mb.names
+        push    mb.names
 suitemn:
-	virtual at 0
-	.mb mb
-	end virtual
-        cmp     [gs: .mb.isresident],true
+        cmp     [gs: mb.isresident],true
         jne     notresident
         push    oui        ;resident str0 2 
         jmp     suitelistmcb
@@ -1067,15 +1040,12 @@ notresident:
         push    non     ;resident str0 2
 suitelistmcb:
         xor     edx,edx
-	virtual at 0
-	.mb mb
-	end virtual
-        mov     dx,[gs: .mb.sizes]
+        mov     dx,[gs: mb.sizes]
         shl     edx,4
         push    6                    ;decimal 4 + type 2
         push    edx
         push    gs                   ;nom lstr0 2x2 
-        push    .mb.names
+        push    mb.names
         push    line2         ;ligne
         invoke    print
         jmp     listmcb
