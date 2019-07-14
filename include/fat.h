@@ -39,6 +39,9 @@ struc entries
 .filesize	dd 0
 .sizeof = $ - .filename
 }
+virtual at 0
+entries entries
+end virtual
 
 ;Pour recherches
 struc find files

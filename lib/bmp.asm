@@ -7,8 +7,7 @@ include "..\include\bmp.h"
 
 org 0h
 
-start:
-header exe 1
+header exe 1,exports,imports,0,0
          
 exporting 
 declare showbmp

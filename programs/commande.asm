@@ -9,8 +9,7 @@ include "..\include\cpu.h"
 
 org     0h
 
-start:
-header  exe     1
+header exe 1,0,imports,0,realstart
 
 realstart:
         invoke    print, msginit
@@ -509,33 +508,27 @@ suitelistmcb2:
         invoke    print
         cmp     word [fs:0x0],'EC'
         jne     endofdumpformoment
-	virtual at 0
-	.exe exe
-	end virtual
-        push    dword [fs:.exe.starting]
+        push    dword [fs:exe.starting]
         push    fs
         push    fs
-        push    dword [fs:.exe.sections]
+        push    dword [fs:exe.sections]
         push    fs
         push    fs
-        push    dword [fs:.exe.imports]
+        push    dword [fs:exe.imports]
         push    fs
         push    fs
-        push    dword [fs:.exe.exports]
+        push    dword [fs:exe.exports]
         push    fs
         push    fs
-        cmp     [fs:.exe.compressed],true
+        cmp     [fs:exe.compressed],true
         jne     notcompressed
         push     oui
         jmp     suiteiscompressed
 notcompressed:
         push     non
 suiteiscompressed:
-	virtual at 0
-	.exe exe
-	end virtual
-        push    dword [fs:.exe.checksum]
-        push    dword [fs:.exe.major]
+        push    dword [fs:exe.checksum]
+        push    dword [fs:exe.major]
         invoke    print, dumpshowce
 endofdumpformoment:
         ret
@@ -582,10 +575,7 @@ haveatargetsections:
         mov     fs,ax 
         cmp     word [fs:0x0],'EC'
         jne     errornotace2
-	virtual at 0
-	.exe exe
-	end virtual
-        mov     si,[fs:.exe.sections]
+        mov     si,[fs:exe.sections]
         cmp     si,0
         je      errornosections
         xor     edx,edx
@@ -632,10 +622,7 @@ haveatargetexports:
         mov     fs,ax 
         cmp     word [fs:0x0],'EC'
         jne     errornotace2
-	virtual at 0
-	.exe exe
-	end virtual
-        mov     si,[fs:.exe.exports]
+        mov     si,[fs:exe.exports]
         cmp     si,0
         je      errornoexports
         xor     edx,edx
@@ -682,10 +669,7 @@ haveatargetimports:
         mov     fs,ax 
         cmp     word [fs:0x0],'EC'
         jne     errornotace2
-	virtual at 0
-	.exe exe
-	end virtual
-        mov     si,[fs:.exe.imports]
+        mov     si,[fs:exe.imports]
         cmp     si,0
         je      errornoimports
         xor     edx,edx
@@ -818,10 +802,7 @@ xor     ebx,ebx
 intoirq:
 xor     eax,eax
 mov     al,[bx+ irqmap]
-virtual at 0
-.intsori ints
-end virtual
-mov     dx,.intsori.sizeof
+mov     dx,ints.sizeof
 mul     dx
 mov     si,ax
 virtual at si
@@ -902,10 +883,7 @@ mov     es,ax
 invoke    gettypeditem,di,0,' '
 xor     edi,edi
 mov     di,ax
-virtual at 0
-.intsori ints
-end virtual
-mov     cx,.intsori.sizeof
+mov     cx,ints.sizeof
 mul     cx
 mov     si,ax
 virtual at si

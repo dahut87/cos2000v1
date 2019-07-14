@@ -3,7 +3,7 @@ include "..\include\fat.h"
 
 org 0h
 
-header exe 1
+header exe 1,exports,imports,0,0
 
 
 exporting		
@@ -168,10 +168,7 @@ proc execfile, file:word
         push    cs
         push    .arrive
         push    ds
-	virtual at 0
-  		.exe exe
-	end virtual
-        push    word [.exe.starting]
+        push    word [exe.starting]
         push    ds
         push    ds
         push    ds
@@ -579,10 +576,7 @@ proc findnextfile	uses ax bx cx di si ds es, pointer:word
 .findnextfileagain:
 	cmp	    [es:.find.firstsearch],1
 	je	    .first
-	virtual at 0
-  		.entries2 entries
-	end virtual
-	add	    bx,.entries2.sizeof
+	add	    bx,entries.sizeof
 	cmp	    bx,[cs:clustersize]
 	jb	    .nopop
 .first:
@@ -635,7 +629,7 @@ proc findnextfile	uses ax bx cx di si ds es, pointer:word
   		.find2 find
 	end virtual
     lea di,[es:.find2.result]	
-	mov	cx,.entries2.sizeof
+	mov	cx,entries.sizeof
 	cld
 	rep	movsb
 	clc

@@ -8,8 +8,7 @@ include "..\include\3d.h"
 
 org 0h
 
-start:
-header exe 1
+header exe 1,0,imports,0,realstart
 
 alldata:
 camera vertex3d 320.0,240.0,70.0

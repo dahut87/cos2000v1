@@ -6,7 +6,7 @@ include "..\include\divers.h"
 
 org 0h
 
-header exe 1
+header exe 1,exports,0,0,0
 
 
 exporting

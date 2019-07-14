@@ -8,8 +8,7 @@ include "..\include\graphic.h"
 
 org 0h
 
-start:
-header exe 1
+header exe 1,0,imports,0,realstart
 
 realstart:  
     invoke    saveparamto, infos

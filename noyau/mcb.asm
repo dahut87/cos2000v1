@@ -98,10 +98,7 @@ proc flatmode uses eax bx ds
         add     dword [.gdt+2],eax   ; store as GDT linear base addr
         ; now load the GDT into the GDTR
         lgdt    fword [.gdt]   ; load GDT base
-	virtual at 0
-	.descriptor descriptor
-	end virtual
-        mov     bx,1 * .descriptor.sizeof ; point to first descriptor
+        mov     bx,1 * descriptor.sizeof ; point to first descriptor
         cli                     ; turn off interrupts
         mov     eax,cr0         ; prepare to enter protected mode
         or      al,1            ; flip the PE bit
@@ -138,14 +135,11 @@ proc mbloadsection uses ax bx cx si di ds es, blocks:word
        	mov     ax,[blocks]
        	mov     es,ax
        	mov     ds,ax
-        cmp     word [0],"EC"
+        cmp     word [0],"CE"
         jne     .notace
         lea     si,[toresov]
         mov     word [ss:si],0FFFFh
-	virtual at 0
-	.exe exe
-	end virtual
-        mov     bx,[ds:.exe.sections]
+        mov     bx,[ds:exe.sections]
         cmp     bx,0
         je      .finishloading
 .loading:
@@ -229,7 +223,7 @@ proc mbcreate uses bx cx dx si di ds es, blocks:word, size:word
         dec     dx
         dec     dx
         mov     gs,dx
-        cmp     word [gs:0x0],'NH'
+        cmp     word [gs:0x0],'HN'
         je      .oktoset
         mov     ax,memorystart
 .oktoset:
@@ -245,7 +239,7 @@ proc mbcreate uses bx cx dx si di ds es, blocks:word, size:word
 	cmp	dl,false
 	je	.notenougtmem
 	mov     es,bx
-	cmp	word [es:mb.check],"NH"
+	cmp	word [es:mb.check],"HN"
 	jne	.memoryerror
 	cmp	[es:mb.isnotlast],true
 	sete    dl
@@ -254,7 +248,7 @@ proc mbcreate uses bx cx dx si di ds es, blocks:word, size:word
 	mov	ax,[es:mb.sizes]
 	cmp	cx,ax
 	ja	.notsogood
-        mov     word [es:mb.check],"NH"
+        mov     word [es:mb.check],"HN"
 	mov	[es:mb.isnotlast],true
 	mov	[es:mb.reference],gs
 	mov	[es:mb.isresident],false
@@ -311,7 +305,7 @@ proc mbfree uses ax bx cx si di ds es, blocks:word
 	dec     bx
 	dec     bx
 	mov	es,bx
-	cmp	word [es:mb.check],"NH"
+	cmp	word [es:mb.check],"HN"
 	jne	.memoryerror
 	cmp	[es:mb.reference],free
 	je	.wasfree
@@ -330,7 +324,7 @@ proc mbfree uses ax bx cx si di ds es, blocks:word
 	dec	bx
 .searchtofree:
 	mov     es,bx
-	cmp	word [es:mb.check],"NH"
+	cmp	word [es:mb.check],"HN"
 	jne	.memoryerror
         inc     bx
         inc     bx
@@ -373,7 +367,7 @@ proc mbclean uses ax bx dx es gs
 	xor     dx,dx
 .searchfree:
 	mov     gs,bx
-	cmp	word [gs:mb.check],"NH"
+	cmp	word [gs:mb.check],"HN"
 	jne	.memoryerror
         inc     bx
         inc     bx
@@ -425,7 +419,7 @@ proc mbresident uses bx es, blocks:word
 	dec	bx
 	dec     bx
 	mov	es,bx
-	cmp	word [es:mb.check],"NH"
+	cmp	word [es:mb.check],"HN"
 	jne	.memoryerror	
 	mov	[es:mb.isresident],true
 	ret
@@ -440,7 +434,7 @@ proc mbnonresident uses bx es, blocks:word
 	dec	bx
 	dec     bx
 	mov	es,bx
-	cmp	word [es:mb.check],"NH"
+	cmp	word [es:mb.check],"HN"
 	jne	.memoryerror	
 	mov	[es:mb.isresident],false
 	ret
@@ -456,7 +450,7 @@ proc mbchown uses bx dx es,blocks:word, owner:word
 	dec     bx
 	dec     bx
 	mov	es,bx
-	cmp	word [es:mb.check],"NH"
+	cmp	word [es:mb.check],"HN"
 	jne	.memoryerror
 	cmp	[es:mb.reference],free
 	je	.wasfree
@@ -490,7 +484,7 @@ proc mbget uses bx dx es, num:word
 	xor     dx,dx
 .searchfree:
 	mov     es,bx
-	cmp	word [es:mb.check],"NH"
+	cmp	word [es:mb.check],"HN"
 	jne	.memoryerror
         inc     bx
         inc     bx
@@ -526,7 +520,7 @@ proc mbfind uses bx si di es, blocks:word
 .search:
 	mov     es,bx
 	lea     di,[es:mb.names]
-	cmp	word [es:mb.check],"NH"
+	cmp	word [es:mb.check],"HN"
 	jne	.memoryerror
         inc     bx
         inc     bx
@@ -573,7 +567,7 @@ proc mbfindsb uses bx dx si di es, blocks:word, owner:word
 	mov     dx,[owner]
 .search:
 	mov     es,bx
-	cmp	word [es:mb.check],"NH"
+	cmp	word [es:mb.check],"HN"
 	jne	.memoryerror
         inc     bx
         inc     bx
@@ -615,12 +609,9 @@ endp
 ;Resouds les dépendances du bloc de mémoire %0
 proc mbloadfuncs uses ax bx cx dx si ds, blocks:word
         mov     ds,[blocks]
-        cmp     word [0],"EC"
+        cmp     word [0],"CE"
         jne     .notace
-	virtual at 0
-	.exe exe
-	end virtual
-        mov     si,[ds:.exe.imports]
+        mov     si,[ds:exe.imports]
         cmp     si,0
         je      .endofloading
 .loadfuncs:
@@ -677,9 +668,6 @@ proc mbsearchfunc uses bx si di es, func:word
         mov     bx,[func]
         mov     si,bx
 .findend:
-	virtual at 0
-	.exe exe
-	end virtual
         inc     bx
         cmp     byte [bx], ':'
         jne     .findend
@@ -688,9 +676,9 @@ proc mbsearchfunc uses bx si di es, func:word
         mov     byte [bx],':'
         jc      .notfoundattallthesb
         mov     es,ax
-        cmp     word [es:.exe.checks],"EC"
+        cmp     word [es:exe.checks],"CE"
         jne     .notfoundattallthesb
-        mov     di,[es:.exe.exports]
+        mov     di,[es:exe.exports]
         inc     bx
         inc     bx
 .functions:

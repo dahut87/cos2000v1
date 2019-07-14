@@ -25,12 +25,18 @@ struc regs
 ;.sst6 dt 0
 ;.sst7 dt 0
 }
+virtual at 0
+regs regs
+end virtual
 
 struc tuple off,seg
 {
 .off dw 0   ;adresse
 .seg dw 0   ;segment
 }
+virtual at 0
+tuple tuple ?,?
+end virtual
 
 struc vector off,seg
 {
@@ -40,8 +46,11 @@ virtual at .data
 .sizeof = $ - .data
 end virtual 
 }
+virtual at 0
+vector vector ?,?
+end virtual
 
-struc ints ;bloc interruption
+struc ints;bloc interruption
 { 
 .number db 0    ;numero de l'interruption
 .activated db 0     ;activé ou non
@@ -60,6 +69,9 @@ struc ints ;bloc interruption
 .vector8 vector ?
 .sizeof = $ - .number
 }
+virtual at 0
+ints ints
+end virtual
 
 struc mb asize,aname ;Bloc de mémoire
 {
@@ -76,18 +88,21 @@ virtual at 0
 mb mb ?,?
 end virtual
 
-struc exe major        
+struc exe major,exports,imports,sections,starting      
 ;Executable COS
 {
 .checks 	         db "CE"         ;signature de l'exe
 .major            db 1            ;N° version
 .checksum         dd 0            ;Checksum de l'exe
 .compressed       db 0            ;a 1 si compressé par RLE
-.exports          dw 0            ;importation de fonctions
-.imports          dw 0            ;exportation de fonctions
-.sections         dw 0            ;sections des blocs mémoire
-.starting         dw 15
+.exports          dw exports           ;importation de fonctions
+.imports          dw imports            ;exportation de fonctions
+.sections         dw sections            ;sections des blocs mémoire
+.starting         dw starting
 }
+virtual at 0
+exe exe ?,?,?,?,?
+end virtual
 
 struc descriptor limit_low,base_low,base_middle,dpltype,limit_high,base_high
 {
@@ -99,6 +114,9 @@ struc descriptor limit_low,base_low,base_middle,dpltype,limit_high,base_high
 .base_high   db 0
 .sizeof = $ - .limit_low 
 }
+virtual at 0
+descriptor descriptor ?,?,?,?,?,?
+end virtual
 
 free        equ 0                 ;Reference quand libre
 
@@ -163,9 +181,6 @@ macro stdcall proc,[arg]		; directly call STDCALL procedure
     end if
     push cs
     call proc 
-    if size@ccall
-    add sp,size@ccall
-    end if 
 }
     
 macro invoke proc,[arg]		; directly call STDCALL procedure
@@ -178,11 +193,7 @@ macro invoke proc,[arg]		; directly call STDCALL procedure
     size@ccall = size@ccall+2
    common
     end if
-    call far [cs:proc] 
-    if size@ccall
-    add sp,size@ccall
-    end if 
- }
+    call far [cs:proc]  }
 
 macro proc [args]			; define procedure
  { common
@@ -208,7 +219,7 @@ macro epiloguedef procname,flag,parmbytes,localbytes,reglist
    if parmbytes | localbytes
     leave
    end if
-    retf }
+    retf parmbytes }
 
 macro define@proc name,statement
  { local params,flag,regs,parmbytes,localbytes,current

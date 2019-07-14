@@ -7,7 +7,7 @@ include "..\include\3d.h"
 
 org 0h
 
-header exe 1
+header exe 1,exports,imports,0,0
 
 exporting
 declare draw3d_point

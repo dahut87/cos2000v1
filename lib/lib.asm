@@ -6,8 +6,7 @@ include "..\include\divers.h"
 
 org 0h
 
-start:
-header exe 1
+header exe 1,exports,0,0,0
 
 waitkey:
     mov     ax,0

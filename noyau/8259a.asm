@@ -186,10 +186,7 @@ endp
 
 proc installirqhandler uses eax bx cx edx si di ds es
        push    fs
-	virtual at 0
-	.intsori ints
-	end virtual
-       stdcall    mbcreate,interruptionbloc,256*.intsori.sizeof
+       stdcall    mbcreate,interruptionbloc,256*ints.sizeof
        mov     es,ax
        mov     ax,0x0000
        mov     ds,ax
@@ -198,14 +195,11 @@ proc installirqhandler uses eax bx cx edx si di ds es
 	virtual at si
 	.vector vector
 	end virtual
-	virtual at 0
-	.vectorori vector
-	end virtual
        mov     fs,[.vector.data.seg] 
        mov     bx,[.vector.data.off]
        cmp     byte [fs:bx],0xCF ;iret
        je      .founded
-       add     si,.vectorori.sizeof
+       add     si,vector.sizeof
        cmp     si,256*4
        jb      .searchdummypointer
        xor     edx,edx
@@ -250,8 +244,8 @@ proc installirqhandler uses eax bx cx edx si di ds es
        add     bx,coupling
        mov     [.vector.data.seg],cs
        mov     [.vector.data.off],bx
-       add     si,.vectorori.sizeof
-       add     di,.intsori.sizeof
+       add     si,vector.sizeof
+       add     di,ints.sizeof
        inc     cl
        cmp     cl,0
        jne     .copy
@@ -366,10 +360,7 @@ jc      .end
 mov     es,ax
 mov     ax,[int] 
 sub     ax,256
-virtual at 0
-.intsorig ints
-end virtual
-mov     cx,.intsorig.sizeof
+mov     cx,ints.sizeof
 mul     cx
 mov     si,ax
 virtual at si
@@ -387,9 +378,6 @@ mov     cl,8
 virtual at si
 .vector vector
 end virtual
-virtual at 0
-.vectorori vector
-end virtual
 cmp     [es:.vector.content],0
 je      .end
 push    word [cs:calling_reg.seflags]
@@ -405,7 +393,7 @@ cli
 stdcall    savecontext,calling_reg
 stdcall    restorecontextg,function_reg
 .next:
-add     si,.vectorori.sizeof
+add     si,vector.sizeof
 dec     cl
 jnz     .launchall
 .end:

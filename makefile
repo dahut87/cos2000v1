@@ -2,7 +2,7 @@ all:	boot/boot12.bin lib/3d.lib noyau/systeme.sys programs/commande.ce
 	sync
 
 install:
-	(sudo apt-get install fasm qemu fusefat cgdb)
+	(sudo apt-get install fasm qemu fusefat gdb)
 
 clean:
 	make -C final clean
