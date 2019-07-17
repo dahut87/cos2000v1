@@ -183,7 +183,7 @@ retrace:
     jmp       rool
 endee:
     invoke      restorestate
-    retf
+    ret
 
 errorloading:
     push      cs

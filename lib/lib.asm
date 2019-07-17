@@ -11,7 +11,7 @@ header exe 1,exports,0,0,0
 waitkey:
     mov     ax,0
     int     16h
-    retf
+    ret
 
 exporting
 declare waitkey

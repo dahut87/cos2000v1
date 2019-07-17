@@ -223,7 +223,7 @@ proc mbcreate uses bx cx dx si di ds es, blocks:word, size:word
         dec     dx
         dec     dx
         mov     gs,dx
-        cmp     word [gs:0x0],'HN'
+        cmp     word [gs:0x0],"NH"
         je      .oktoset
         mov     ax,memorystart
 .oktoset:
@@ -239,7 +239,7 @@ proc mbcreate uses bx cx dx si di ds es, blocks:word, size:word
 	cmp	dl,false
 	je	.notenougtmem
 	mov     es,bx
-	cmp	word [es:mb.check],"HN"
+	cmp	word [es:mb.check],"NH"
 	jne	.memoryerror
 	cmp	[es:mb.isnotlast],true
 	sete    dl
@@ -248,7 +248,7 @@ proc mbcreate uses bx cx dx si di ds es, blocks:word, size:word
 	mov	ax,[es:mb.sizes]
 	cmp	cx,ax
 	ja	.notsogood
-        mov     word [es:mb.check],"HN"
+        mov     word [es:mb.check],"NH"
 	mov	[es:mb.isnotlast],true
 	mov	[es:mb.reference],gs
 	mov	[es:mb.isresident],false
@@ -305,7 +305,7 @@ proc mbfree uses ax bx cx si di ds es, blocks:word
 	dec     bx
 	dec     bx
 	mov	es,bx
-	cmp	word [es:mb.check],"HN"
+	cmp	word [es:mb.check],"NH"
 	jne	.memoryerror
 	cmp	[es:mb.reference],free
 	je	.wasfree
@@ -324,7 +324,7 @@ proc mbfree uses ax bx cx si di ds es, blocks:word
 	dec	bx
 .searchtofree:
 	mov     es,bx
-	cmp	word [es:mb.check],"HN"
+	cmp	word [es:mb.check],"NH"
 	jne	.memoryerror
         inc     bx
         inc     bx
@@ -367,7 +367,7 @@ proc mbclean uses ax bx dx es gs
 	xor     dx,dx
 .searchfree:
 	mov     gs,bx
-	cmp	word [gs:mb.check],"HN"
+	cmp	word [gs:mb.check],"NH"
 	jne	.memoryerror
         inc     bx
         inc     bx
@@ -419,7 +419,7 @@ proc mbresident uses bx es, blocks:word
 	dec	bx
 	dec     bx
 	mov	es,bx
-	cmp	word [es:mb.check],"HN"
+	cmp	word [es:mb.check],"NH"
 	jne	.memoryerror	
 	mov	[es:mb.isresident],true
 	ret
@@ -434,7 +434,7 @@ proc mbnonresident uses bx es, blocks:word
 	dec	bx
 	dec     bx
 	mov	es,bx
-	cmp	word [es:mb.check],"HN"
+	cmp	word [es:mb.check],"NH"
 	jne	.memoryerror	
 	mov	[es:mb.isresident],false
 	ret
@@ -450,7 +450,7 @@ proc mbchown uses bx dx es,blocks:word, owner:word
 	dec     bx
 	dec     bx
 	mov	es,bx
-	cmp	word [es:mb.check],"HN"
+	cmp	word [es:mb.check],"NH"
 	jne	.memoryerror
 	cmp	[es:mb.reference],free
 	je	.wasfree
@@ -484,7 +484,7 @@ proc mbget uses bx dx es, num:word
 	xor     dx,dx
 .searchfree:
 	mov     es,bx
-	cmp	word [es:mb.check],"HN"
+	cmp	word [es:mb.check],"NH"
 	jne	.memoryerror
         inc     bx
         inc     bx
@@ -520,7 +520,7 @@ proc mbfind uses bx si di es, blocks:word
 .search:
 	mov     es,bx
 	lea     di,[es:mb.names]
-	cmp	word [es:mb.check],"HN"
+	cmp	word [es:mb.check],"NH"
 	jne	.memoryerror
         inc     bx
         inc     bx
@@ -567,7 +567,7 @@ proc mbfindsb uses bx dx si di es, blocks:word, owner:word
 	mov     dx,[owner]
 .search:
 	mov     es,bx
-	cmp	word [es:mb.check],"HN"
+	cmp	word [es:mb.check],"NH"
 	jne	.memoryerror
         inc     bx
         inc     bx

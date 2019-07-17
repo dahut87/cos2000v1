@@ -83,8 +83,8 @@ define compute_regs
   set $rds = ((unsigned long)$ds & 0xFFFF)
   set $res = ((unsigned long)$es & 0xFFFF)
   set $rss = ((unsigned long)$ss & 0xFFFF)
-  set $rfs = ((unsigned long)$es & 0xFFFF)
-  set $rgs = ((unsigned long)$ss & 0xFFFF)
+  set $rfs = ((unsigned long)$fs & 0xFFFF)
+  set $rgs = ((unsigned long)$gs & 0xFFFF)
   set $rip = ((((unsigned long)$cs & 0xFFFF) << 4) + ((unsigned long)$eip & 0xFFFFFFFF)) & $ADDRESS_MASK
   set $r_ss_sp = ((((unsigned long)$ss & 0xFFFF) << 4) + ((unsigned long)$esp & 0xFFFFFFFF)) & $ADDRESS_MASK
   set $r_ss_bp = ((((unsigned long)$ss & 0xFFFF) << 4) + ((unsigned long)$ebp & 0xFFFFFFFF)) & $ADDRESS_MASK
@@ -243,7 +243,7 @@ define print_mb
      set $size = *(unsigned short*)($mem+6)
      set $name = (unsigned char*)($mem+8)
      printf "%s:%4X:%4X\n",$name,$mem,$size
-     set $mem=$mem+$size
+     set $mem=$mem+($size+2)*16
      set $verif = *(unsigned char*)($mem)
      set $verif2 = *(unsigned char*)($mem+1)
     end

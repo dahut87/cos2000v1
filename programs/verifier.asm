@@ -56,13 +56,13 @@ someof:
     mov     ah,0
     int     16h
     invoke    restorestate
-    retf
+    ret
 errors:
     invoke    print, error
     mov     ah,0
     int     16h
     invoke    restorestate
-    retf
+    ret
 
 error db '\g10,10Erreur avec le lecteur de disquette !',0
 error2 db '\g10,10Le disque est defectueux, appuyez sur une touche pour quitter',0

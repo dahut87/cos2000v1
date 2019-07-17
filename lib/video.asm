@@ -407,7 +407,7 @@ proc print pointer:word
         mov     bp,di
         pop     di si cx bx ax
         mov     sp,bp
-        retf
+        ret
 endp
 
 
@@ -432,7 +432,7 @@ proc showdate uses edx, dates:word
 	and	dx,11111111b
 	add	dx,1956
 	stdcall	showintl,2,edx	
-	retf
+	ret
 endp
 
 ;================SHOWTIME==============
@@ -456,7 +456,7 @@ proc showtime uses edx, times:word
 	and	dx,11111b
 	shl	dx,1
 	stdcall	showintl,2,edx
-	retf
+	ret
 endp
 	
 ;================SHOWNAME==============
@@ -477,7 +477,7 @@ proc showname uses cx si, thename:word
 .suiteaname:
 	cmp	cx,8+3
 	jb	.showthename
-	retf
+	ret
 endp
 
 ;================SHOWATTR==============
@@ -531,7 +531,7 @@ proc showattr, attr:word
 	push    '-'
 .directory:
 	invoke	showchars
-	retf
+	ret
 endp
 
 ;================SHOWSIZE==============
@@ -567,7 +567,7 @@ proc showsize uses edx ds, thesize:dword
 	stdcall	showintr,4,edx
 	stdcall	showstring0,unitgiga
 .finsize:
-	retf
+	ret
 
 unit db ' o ',0
 unitkilo db ' ko',0
@@ -583,7 +583,7 @@ endp
 proc showspace
         invoke	showchars,' ',0FFFFh
         clc
-	retf
+	ret
 endp
 
 
@@ -614,7 +614,7 @@ local showbuffer[50]:BYTE
         invoke	showchars,cx,0FFFFh
 	dec	ax
 	jnz	.showinteger
-	retf
+	ret
 endp
 
 ;==========SHOWINTL===========
@@ -658,7 +658,7 @@ local showbuffer[50]:BYTE
         invoke	showchars,cx,0FFFFh
 	dec	ax
 	jnz	.showinteger
-	retf
+	ret
 endp
 
 ;==========SHOWINTR===========
@@ -702,7 +702,7 @@ local showbuffer[50]:BYTE
         invoke	showchars,cx,0FFFFh
 	dec	ax
 	jnz	.showinteger
-	retf
+	ret
 endp
 
 ;==========SHOWSIGNED===========
@@ -738,7 +738,7 @@ proc showsigned uses ebx cx edx, sizeofint:word,integer:dword
 	invoke 	showchars,'-',0FFFFh
 .notsigned:
 	stdcall 	showint,edx
-	retf
+	ret
 endp
 
 ;==========SHOWHEX===========
@@ -762,7 +762,7 @@ proc showhex uses ax bx cx edx, sizeofint:word,integer:dword
         invoke	showchars,cx,0FFFFh
        	dec   	al
        	jnz   	.Hexaize
-       	retf
+       	ret
 
 Tab 	db '0123456789ABCDEF'
 endp
@@ -786,7 +786,7 @@ proc showbin uses ax cx edx, sizeofint:word,integer:dword
         invoke	showchars,cx,0FFFFh
         dec     al
         jnz     .binaize
-        retf
+        ret
 endp
 
 ;==========SHOWBCD===========
@@ -810,7 +810,7 @@ proc showbcd uses ax cx edx, sizeofint:word,integer:dword
         invoke	showchars,cx,0FFFFh
         dec     al
         jnz     .BCDaize
-        retf
+        ret
 endp
 
 ;==========SHOWSTRING===========
@@ -826,7 +826,7 @@ proc showstring uses bx si, pointer:word
         invoke	showchars,word [si],0FFFFh
         dec     bl
         jnz     .strinaize
-        retf
+        ret
 endp
 
 ;==========showchars===========
@@ -836,7 +836,7 @@ endp
 ;===============================
 proc showchar, pointer:word
         invoke	showchars,[pointer],0FFFFh
-        retf
+        ret
 endp
 
 ;==========SHOWSTRING0===========
@@ -854,6 +854,6 @@ proc showstring0 uses cx si, pointer:word
         inc     si
         jmp     .strinaize0
 .no0:
-        retf
+        ret
 endp
 

@@ -100,10 +100,10 @@ endfat:
 	cmp	ax,0FF0h
 	jbe	nocarry
 	stc
-	retf
+	ret
 nocarry:
 	clc
-	retf
+	ret
 endp 
 
 ;============loadfile===============
@@ -137,11 +137,11 @@ local temp[48]:WORD
     stdcall    loadway,cx,eax,[pointer]
 	jc    	errorload
 	clc
-	retf
+	ret
 errorload:
 	stc
 	xor eax,eax
-	retf
+	ret
 endp
 	
 ;============execfile (Fonction 18)===============
@@ -194,14 +194,14 @@ proc execfile, file:word
         pop     gs fs es ds
 	    popad
         clc
-	    retf
+	    ret
 .reallyerror:
         invoke    mbfree,ax
 .reallyerrornoblock:
         pop     gs fs es ds
 	    popad
 	    stc
-	    retf
+	    ret
 endp
 
 ;============projfile (Fonction 17)===============
@@ -252,11 +252,11 @@ popad
         jc      .errorload
  .notace:
 	clc
-	retf
+	ret
 .errorload:
 	xor eax,eax
 	stc
-	retf
+	ret
 endp
 
 
@@ -290,13 +290,13 @@ proc searchfile uses bx cx si di ds es, pointer:word
     jc    	.nextsearch
 .okfound:
 	clc
-	retf
+	ret
 .notgood:
 	cmp   	si,0FF5h
-	retf
+	ret
 .errorsearch:
 	stc
-	retf
+	ret
 endp
 
 ;Transforme la chaine ds:%0 en maj
@@ -317,7 +317,7 @@ proc uppercase uses si ax, strs:word
 	jmp 	.uppercaser
 .enduppercase:
 	clc
-	retf
+	ret
 endp
 
 ;Compare le nom ds:%0 '.' avec ds:%1
@@ -363,10 +363,10 @@ proc cmpnames uses ax cx si di es, off1:word,off2:word
 	jne     .notequal
 .itok:
     clc
-	retf
+	ret
 .notequal:
 	stc
-	retf	
+	ret	
 .trynoext:
 	cmp	byte [si-1],0
 	jne	.notequal
@@ -409,10 +409,10 @@ proc loadway uses eax bx cx dx si di ds es, sector:word,size:dword,offset:word
 	rep	movsb
 .zeroload:
 	clc
-	retf
+	ret
 .noway:	
 	stc
-	retf
+	ret
 endp	
 
 ;=============INITDRIVE===============
@@ -527,10 +527,10 @@ proc initdrive uses eax bx cx edx si di ds es
 	dec	dx
 	jnz	.seefat
 	clc
-	retf
+	ret
 .errorinit:
 	stc
-	retf
+	ret
 endp
 
 datafat db '/fat',0
@@ -554,7 +554,7 @@ proc findfirstfile uses cx si, pointer:word
 	mov 	[.find.entryplace],cx
 	mov	    [.find.firstsearch],1
 	stdcall 	findnextfile,[pointer]
-	retf
+	ret
 endp
 
 ;=============FindnextFile==============
@@ -633,10 +633,10 @@ proc findnextfile	uses ax bx cx di si ds es, pointer:word
 	cld
 	rep	movsb
 	clc
-	retf
+	ret
 .notwell:
 	stc
-	retf
+	ret
 endp
 
 ;=============GetFreeSpace===============
@@ -651,7 +651,7 @@ proc getfreespace uses eax bx
 	shl	edx,16
 	add	edx,eax
 	pop   	eax
-	retf
+	ret
 endp
 
 ;ax=défectueux bx=libre
@@ -705,10 +705,10 @@ proc readcluster uses ax bx dx si, sector:word,pointer:word
 	dec	bx
 	jnz	.readsectors
 	clc
-	retf
+	ret
 .errorreadincluster:
 	stc
-	retf
+	ret
 endp
 
 ;=============WRITECLUSTER===============
@@ -731,10 +731,10 @@ proc writecluster uses ax bx dx si, sector:word,pointer:word
 	dec	bx
 	jnz	.writesectors
 	clc
-	retf
+	ret
 .errorwriteincluster:
 	stc
-	retf
+	ret
 endp
 
 
@@ -816,7 +816,7 @@ proc readsector uses ax bx cx dx si di ds es, sector:word,pointer:word
     mov     word [bx+buffer.chain],0FFFEh
 .error:
     stc
-    retf
+    ret
 .preprepcopy:
     mov     [tempsec],cx
 .prepcopy:
@@ -838,7 +838,7 @@ proc readsector uses ax bx cx dx si di ds es, sector:word,pointer:word
     cld 
     rep     movsb
 .done:
-    retf
+    ret
 endp
 
 ;=============SETBUFFER============
@@ -871,10 +871,10 @@ proc setbuffer uses ax cx di ds es, size:word
     cld
     rep  stosw
     clc
-    retf
+    ret
 .errorinit:
     stc
-    retf
+    ret
 endp
 
 ;=============GETBUFFER============
@@ -893,7 +893,7 @@ proc getbuffer uses ax cx di ds es, pointer:word
     cld
     rep     movsb
     clc
-    retf
+    ret
 endp
    
 ;=============WRITESECTOR============
@@ -926,7 +926,7 @@ proc writesector uses ax bx cx dx si es, sector:word,pointer:word
   	dec 	si
   	jnz 	.tryagain
 .done:
-        retf
+        ret
 endp
 
 ;=============Getname==============
@@ -948,7 +948,7 @@ proc getname uses ax cx si di ds es, pointer:word
 	mov	cx,11
 	repne	scasb
 	mov 	byte [es:di],0
-	retf
+	ret
 endp
 ;=============Getserial==============
 ;Renvoie le numéro de serie en EAX
@@ -957,7 +957,7 @@ endp
 ;====================================
 proc getserial FAR
 	mov	eax,[cs:myboot.serialnumber]
-	retf
+	ret
 endp
 
 ;=============VERIFYSECTOR==============
@@ -994,7 +994,7 @@ proc verifysector uses ecx si di ds es, sector:word
 	cld
 	rep 	cmpsd
 .errorverify:
-	retf
+	ret
 
 endp
 
@@ -1008,7 +1008,7 @@ invert:
 	cmp     cx,[cs:myboot.sectorsize]
 	jb 	    invert
 	pop     cx si
-	retf
+	ret
 
 ;=============DecompressRle (Fonction 05H)==============
 ;decompress ds:si en es:di taille bp d‚compress‚ cx compress‚
@@ -1054,7 +1054,7 @@ proc decompressrle uses	ecx dx si di ds es,seg1:word,off1:word,seg2:word,off2:wo
 	mov 	ax,di
 	sub 	ax,[off2]  
 	clc
-	retf
+	ret
 endp
 
 ;=============CompressRle (Fonction 06H)==============
@@ -1108,7 +1108,7 @@ proc compressrle uses ax bx cx dx si di ds es, seg1:word,off1:word,seg2:word,off
     mov     ax,si
 	sub 	ax,[off2]
 	clc
-	retf
+	ret
 endp
 
 ;=============Changedir (Fonction 13)==============
@@ -1192,10 +1192,10 @@ local   temp[64]:WORD
         rep	movsb
 .theend:
 	clc
-	retf
+	ret
 .noch:
 	stc
-	retf
+	ret
 endp
 
 ;=============getdir==============
@@ -1222,7 +1222,7 @@ proc getdir uses ax cx si di ds es, pointer:word
 	cld
 	rep	movsb
 	clc
-	retf
+	ret
 endp
 	
 bufferread  	db 512 dup (0)

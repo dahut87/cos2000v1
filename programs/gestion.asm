@@ -67,7 +67,7 @@ tre3:
 tre4:
     cmp     ah,67
     jne     endof
-    retf
+    ret
 
 ;couleur al pour ligne %0 en %1
 proc changelineattr uses ax bx di es,line:word,attr:word
@@ -86,7 +86,7 @@ mov [es:di],bl
 add di,2
 dec al
 jnz popep
-retf   
+ret
 endp 
 
 xx dw 1

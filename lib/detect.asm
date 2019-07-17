@@ -29,7 +29,7 @@ proc detectvmware uses eax ebx ecx edx
 	mov	edx,5658h
 	in	ax,dx
 	cmp     ebx,564D5868h
-	retf
+	ret
 endp
 
 ;renvoie un pointer dx:ax vers la classe %0
@@ -39,7 +39,7 @@ proc getpciclass uses di, class:word
         shl     di,1
         mov     ax,[cs:classes+di]
         mov     dx,cs
-        retf
+        ret
 endp
 
 ;renvoie un pointer dx:ax vers la sous-classe de %1 et de classe %0
@@ -60,7 +60,7 @@ proc getpcisubclass uses di, class:word,subclass:word
         mov     ax,[cs:di]
 .found:
         mov     dx,cs
-        retf
+        ret
 endp
         
 divers db 'divers',0
@@ -327,10 +327,10 @@ end virtual
         cmp     bl,40h
         jbe     .goinfos
         clc
-        retf
+        ret
 .notexist:
         stc
-        retf
+        ret
 endp
 
 ;lit un octet du bus %0 device %1 function %2 nø %3 et le met en AL
@@ -350,7 +350,7 @@ proc pcireadbyte uses bx dx, bus:word,device:word,function:word,pointer:word
         and     bl,3
         or      dl,bl
         in      al,dx
-        retf
+        ret
 endp
 
 ;lit 2 octet du bus %0 device %1 function %2 nø %3 et le met en AX
@@ -370,7 +370,7 @@ proc pcireadword uses bx dx, bus:word,device:word,function:word,pointer:word
         and     bl,3
         or      dl,bl
         in      ax,dx
-        retf
+        ret
 endp
 
 ;lit 4 octet du bus %0 device %1 function %2 nø %3 et le met en EAX
@@ -390,7 +390,7 @@ proc pcireaddword uses bx dx, bus:word,device:word,function:word,pointer:word
         and     bl,3
         or      dl,bl
         in      eax,dx
-        retf
+        ret
 endp          	
 
 ;Prob avec str pci
@@ -414,14 +414,14 @@ proc pciinfo uses ax bx cx edx edi, pointer:word
     	mov     [.pciinf.types],al
     	mov     [.pciinf.maxbus],cl    	
 	clc
-    	retf
+    	ret
 .errorpci:
     	stc 	
-        retf
+        ret
 endp
 
         
-;retfourne en DS:%1 les set supporté du processeur par rapport a la struct %0
+;retourne en DS:%1 les set supporté du processeur par rapport a la struct %0
 proc setinfo uses bx si di, pointer:word,set:word     
         mov      di,[set]
 virtual at 0
@@ -454,7 +454,7 @@ end virtual
         jmp      .set
  .endofset:
         mov      byte [di],0
-        retf
+        ret
         
 .theset dw .mmx
          dw .mmx2
@@ -481,7 +481,7 @@ end virtual
 
 endp
         
-;retfourne en DS:%0 les capacités du processeur
+;retourne en DS:%0 les capacités du processeur
 proc cpuinfo uses eax ebx ecx edx si di ds es, pointer:word
         push     ds
         pop      es
@@ -627,9 +627,9 @@ proc cpuinfo uses eax ebx ecx edx si di ds es, pointer:word
        je        .endofsearch
        jmp       .search
 .endofsearch:
-       retf
+       ret
 .nocpuidatall:
-       retf
+       ret
 
 ;tableau avec vendeur taille + chainereelle + pointeur famille + pointeur famille etendue
 

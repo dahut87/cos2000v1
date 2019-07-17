@@ -146,7 +146,7 @@ errorprec:
 
 code_exit:
         pop     ax
-        retf
+        ret
 
 code_version:  
         invoke    print, version_text
@@ -161,7 +161,7 @@ code_cls:
 code_reboot:
         push    0ffffh
         push    00000h
-        retf
+        ret
 
 code_command: 
         invoke    print, def

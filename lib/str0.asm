@@ -126,7 +126,7 @@ proc checksyntax uses ax bx cx dx si di ds es, src:word,dest:word,delim:word
         jne     .itemer
         cld
 .ackno: 
-        retf
+        ret
 .notequalatall:
         stc
         jmp     .ackno
@@ -151,7 +151,7 @@ proc cmpitems uses ax cx si di es, src:word,dest:word,item:word,delim:word
         cld 
         rep     cmpsb
         clc
-        retf
+        ret
 endp
 
                                 
@@ -170,7 +170,7 @@ proc gettypeditem uses bx cx si di, src:word,item:word,delim:word
         stdcall    gettyped,di
         xchg    cl,[ds:si]
         clc
-        retf
+        ret
 endp 
 
 
@@ -207,7 +207,7 @@ proc gettyped uses si, src:word
         stdcall    strtoadress,si
 .endofgettypeditem:
         clc
-        retf   
+        ret   
 endp
 
 ;Renvoie dans ax le type de la str0 point‚e par ds:%0 ‚l‚ment %1 delim %3
@@ -225,7 +225,7 @@ proc whatisitem uses bx cx si di, src:word,item:word,delim:word
         stdcall    whatis,di
         xchg    cl,[ds:si]
         clc
-        retf
+        ret
 endp 
 
 ;Renvoie dans ax le type de la str0 point‚e par ds:%0
@@ -304,7 +304,7 @@ proc whatis uses bx cx edx si, src:word
 	    mov     al,07h
 .endofwhat:
         clc
-        retf
+        ret
 endp 
 
 
@@ -314,7 +314,7 @@ proc strtoadress
         ;push
         stc
         ;pop
-        retf
+        ret
 endp 
         
 
@@ -323,7 +323,7 @@ proc strisadress
         ;push
         stc
         ;pop
-        retf
+        ret
 endp 
 
 ;Renvoie non carry si la str ds:%0 point‚e peut ˆtre un nom de fichier
@@ -347,7 +347,7 @@ proc strisname uses ax si di, src:word
 .itsok:
         clc
 .itsdead:        
-        retf
+        ret
 endp 
 
 non db '/<>|"?*:\',01,0FFh
@@ -381,7 +381,7 @@ proc strisbase uses ax cx si di es, src:word,base:word
 .okbase:
         clc
 .endbase:
-        retf
+        ret
 .verifbase:
         cmp     byte [si+1],0
         je      .okbase  
@@ -432,7 +432,7 @@ proc strtoint uses ebx ecx edx si edi es, src:word,base:word
 .endbaseto:
         mov     eax,ebx
         clc
-        retf  
+        ret  
 endp 
 
 
@@ -448,7 +448,7 @@ proc left uses ax cx si di es, src:word,dest:word,nb:word
         mov     al,0
         stosb
         clc
-        retf
+        ret
 endp 
 
 ;Renvoie en ds:%1 la partie de %2 caractŠres a partir de la droite de ds:%0
@@ -466,7 +466,7 @@ proc right uses ax cx si di es, src:word,dest:word,nb:word
         mov     al,0
         stosb
         clc
-        retf
+        ret
 endp 
 
 ;Renvoie en ds:%1 la partie de %3 caractŠres a partir de la position %2 de ds:%0
@@ -482,7 +482,7 @@ proc middle uses ax cx si di es, src:word,dest:word,item:word,nb:word
         mov     al,0
         stosb
         clc
-        retf
+        ret
 endp 
 
 ;Rempli de %3 caractŠres %2 a partir de la position %1 de ds:%0
@@ -496,7 +496,7 @@ proc fill uses ax cx si di es, src:word,item:word,char:word,nb:word
         cld
         rep     stosb
         clc
-        retf
+        ret
 endp 
 
 ;Remplace tout les caractŠres %1 de ds:%0 par des caractŠres %2
@@ -516,7 +516,7 @@ proc replaceallchar uses ax cx dx di es, src:word,char1:word,char2:word
         jmp     .findandchange
 .endofchange:
         clc
-        retf
+        ret
 endp 
 
 ;Recherche un caractŠre dl dans la chaŒne ds:%0
@@ -531,7 +531,7 @@ proc searchchar uses cx di es, src:word,char:word
         mov     ax,di
         dec     ax
         clc
-        retf
+        ret
 endp 
 
 ;Inverse la chaine point‚e en ds:%0
@@ -556,7 +556,7 @@ proc invert uses ax cx si di, src:word
         jmp     .revert
 .finishinvert:
         clc
-        retf
+        ret
 endp 
 
 ;Compares 2 chaines de caractŠres DS:%0 et DS:%1 zerof si non equal
@@ -572,7 +572,7 @@ proc cmpstr uses cx dx si di, src:word,dest:word
         jne     .notequal
         repe    cmpsb
 .notequal:
-        retf
+        ret
 endp 
 
 ;Compares 2 chaines de caractŠres DS:%0 et DS:%1 zerof si non equal et renvoie le nb de caractŠre egaux dans ax
@@ -589,13 +589,13 @@ proc evalue uses cx si di es, src:word,dest:word
         sub     ax,cx
         popf
         clc
-        retf
+        ret
 .noident:
         sub     ax,cx
         dec     ax
         popf
         clc
-        retf
+        ret
 endp 
 
 ;Insert une chaine ds:%0 en ds:%1 a partir du caractŠre %2
@@ -620,7 +620,7 @@ proc insert uses ax cx si di es, src:word,dest:word,item:word
         cld
         rep     movsb             
         clc
-        retf
+        ret
 endp 
 
 
@@ -640,7 +640,7 @@ proc delete uses ax cx dx si di es, src:word,item:word,size:word
         cld
         rep     movsb
         clc
-        retf
+        ret
 endp 
         
 ;Copie une chaine de ds:si en es:di
@@ -654,7 +654,7 @@ proc copy uses ax cx si di, src:word,dest:word
         mov     al,0
         stosb
         clc
-        retf
+        ret
 endp 
 
 
@@ -673,7 +673,7 @@ proc concat uses ax cx si di es, src:word,dest:word
         mov     al,0
         stosb
         clc
-        retf
+        ret
 endp 
 
 
@@ -699,7 +699,7 @@ proc compressdelimiter uses cx dx si di es, src:word,delim:word
         jne     .compressitems
         mov     ax,dx
         clc
-        retf
+        ret
 endp 
 
 ;Met le nombre d'‚l‚ments de ds:%0 à %1
@@ -732,7 +732,7 @@ proc setnbitems uses ax cx di es, src:word,size:word,delim:word
         mov     byte [di],0
 .noadjust:
         clc
-        retf
+        ret
 endp 
 
 ;Renvoie la taille ax de l'‚l‚ment %0
@@ -745,7 +745,7 @@ proc getitemsize uses cx dx, src:word,item:word,delim:word
         sub     ax,dx
         dec     ax
         clc
-        retf
+        ret
 endp 
 
 ;Renvoie en ds:%1 l'‚l‚ment %2 de ds:%0
@@ -762,7 +762,7 @@ proc getitem uses ax cx si di es, src:word,dest:word,item:word,delim:word
         mov     al,0
         stosb
         clc
-        retf
+        ret
 endp 
 
 ;renvoi un pointeur ax sur l'‚l‚ment %1 de ds:%0
@@ -790,7 +790,7 @@ proc getpointeritem uses cx dx di es, src:word,item:word,delim:word
 .finishpointer:
         mov     ax,di
         clc
-        retf 
+        ret 
 endp 
 
 ;Renvoie le nombre d'‚l‚ments ax de ds:%0
@@ -810,7 +810,7 @@ proc getnbitems uses cx dx di es, src:word,delim:word
         jne     .countitems
         mov     ax,dx
         clc
-        retf
+        ret
 endp 
 
 ;renvoie la taille en octets AX de la chaine point‚e en ds:%0
@@ -827,7 +827,7 @@ proc getlength uses cx di es, src:word
         dec     cx
         mov     ax,cx
         clc
-        retf
+        ret
 endp 
 
 ;Met la taille en octets de la chaine point‚e ds:%0 a %1     
@@ -836,7 +836,7 @@ proc setlength uses si, src:word,size:word
         add     si,[size] 
         mov     byte [si],0
         clc
-        retf  
+        ret  
 endp 
 
 ;met en majuscule la chaine ds:%0
@@ -855,7 +855,7 @@ proc uppercase uses ax si, src:word
         jmp     .uppercase
 .enduppercase:
         clc
-        retf
+        ret
 endp 
 
 ;met en majuscule la premiŠre lettre chaine ds:%0
@@ -869,7 +869,7 @@ proc onecase uses ax si, src:word
         sub     byte [si],'a'-'A'
 .oneenduppercase:
         clc
-        retf  
+        ret  
 endp 
 
 ;met en minuscule la chaine ds:%0
@@ -888,7 +888,7 @@ proc lowercase uses ax si, src:word
         jmp     .lowercase
 .endlowercase:
         clc
-        retf
+        ret
 endp 
 
 ;Inverse la casse la chaine ds:%0
@@ -914,6 +914,6 @@ proc invertcase uses ax si, src:word
         jmp     .invertcase
 .endinvertcase:
         clc
-        retf
+        ret
 endp 
 

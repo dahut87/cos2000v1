@@ -35,7 +35,7 @@ endofit:
     xor     ax,ax
     int     16h
     invoke    restorestate
-    retf
+    ret
 
 problem:
     push    cs

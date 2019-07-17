@@ -33,8 +33,8 @@ declare restorescreen
 declare page2to1
 declare page1to2
 declare xchgpages
-declare waithretfrace
-declare waitretfrace
+declare waithretrace
+declare waitretrace
 declare getvideoinfos
 declare savedac
 declare restoredac
@@ -199,7 +199,7 @@ planesize	equ 65000
 ;=====================================
 proc enablescroll
         mov     [cs:datablock.scrolling],1
-        retf
+        ret
 endp
 
 ;=============DISABLESCROLLING=========
@@ -209,7 +209,7 @@ endp
 ;======================================
 proc disablescroll
         mov     [cs:datablock.scrolling],0
-        retf
+        ret
 endp
 
 ;=============ENABLECURSOR=============
@@ -234,7 +234,7 @@ proc enablecursor uses ax dx
 	mov     dl,[cs:datablock.y]
 	xor     dh,dh
 	stdcall    setxy,ax,dx
-        retf
+        ret
 endp
 
 ;=============DISABLECURSOR=============
@@ -254,7 +254,7 @@ proc disablecursor uses ax dx
 	dec     dx
 	mov     al,0Ah
 	out     dx,ax
-        retf
+        ret
 endp
         
 ;==========SETSTYLE=========
@@ -265,7 +265,7 @@ endp
 proc setstyle uses cx, style:word
         mov     ax,[style]
 	mov 	[cs:datablock.style],al
-	retf
+	ret
 endp
 
 ;==========GETSTYLE=========
@@ -276,7 +276,7 @@ endp
 proc getstyle
 	mov 	al,[cs:datablock.style]
 	xor     ah,ah
-	retf
+	ret
 endp
 
 ;=============SetVideoMode=========
@@ -402,9 +402,9 @@ proc setvideomode uses ax cx dx di, modenum:word
 	mov	[cs:datablock.base],ax
         mov     [cs:datablock.cursor],1
         mov     [cs:datablock.style],0
-	retf
+	ret
 .errorsetvideomode:
-	retf
+	ret
 endp
 
 
@@ -416,7 +416,7 @@ initfont:
 	stdcall 	loadfont,font8x8,8,1
 	stdcall 	loadfont,font8x16,16,0
 	pop 	ds
-	retf
+	ret
 
 ;=============GetVideoMode=========
 ;Renvoie le mode vidéo courant dans AX
@@ -426,7 +426,7 @@ initfont:
 proc getvideomode
 	mov 	al,[cs:datablock.modenum]
 	xor     ah,ah
-	retf
+	ret
 endp
 
 ;=============CLEARSCREEN=========
@@ -474,7 +474,7 @@ proc clearscreen uses eax cx dx di es
 	rep 	stosd	
 .endoferase:	
         stdcall    setxy,0,0
-	retf
+	ret
 endp
 
 
@@ -497,9 +497,9 @@ proc setfont uses ax cx dx, font:word
       	mov   	dx,sequencer
 	mov 	al,3
 	out 	dx,ax
-        retf
+        ret
 .errorsetfont:
-	retf    
+	ret    
 endp
 
 ;=============GetFont=========
@@ -510,7 +510,7 @@ endp
 proc getfont
 	mov	al,[cs:datablock.font]
 	xor     ah,ah
-	retf
+	ret
 endp
 
 ;!!!!!!!!!!!!!!!!!!!! a remettre les anciens params de timing depuis origine
@@ -590,10 +590,10 @@ proc loadfont uses ax bx cx dx si di es, pointer:word, size:word, font:word
 	inc 	di
 	cmp 	di,6+6
 	jbe 	.doseqs2
-	retf    
+	ret    
 .errorloadfont:
 	stc
-	retf
+	ret
   
 reg2 	dw 0100h, 0302h, 0304h, 0300h 
      	dw 0004h, 1005h, 0E06h 
@@ -602,7 +602,7 @@ reg1 	dw 0100h, 0402h, 0704h, 0300h
 endp
 
 ;==========SHOWLINE===============
-;remet le curseur text a la ligne avec un retfour chariot
+;remet le curseur text a la ligne avec un retour chariot
 ;->
 ;<-
 ;=================================
@@ -623,7 +623,7 @@ proc addline uses bx cx
 .scro:
 	inc 	bl
         stdcall    setxy,0,bx
-	retf
+	ret
 endp
 
 ;==========SETCOLOR=========
@@ -634,7 +634,7 @@ endp
 proc setcolor, color:word
         mov     cx,[color]
 	mov 	[cs:datablock.colors],cl
-	retf
+	ret
 endp
 
 ;==========GETCOLOR=========
@@ -645,7 +645,7 @@ endp
 proc getcolor
 	mov 	al,[cs:datablock.colors]
 	xor     ah,ah
-	retf
+	ret
 endp
 	
 ;==========SCROLLDOWN=========
@@ -693,7 +693,7 @@ proc scrolldown uses ax cx dx si di ds es, line:word
 	mov 	ds,ax
 	rep 	movsb
 .graphp:
-	retf
+	ret
 endp 	
 
 ;==========GETXY=========
@@ -704,7 +704,7 @@ endp
 proc getxy uses bx
 	mov 	ah,[cs:datablock.x]
 	mov 	al,[cs:datablock.y]
-	retf
+	ret
 endp
 
 ;==========SETXY=========
@@ -724,7 +724,7 @@ proc setxy uses ax bx dx di, x:word ,y: word
 	shl 	di,1
 	mov 	[cs:datablock.xy],di
 	call    setcursor
-	retf
+	ret
 endp
 
 ;==========SHOWPIXEL=========
@@ -784,7 +784,7 @@ proc showpixel uses ax bx cx dx si di es, x:word,y:word,color:word
         mov	al,[es:di]
         mov	[es:di],ch	 	
 .endofshow:        	
-	retf
+	ret
 endp
 
 ;!!!!!!!!!!!!!! gerer le mode chain 4
@@ -811,7 +811,7 @@ proc getpixel uses ax bx cx dx di es, x:word,y:word
         mov     bx,0A000h
         mov  	es,bx
 	mov	al,[es:di] 	
-	retf
+	ret
 endp
 
 ;==========GETVGAINFO=========
@@ -827,35 +827,35 @@ proc getvideoinfos uses cx si di ds, pointer:word
 	mov     di,[pointer]
 	cld
 	rep 	movsb
-	retf
+	ret
 endp
 
-;==========WAITretfRACE=========
-;Synchronisation avec la retfrace verticale
+;==========WAITretRACE=========
+;Synchronisation avec la retrace verticale
 ;<-
 ;->
 ;==============================
-proc waitretfrace uses ax dx
+proc waitretrace uses ax dx
 	mov 	dx,3DAh
 .waitr:
 	in 	al,dx
 	test 	al,8
 	jz 	.waitr
-	retf
+	ret
 endp
 	
-;==========WAITHretfRACE=========
-;Synchronisation avec la retfrace horizontale
+;==========WAITHretRACE=========
+;Synchronisation avec la retrace horizontale
 ;<-
 ;->
 ;===============================
-proc waithretfrace uses ax dx
+proc waithretrace uses ax dx
 	mov 	dx,3DAh
 .waitr:
 	in 	al,dx
 	test 	al,1
 	jz 	.waitr
-	retf
+	ret
 endp
 	
 ;==========GETCHAR=========
@@ -869,7 +869,7 @@ proc getchars uses di es
 	mov	di,[cs:datablock.xy]
 	mov	al,[es:di]
 	xor     ah,ah
-        retf
+        ret
 endp
 
 ;==========SHOWCHAR=========
@@ -902,7 +902,7 @@ proc showchars uses ax bx cx dx di es, char:word,attr:word
         stdcall    addline
 .noadjusted:
         call    setcursor
-	retf
+	ret
 endp
 
 setcursor:
@@ -980,10 +980,10 @@ push    ax
 pop     ds
 stdcall    savescreento,0
 clc
-retf
+ret
 .error:
 stc
-retf
+ret
 endp
 data3 db '/vgascreen',0
 
@@ -1001,7 +1001,7 @@ proc savescreento uses ecx si di ds es, offset:word
         xor     si,si
         cld
         rep     movsd
-        retf
+        ret
 endp
 
 ;===================================sauve les parametres en ds:%0================
@@ -1016,7 +1016,7 @@ proc saveparamto uses ecx si di ds es, offset:word
         mov     si,datablock
         cld
         rep     movsb
-        retf
+        ret
 endp
         
 ;===================================restore les parametres depuis en ds:%0================
@@ -1030,7 +1030,7 @@ proc restoreparamfrom uses ecx si di es, offset:word
         mov     di,datablock
         cld
         rep     movsb
-        retf
+        ret
 endp
 
 
@@ -1050,10 +1050,10 @@ push    ax
 pop     ds
 stdcall    restorescreenfrom,0
 clc
-retf
+ret
 .error:
 stc
-retf
+ret
 endp
 
 
@@ -1068,7 +1068,7 @@ proc restorescreenfrom uses ecx si di es, offset:word
         xor     di,di
         cld
         rep     movsd
-        retf
+        ret
 endp
 
 
@@ -1087,7 +1087,7 @@ proc page2to1 uses ecx si di ds es
         xor     di,di
         cld
         rep     movsd
-        retf
+        ret
 endp
 
 ;===============================Page1to2============================
@@ -1102,7 +1102,7 @@ proc page1to2 uses ecx si di ds es
         xor     si,si
         cld
         rep     movsd
-        retf
+        ret
 endp
 ;===============================xchgPages============================
 proc xchgpages uses ax ecx si di ds es bp
@@ -1128,10 +1128,10 @@ cld
 rep     movsd
 invoke    mbfree,ax
 clc
-retf
+ret
 .error:
 stc
-retf
+ret
 endp
 
 data4 db '/vgatemp',0
@@ -1161,10 +1161,10 @@ stdcall    savescreento,di
 add     di,[cs:datablock.pagesize]
 stdcall    savedacto,di
 clc
-retf
+ret
 .error:
 stc
-retf
+ret
 endp
 
 adata db '/vga',0
@@ -1188,10 +1188,10 @@ stdcall    restorescreenfrom,di
 add     di,[cs:datablock.pagesize]
 stdcall    restoredacfrom,di
 clc
-retf
+ret
 .error:
 stc
-retf
+ret
 endp
 
 
@@ -1208,10 +1208,10 @@ push    ax
 pop     ds
 stdcall    savedacto,0
 clc
-retf
+ret
 .error:
 stc
-retf
+ret
 endp
 
 data2 db '/vgadac',0
@@ -1227,10 +1227,10 @@ push    ax
 pop     ds
 stdcall    restoredacfrom,0
 clc
-retf
+ret
 .error:
 stc
-retf
+ret
 endp
 
 
@@ -1259,7 +1259,7 @@ dec dx
 dec dx
 dec cx
 jne .save 
-retf
+ret
 endp
 
 ;restore le DAC depuis ds:si
@@ -1285,7 +1285,7 @@ out dx,al
 dec dx
 dec cx
 jne .save2
-retf
+ret
 endp
 
 

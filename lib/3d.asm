@@ -54,7 +54,7 @@ proc draw3d_point uses cx si, vertex3d:word,vertex2d:word,camera:word,color:word
         add     si,4
         dec     cx
         jnz     .draw
-        retf
+        ret
 endp 
         
 ;affiche liste vertex %0
@@ -104,7 +104,7 @@ proc draw3d_line uses ax bx cx dx si di, type:word,faces:word,vertex3d:word,vert
         add     di,2
         dec     cx
         jnz     .draw
-        retf
+        ret
 endp 
 
 ;affiche liste vertex %0
@@ -202,7 +202,7 @@ proc draw3d_hidden uses ax bx cx dx si di, type:word,faces:word,vertex3d:word,ve
         dec     cx
         jnz     .draw
 .endof:
-        retf
+        ret
 endp 
 
 ;creer table pour face caché %0
@@ -279,7 +279,7 @@ proc draw3d_hidden_fill uses eax bx ecx edx si di, type:word,faces:word,vertex3d
 .enofvalue:
         dec    cx
         jnz    .calculvect
-        retf
+        ret
 endp
 
 
@@ -416,7 +416,7 @@ proc load3ds uses eax bx cx si di ds es fs, seg:word,addt:word,objectname:word,v
         ;;jmp     .reading
 .error1:
 .error2:
-        retf
+        ret
 endp
 
 un dd 1.0
@@ -450,7 +450,7 @@ proc translate uses eax ecx di es, mat:word,x:dword,y:dword,z:dword
         mov     [di+7*4],eax
         mov     eax,[z]
         mov     [di+11*4],eax
-        retf
+        ret
 endp 
 
 ;initialise une matrice de translation pour une translation TX %1 dans MATRICE %0
@@ -479,7 +479,7 @@ proc translatex uses eax ecx di es, mat:word,value:dword
         mov     [di+11*4],eax
         mov     eax,[value]
         mov     [di+3*4],eax
-        retf
+        ret
 endp
 
 
@@ -509,7 +509,7 @@ proc translatey uses eax ecx di es, mat:word,value:dword
         mov     [di+11*4],eax
         mov     eax,[value]
         mov     [di+7*4],eax
-        retf
+        ret
 endp 
 
 ;initialise une matrice de translation pour une translation TZ %1 dans MATRICE %0
@@ -538,7 +538,7 @@ proc translatez uses eax ecx di es, mat:word,value:dword
         mov     [di+7*4],eax
         mov     eax,[value]
         mov     [di+11*4],eax
-        retf
+        ret
 endp 
 
 ;initialise une matrice d'echelle %0 de facteur (x,y,z) %1-%3
@@ -564,7 +564,7 @@ proc scale uses eax ecx di es, mat:word,x:dword,y:dword,z:dword
         mov     [di+10*4],eax
         mov     eax,[cs:un]
         mov     [di+15*4],eax
-        retf
+        ret
 endp
 
 ;initialise une matrice d'echelle %0 de facteur value %1
@@ -588,7 +588,7 @@ proc rescale uses eax ecx di es, mat:word,value:dword
         mov     [di+10*4],eax
         mov     eax,[cs:un]
         mov     [di+15*4],eax
-        retf
+        ret
 endp 
 
 ;copy une matrice %0 en %1
@@ -601,7 +601,7 @@ proc copy uses ecx si di es, mat1:word,mat2:word
         pop     es
         cld
         rep     stosd
-        retf
+        ret
 endp 
 
 ;initialise une matrice %0 avec la valeur %1
@@ -614,7 +614,7 @@ proc fill uses eax ecx di es, mat:word,value:dword
         pop     es
         cld
         rep     stosd
-        retf
+        ret
 endp
 
 ;initialise une matrice d'identité %0
@@ -637,7 +637,7 @@ proc identity uses eax ecx di es, mat:word
         mov     [di+5*4],eax
         mov     [di+10*4],eax
         mov     [di+15*4],eax
-        retf
+        ret
 endp
 
 
@@ -674,7 +674,7 @@ proc rotationx uses eax ecx di es, mat:word,value:dword
          mov    eax,[cs:un]
          mov    [di+0*4],eax
          mov    [di+15*4],eax
-         retf
+         ret
 endp
 
 ;initialise une matrice de rotation BX autour de Y de %0 degrees
@@ -710,7 +710,7 @@ proc rotationy uses eax ecx di es, mat:word,value:dword
         mov     eax,[cs:un]
         mov     [di+5*4],eax
         mov     [di+15*4],eax
-        retf
+        ret
 endp
 
 ;initialise une matrice de rotation %0 autour de Z de %1 degrees
@@ -746,7 +746,7 @@ proc rotationz uses eax ecx di es, mat:word,value:dword
         mov     eax,[cs:un]
         mov     [di+10*4],eax
         mov     [di+15*4],eax
-        retf
+        ret
 endp
 
 ;initialise une matrice de rotation %0 autour de X,Y,Z de %0-%3 degrees
@@ -805,7 +805,7 @@ proc rotation uses eax ecx di es, mat:word,anglex:dword,angley:dword,anglez:dwor
         fstp    dword [ di+2*4]
         mov     eax,[cs:un]
         mov     [di+15*4],eax
-        retf
+        ret
 endp
 
 
@@ -866,7 +866,7 @@ proc project uses bx cx si di, vertex2d:word,vertex3d:word,origin:word
         add     bx,.vertex2d.sizeof
         dec     cx
         jnz     .boucle
-        retf
+        ret
 endp
 
 
@@ -966,7 +966,7 @@ proc transform uses cx si di, vertex3d:word,mat:word
         add      si,.vertex3dori.sizeof
         dec      cx
         jnz      .boucle
-        retf
+        ret
 endp
 
 ;Multiplie la matrice de transformation %0 par celle en %1 et met les resultat en %2
@@ -1211,5 +1211,5 @@ proc multiply uses bx si di, p1:word,p2:word,mat:word
         fmul    dword [ di+15*4]
         ;faddp   st1
         fstp    dword [ bx+15*4]
-        retf
+        ret
 endp

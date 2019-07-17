@@ -33,7 +33,7 @@ show:
     jnz       show
     invoke      bioswaitkey
     invoke      restorestate
-    retf
+    ret
 
 importing
 use VIDEO.LIB,print

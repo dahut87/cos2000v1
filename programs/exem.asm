@@ -11,7 +11,7 @@ header exe 1,0,imports,0,realstart
 realstart:
     invoke    print,message
     invoke    waitkey
-    retf
+    ret
 
 message db 'Appel de la librairie \c02video\c07 et de la librairie \c02EXEM-LIB.LIB\c07 !',0
 

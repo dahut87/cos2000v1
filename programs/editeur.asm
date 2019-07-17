@@ -231,7 +231,7 @@ suit7:
 cmp     ax,4200h
 jne     adres
 invoke    restorestate
-retf
+ret
 calc1:
 push    ax dx si
 mov     ax,[xx]

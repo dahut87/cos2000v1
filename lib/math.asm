@@ -21,12 +21,12 @@ proc random uses dx
     inc     ax
     mov     [cs:randseed],ax
     mov     ax,dx
-    retf
+    ret
 endp
 
 proc randomize uses ax cx dx
     mov     ah,0
     int     1ah
     mov     [cs:randseed],dx
-    retf
+    ret
 endp

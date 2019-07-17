@@ -85,7 +85,7 @@ go4:
     mov     ax,0
     int     16h
     invoke    restorestate
-    retf
+    ret
 put:
     invoke    random
     mov     di,ax

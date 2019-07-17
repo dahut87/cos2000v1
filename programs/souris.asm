@@ -12,11 +12,11 @@ realstart:
     invoke    mouseon
     jc      errormouse
     invoke    print, message
-    retf
+    ret
 
 errormouse:
     invoke    print, errormessage
-    retf
+    ret
 
 message db 'Activation de la souris\l',0
 errormessage db 'impossible d''activer la souris\l',0

@@ -12,7 +12,7 @@ memorystart equ 0052h             ;premier bloc de la mémoire
 org 0h
 
 mb0:
-header exe 1,0,imports,allsection,start
+header exe 1,exports,imports,allsection,start
 
 start:
         push    cs
