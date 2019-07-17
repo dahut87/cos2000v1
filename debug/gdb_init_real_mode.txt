@@ -1,4 +1,5 @@
-# Special mode for GDB that allows to debug/disassemble REAL MODE x86 code
+# Modified by Nicolas Horde
+# Special mode for GDB that allows to debug/disassemble FLAT OR UNREAL MODE x86 code
 #
 # It has been designed to be used with QEMU or BOCHS gdb-stub
 #
@@ -70,53 +71,93 @@ Get address of interruption
 end
 
 define compute_regs
-  set $rax = ((unsigned long)$eax & 0xFFFF)
-  set $rbx = ((unsigned long)$ebx & 0xFFFF)
-  set $rcx = ((unsigned long)$ecx & 0xFFFF)
-  set $rdx = ((unsigned long)$edx & 0xFFFF)
-  set $rsi = ((unsigned long)$esi & 0xFFFF)
-  set $rdi = ((unsigned long)$edi & 0xFFFF)
-  set $rbp = ((unsigned long)$ebp & 0xFFFF)
-  set $rsp = ((unsigned long)$esp & 0xFFFF)
+  set $rax = ((unsigned long)$eax & 0xFFFFFFFF)
+  set $rbx = ((unsigned long)$ebx & 0xFFFFFFFF)
+  set $rcx = ((unsigned long)$ecx & 0xFFFFFFFF)
+  set $rdx = ((unsigned long)$edx & 0xFFFFFFFF)
+  set $rsi = ((unsigned long)$esi & 0xFFFFFFFF)
+  set $rdi = ((unsigned long)$edi & 0xFFFFFFFF)
+  set $rbp = ((unsigned long)$ebp & 0xFFFFFFFF)
+  set $rsp = ((unsigned long)$esp & 0xFFFFFFFF)
   set $rcs = ((unsigned long)$cs & 0xFFFF)
   set $rds = ((unsigned long)$ds & 0xFFFF)
   set $res = ((unsigned long)$es & 0xFFFF)
   set $rss = ((unsigned long)$ss & 0xFFFF)
-  set $rip = ((((unsigned long)$cs & 0xFFFF) << 4) + ((unsigned long)$eip & 0xFFFF)) & $ADDRESS_MASK
-  set $r_ss_sp = ((((unsigned long)$ss & 0xFFFF) << 4) + ((unsigned long)$esp & 0xFFFF)) & $ADDRESS_MASK
-  set $r_ss_bp = ((((unsigned long)$ss & 0xFFFF) << 4) + ((unsigned long)$ebp & 0xFFFF)) & $ADDRESS_MASK
+  set $rfs = ((unsigned long)$es & 0xFFFF)
+  set $rgs = ((unsigned long)$ss & 0xFFFF)
+  set $rip = ((((unsigned long)$cs & 0xFFFF) << 4) + ((unsigned long)$eip & 0xFFFFFFFF)) & $ADDRESS_MASK
+  set $r_ss_sp = ((((unsigned long)$ss & 0xFFFF) << 4) + ((unsigned long)$esp & 0xFFFFFFFF)) & $ADDRESS_MASK
+  set $r_ss_bp = ((((unsigned long)$ss & 0xFFFF) << 4) + ((unsigned long)$ebp & 0xFFFFFFFF)) & $ADDRESS_MASK
 end
 
 define print_regs
-  printf "AX: %04X BX: %04X ", $rax, $rbx
-  printf "CX: %04X DX: %04X\n", $rcx, $rdx
-  printf "SI: %04X DI: %04X ", $rsi, $rdi
-  printf "SP: %04X BP: %04X\n", $rsp, $rbp
-  printf "CS: %04X DS: %04X ", $rcs, $rds
-  printf "ES: %04X SS: %04X\n", $res, $rss
+  printf "EAX: %08X EBX: %08X ", $rax, $rbx
+  printf "ECX: %08X EDX: %08X\n", $rcx, $rdx
+  printf "ESI: %08X EDI: %08X ", $rsi, $rdi
+  printf "ESP: %08X EBP: %08X\n", $rsp, $rbp
+  printf " CS: %04X  DS: %04X ", $rcs, $rds
+  printf " ES: %04X  SS: %04X ", $res, $rss
+  printf " FS: %04X  GS: %04X ", $rfs, $rgs
   printf "\n"
-  printf "IP: %04X EIP:%08X\n", ((unsigned short)$eip & 0xFFFF), $eip
-  printf "CS:IP: %04X:%04X (0x%05X)\n", $rcs, ((unsigned short)$eip & 0xFFFF), $rip
-  printf "SS:SP: %04X:%04X (0x%05X)\n", $rss, $rsp, $r_ss_sp
-  printf "SS:BP: %04X:%04X (0x%05X)\n", $rss, $rbp, $r_ss_bp
+  printf "CS:IP: %04X:%08X (0x%05X)\n", $rcs, ((unsigned long)$eip), $rip
+  printf "SS:SP: %04X:%08X (0x%05X)\n", $rss, $rsp, $r_ss_sp
+  printf "SS:BP: %04X:%08X (0x%05X)\n", $rss, $rbp, $r_ss_bp
 end
 document print_regs
 Print CPU registers
 end
 
 define print_eflags
-    printf "OF <%d>  DF <%d>  IF <%d>  TF <%d>",\
-           (($eflags >> 0xB) & 1), (($eflags >> 0xA) & 1), \
-           (($eflags >> 9) & 1), (($eflags >> 8) & 1)
-    printf "  SF <%d>  ZF <%d>  AF <%d>  PF <%d>  CF <%d>\n",\
-           (($eflags >> 7) & 1), (($eflags >> 6) & 1),\
-           (($eflags >> 4) & 1), (($eflags >> 2) & 1), ($eflags & 1)
-    printf "ID <%d>  VIP <%d> VIF <%d> AC <%d>",\
-           (($eflags >> 0x15) & 1), (($eflags >> 0x14) & 1), \
-           (($eflags >> 0x13) & 1), (($eflags >> 0x12) & 1)
-    printf "  VM <%d>  RF <%d>  NT <%d>  IOPL <%d>\n",\
-           (($eflags >> 0x11) & 1), (($eflags >> 0x10) & 1),\
-           (($eflags >> 0xE) & 1), (($eflags >> 0xC) & 3)
+    printf "EFLAGS: %08X [",$eflags
+    if ($eflags & 1)
+	printf "C"
+    else
+      printf "-"
+    end
+    printf "-"
+    if (($eflags >> 2) & 1)
+	printf "P"
+    else
+      printf "-"
+    end
+    printf "-"
+    if (($eflags >> 4) & 1)
+	printf "A"
+    else
+      printf "-"
+    end
+    printf "-"
+    if (($eflags >> 6) & 1)
+	printf "Z"
+    else
+      printf "-"
+    end
+    if (($eflags >> 7) & 1)
+	printf "S"
+    else
+      printf "-"
+    end
+    if (($eflags >> 8) & 1)
+	printf "T"
+    else
+      printf "-"
+    if (($eflags >> 9) & 1)
+	printf "I"
+    else
+      printf "-"
+    end
+    if (($eflags >> 0xA) & 1)
+	printf "D"
+    else
+      printf "-"
+    end
+    if (($eflags >> 0xB) & 1)
+	printf "O"
+    else
+      printf "-"
+    end
+    printf "]\n"
+  end
 end
 document print_eflags
 Print eflags register.
@@ -161,13 +202,12 @@ define print_data
        if ($argc > 0)
        	  set $seg = $arg0
 	  set $off = $arg1
-	  set $raddr = ($arg0 << 16) + $arg1
 	  set $maddr = ($arg0 << 4) + $arg1
 
 	  set $w = 16
 	  set $i = (int)0
-	  while ($i < 4)
-		printf "%08X: ", ($raddr + $i * $w)
+	  while ($i < 2)
+		printf "%08X: ", ($maddr + $i * $w)
 	  	set $j = (int)0
 		while ($j < $w)
 		      printf "%02X ", *(unsigned char*)($maddr + $i * $w + $j)
@@ -192,22 +232,40 @@ define print_data
        end
 end
 
+# affiche les mb
+define print_mb
+     set $mem=1280
+     set $verif = *(unsigned char*)($mem)
+     set $verif2 = *(unsigned char*)($mem+1)
+     set $stop = 0x01
+    while ($verif == 0x4E && $verif2 == 0x48 && $stop == 0x01)
+     set $stop = *(unsigned char*)($mem+2)
+     set $size = *(unsigned short*)($mem+6)
+     set $name = (unsigned char*)($mem+8)
+     printf "%s:%4X:%4X\n",$name,$mem,$size
+     set $mem=$mem+$size
+     set $verif = *(unsigned char*)($mem)
+     set $verif2 = *(unsigned char*)($mem+1)
+    end
+end
+
 define context
-  printf "---------------------------[ STACK ]---\n"
+  printf "---------------------------[ STACK ]---------------------------\n"
   _dump_memw $r_ss_sp 8
   printf "\n"
   set $_a = $r_ss_sp + 16
   _dump_memw $_a 8
   printf "\n"
-  printf "---------------------------[ DS:SI ]---\n"
+  printf "---------------------------[ DS:ESI ]---------------------------\n"
   print_data $ds $rsi
-  printf "---------------------------[ ES:DI ]---\n"
+  printf "---------------------------[ ES:EDI ]---------------------------\n"
   print_data $es $rdi
-
-  printf "----------------------------[ CPU ]----\n"
+  printf "----------------------------[ CPU ]---------------------------\n"
   print_regs
   print_eflags
-  printf "---------------------------[ CODE ]----\n"
+  printf "----------------------------[ MB ]---------------------------\n"
+  print_mb
+  printf "---------------------------[ CODE ]---------------------------\n"
   
   set $_code_size = $CODE_SIZE
 
@@ -271,7 +329,7 @@ document break_int_if_ax
 Install a breakpoint on INT N only if AX is equal to the expected value
 end
 
-define stepo
+define so
   ## we know that an opcode starting by 0xE8 has a fixed length
   ## for the 0xFF opcodes, we can enumerate what is possible to have
   
@@ -347,16 +405,17 @@ define stepo
   
   # if we have found a call to bypass we set a temporary breakpoint on next instruction and continue 
   if ($noffset != 0)
-    set $_nextaddress = $eip + $offset + $noffset
+    set $_nextaddress = $eip + $offset + $noffset+$cs*16
     printf "Setting BP to %04X\n", $_nextaddress
-    tbreak *$_nextaddress
+    break *$_nextaddress
     continue
+    cl *$_nextaddress
     # else we just single step
   else
     nexti
   end
 end
-document stepo
+document so
 Step over calls
 This function will set a temporary breakpoint on next instruction after the call so the call will be bypassed
 You can safely use it instead nexti since it will single step code if it's not a call instruction (unless you want to go into the call function)
