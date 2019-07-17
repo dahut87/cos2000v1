@@ -157,7 +157,7 @@ macro   use    lib*,fonction*
 	 db `lib,"::",`fonction,0
 fonction:
 	   dd 0
-         dd 0
+         dw 0
  }
 
 macro   declare    fonction*

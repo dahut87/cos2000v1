@@ -20,6 +20,8 @@ copy:
 
 test: all copy qemu
 
+retest: clean test
+
 view: final/cos2000.img
 	(hexdump  -C ./final/cos2000.img|head -c10000)
 

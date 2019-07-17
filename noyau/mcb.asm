@@ -149,6 +149,7 @@ proc mbloadsection uses ax bx cx si di ds es, blocks:word
         add     ax,4
 pushad
 stdcall biosprint,ax
+stdcall biosprint,return
 popad
         stdcall    mbcreate,ax,word [bx+2]
         jc      .error
@@ -191,6 +192,7 @@ popad
         ret
 endp
         
+return db 0dh,0ah,0
 
 ;Initialise les blocs de mémoire en prenant memorystart pour segment de base
 proc mbinit uses ax cx si di ds es
@@ -618,11 +620,16 @@ proc mbloadfuncs uses ax bx cx dx si ds, blocks:word
         cmp     word [si],0
         je      .endofloading
         stdcall    mbsearchfunc,si
+pushad
+stdcall biosprint,si
+push ds
+push cs
+pop ds
+stdcall biosprint,return
+pop ds
+popad
         jnc     .toendoftext
         mov     bx,si
-;pushad
-;stdcall biosprint,si
-;popad
 .findend:
         inc     bx
         cmp     byte [bx], ':'
@@ -646,7 +653,7 @@ proc mbloadfuncs uses ax bx cx dx si ds, blocks:word
         inc     si
         mov     [si],ax
         mov     [si+2],dx
-        add     si,4
+        add     si,6
         jmp     .loadfuncs
 .endofloading:
         clc

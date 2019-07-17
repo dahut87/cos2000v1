@@ -173,14 +173,15 @@ error:
         stdcall    bioswaitkey
         jmp     far 0FFFFh:0000h
         
-shell find "COMMANDE.CE\0"
+shell find "COMMANDE.CE"
+db 0
 thepci pciinf
 thecpu cpu
 temporary db 256 dup (0)
 makereturn             db 0dh,0ah,0
 msg_memory         db "Initialisation de la memoire",0
 msg_memory_init    db "  -Creation du bloc primordial",0
-msg_memory_section db "  -Developpement des sections",0
+msg_memory_section db "  -Developpement des sections",0dh,0ah,0
 msg_memory_jumps   db "Redirection du systeme",0
 msg_video_init     db "Initialisation du pilote VIDEO",0
 msg_handler        db "Initialisation du gestionnaire d'interruption",0
