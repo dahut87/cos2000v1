@@ -20,3 +20,6 @@ struc cpu
 .apic            db 0
 .sizeof = $ - .vendor
 }
+virtual at 0
+cpu cpu
+end virtual

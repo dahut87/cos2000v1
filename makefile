@@ -18,6 +18,14 @@ backup: clean
 copy: 
 	make -C final
 
+tools:
+	fasm /usr/share/fasm/tools/libc/listing.asm
+	fasm /usr/share/fasm/tools/libc/prepsrc.asm 
+	fasm /usr/share/fasm/tools/libc/symbols.asm
+	gcc -m32 -static /usr/share/fasm/tools/libc/listing.o -o /usr/bin/listing
+	gcc -m32 -static /usr/share/fasm/tools/libc/prepsrc.o -o /usr/bin/prepsrc
+	gcc -m32 -static /usr/share/fasm/tools/libc/symbols.o -o /usr/bin/symbols
+
 test: all copy qemu
 
 retest: clean test

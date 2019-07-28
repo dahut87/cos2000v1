@@ -299,10 +299,7 @@ proc getcardinfo uses eax bx di, bus:word,device:word,function:word,pointer:word
         mov     di,[pointer]
         cmp     [function],0
         je      .amultiorfirst
-virtual at 0
-.pcidata pcidata
-end virtual
-        stdcall    pcireadbyte,[bus],[device],0,.pcidata.typed
+        stdcall    pcireadbyte,[bus],[device],0,pcidata.typed
         and     al,multifunction
         cmp     al,0
         jne     .amultiorfirst
@@ -424,10 +421,7 @@ endp
 ;retourne en DS:%1 les set supporté du processeur par rapport a la struct %0
 proc setinfo uses bx si di, pointer:word,set:word     
         mov      di,[set]
-virtual at 0
-.cpu cpu
-end virtual
-        lea      si,[ds:.cpu.mmx]
+        lea      si,[ds:cpu.mmx]
         add      si,[pointer]
         mov      bx,.theset
 .set:
@@ -487,10 +481,7 @@ proc cpuinfo uses eax ebx ecx edx si di ds es, pointer:word
         pop      es
         mov      di,[pointer]
         mov      al,0
-	virtual at 0
-  		.cpu cpu
-	end virtual
-        mov      cx,.cpu.sizeof
+        mov      cx,cpu.sizeof
         cld
         rep      stosb
         mov      di,[pointer]
@@ -498,53 +489,53 @@ proc cpuinfo uses eax ebx ecx edx si di ds es, pointer:word
         je       .nocpuidatall
         xor      eax,eax
         cpuid                                        ;Fonction 0 de CPUID
-        mov      dword [.cpu.vendor],ebx               ;Vendeur sur 13 octets
-        mov      dword [.cpu.vendor+4],edx
-        mov      dword [.cpu.vendor+8],ecx
-        mov      byte [.cpu.vendor+12],0
+        mov      dword [cpu.vendor],ebx               ;Vendeur sur 13 octets
+        mov      dword [cpu.vendor+4],edx
+        mov      dword [cpu.vendor+8],ecx
+        mov      byte [cpu.vendor+12],0
         cmp      eax,1
         jb       .nofonc1
         mov      eax,1
         cpuid                                        ;Fonction 1 de CPUID
         mov      ebx,eax                                  ;infos de model
         and      ebx,1111b
-        mov      [.cpu.stepping],bl
+        mov      [cpu.stepping],bl
         shr      eax,4
         mov      ebx,eax
         and      ebx,1111b
-        mov      [.cpu.models],bl
+        mov      [cpu.models],bl
         shr      eax,4
         mov      ebx,eax
         and      ebx,1111b
-        mov      [.cpu.family],bl
+        mov      [cpu.family],bl
         shr      eax,4
         mov      ebx,eax
         and      ebx,11b
-        mov      [.cpu.types],bl
+        mov      [cpu.types],bl
         shr      eax,2
         mov      ebx,eax
         and      ebx,1111b
-        mov      [.cpu.emodels],bl
+        mov      [cpu.emodels],bl
         shr      eax,4
-        mov      [.cpu.efamily],al
+        mov      [cpu.efamily],al
         mov      ebx,edx
         and      ebx,1                                    ;infos de jeu d'instruction
-        setnz    [.cpu.fpu]
+        setnz    [cpu.fpu]
         mov      ebx,edx
         and      ebx,100000000000000000000000b
-        setnz    [.cpu.mmx]
+        setnz    [cpu.mmx]
         mov      ebx,edx
         and      ebx,10000000000000000000000000b
-        setnz    [.cpu.sse]
+        setnz    [cpu.sse]
         mov      ebx,edx
         and      ebx,100000000000000000000000000b
-        setnz    [.cpu.sse2]
+        setnz    [cpu.sse2]
         mov      ebx,ecx
         and      ebx,1b
-        setnz    [.cpu.sse3]
+        setnz    [cpu.sse3]
         mov      ebx,edx
         and      ebx,10000000000000000000000000000b
-        setnz    [.cpu.htt]
+        setnz    [cpu.htt]
 .nofonc1:
         mov      eax,80000000h                            ;Fonction 80000000 de CPUID
         cpuid
@@ -554,16 +545,16 @@ proc cpuinfo uses eax ebx ecx edx si di ds es, pointer:word
         cpuid
         mov      ebx,edx
         and      ebx,10000000000000000000000b
-        setnz    [.cpu.mmx2]
+        setnz    [cpu.mmx2]
         mov      ebx,edx
         and      ebx,1000000000000000000000000000000b
-        setnz    [.cpu.now3d]
+        setnz    [cpu.now3d]
         mov      ebx,edx
         and      ebx,10000000000000000000000000000000b
-        setnz    [.cpu.now3d2]
+        setnz    [cpu.now3d2]
         mov      ebx,edx
         and      ebx,1000000000b
-        setnz    [.cpu.apic]
+        setnz    [cpu.apic]
 .nofonc8:
         mov      si,.marks
         push     cs
@@ -584,15 +575,15 @@ proc cpuinfo uses eax ebx ecx edx si di ds es, pointer:word
         mov      al,0
         stosb
         mov      di,[pointer]
-        cmp      [es:.cpu.family],15
+        cmp      [es:cpu.family],15
         jne      .notextended
-        mov      al,[es:.cpu.efamily]
-        mov      ah,[es:.cpu.emodels]
+        mov      al,[es:cpu.efamily]
+        mov      ah,[es:cpu.emodels]
         mov      di,[si+2]
         jmp      .searchmodel
 .notextended:
-        mov      al,[es:.cpu.family]
-        mov      ah,[es:.cpu.models]
+        mov      al,[es:cpu.family]
+        mov      ah,[es:cpu.models]
         mov      di,[si]
 .searchmodel:
         cmp      [di],ax
@@ -600,7 +591,7 @@ proc cpuinfo uses eax ebx ecx edx si di ds es, pointer:word
         mov      si,di
         inc      si
         inc      si
-        lea      di,[es:.cpu.names]
+        lea      di,[es:cpu.names]
         add      di,[pointer]
 .copystr:
         mov      al,[si]

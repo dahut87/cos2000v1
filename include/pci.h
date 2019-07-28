@@ -18,6 +18,9 @@ struc pcidata
 			;bit 7: multi-function device
 .result		db 0	;Built-In Self-Test result
 }
+virtual at 0
+pcidata pcidata
+end virtual
 
 struc pciinf
 {
